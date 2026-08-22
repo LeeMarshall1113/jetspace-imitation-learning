@@ -33,6 +33,15 @@ log() { printf '\n==> %s\n' "$*"; }
 die() { printf '\nERROR: %s\n' "$*" >&2; exit 1; }
 
 log "Preflight"
+# Refuse to run inside a container. Every other check here would pass in one --
+# same WSL kernel, same /dev/dxg, same codename -- so without this guard the
+# script installs several GB into an ephemeral container that --rm then deletes.
+# ROCDXG has to live in the distro.
+if [ -f /.dockerenv ] || grep -qE '(docker|containerd)' /proc/1/cgroup 2>/dev/null; then
+    die "Running inside a container. Run this in the Ubuntu WSL distro instead:
+       wsl -d Ubuntu-24.04
+       cd ~/jetspace-imitation-learning && bash scripts/install_rocm_wsl.sh"
+fi
 grep -qi microsoft /proc/version || die "Not running under WSL. Use the native Linux ROCm install instead."
 [ -e /dev/dxg ] || die "/dev/dxg missing. Update the Adrenalin driver (26.2.2+) and restart WSL."
 . /etc/os-release
