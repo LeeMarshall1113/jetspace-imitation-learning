@@ -39,6 +39,15 @@ services:
     security_opt: ["seccomp:unconfined"]
     cap_add: ["SYS_PTRACE"]
 
+  # Mounts follow the ROCDXG upstream guidance for WSL containers. The three
+  # bind targets are fixed paths the ROCm runtime looks for -- do not "tidy"
+  # them into a single /usr/lib/wsl mount, which does not work.
+  #
+  # PREREQUISITE: run scripts/install_rocm_wsl.sh in the distro first. Two of
+  # these sources (/opt/rocm/...) only exist once ROCm + librocdxg are installed
+  # there, and the Docker daemon resolves bind sources itself -- so the daemon
+  # must run in that same distro (Docker Engine via apt), NOT Docker Desktop,
+  # whose daemon lives in a separate docker-desktop VM with no /opt/rocm.
   dev-wsl:
     <<: *common
     profiles: ["wsl2"]
@@ -47,10 +56,14 @@ services:
     volumes:
       - ..:/workspace
       - hf-cache:/root/.cache/huggingface
-      - /usr/lib/wsl:/usr/lib/wsl:ro
+      - /usr/lib/wsl/lib/libdxcore.so:/usr/lib/libdxcore.so:ro
+      - /opt/rocm/lib/librocdxg.so:/usr/lib/librocdxg.so:ro
+      - /opt/rocm/share/rocdxg/dids.conf:/usr/share/rocdxg/dids.conf:ro
     environment:
       - MUJOCO_GL=egl
-      - LD_LIBRARY_PATH=/usr/lib/wsl/lib
+      # Mandatory below ROCm 7.13; we pin 7.2.4. Without it the runtime never
+      # attempts the DXG path and hsa_init fails with "no supported GPU devices".
+      - HSA_ENABLE_DXG_DETECTION=1
     security_opt: ["seccomp:unconfined"]
 
   dev-cpu:

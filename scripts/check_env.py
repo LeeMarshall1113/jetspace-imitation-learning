@@ -43,12 +43,32 @@ def check_host() -> None:
         _report(
             os.path.exists("/dev/dxg"),
             "WSL2 GPU device /dev/dxg",
-            "needs ROCm>=7.2.1 + Adrenalin>=26.2.2 on the Windows host",
+            "update Adrenalin to 26.2.2+ on the Windows host",
         )
         _report(
-            os.path.isdir("/usr/lib/wsl/lib"),
-            "WSL driver libs mounted at /usr/lib/wsl/lib",
-            "bind-mount it (see docker/compose.yaml, wsl2 profile)",
+            os.path.exists("/usr/lib/libdxcore.so"),
+            "libdxcore.so bind-mounted",
+            "from /usr/lib/wsl/lib on the host (wsl2 compose profile)",
+        )
+        # The ROCDXG translation layer is the piece people miss: unlike NVIDIA,
+        # AMD's Windows driver does not deliver a compute runtime into WSL. It
+        # comes from https://github.com/ROCm/librocdxg, installed in the DISTRO.
+        _report(
+            os.path.exists("/usr/lib/librocdxg.so"),
+            "librocdxg.so bind-mounted (ROCDXG bridge)",
+            "run scripts/install_rocm_wsl.sh in the distro, not in this container",
+        )
+        _report(
+            os.path.exists("/usr/share/rocdxg/dids.conf"),
+            "rocdxg dids.conf bind-mounted",
+            "ships with the librocdxg package",
+        )
+        # Mandatory below ROCm 7.13. Silently absent, it looks identical to a
+        # driver problem: everything else passes and the GPU simply never appears.
+        _report(
+            os.environ.get("HSA_ENABLE_DXG_DETECTION") == "1",
+            "HSA_ENABLE_DXG_DETECTION=1",
+            "required for ROCm < 7.13; set in the wsl2 compose profile",
         )
     else:
         _report(os.path.exists("/dev/kfd"), "ROCm kernel driver /dev/kfd")
