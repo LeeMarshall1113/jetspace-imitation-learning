@@ -25,13 +25,23 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /workspace
 
 # Dependency layer first so source edits don't invalidate the pip cache.
-COPY pyproject.toml /workspace/pyproject.toml
-# --no-deps on torch: the base image already ships the ROCm build. A plain
-# `pip install torch` here would silently replace it with the CPU/CUDA wheel.
+# README.md is copied because pyproject declares it as the project readme.
+COPY pyproject.toml README.md /workspace/
+# An editable install resolves `where = ["src"]` at install time, so the package
+# tree has to exist already. Stub it here to keep this layer cacheable; the real
+# source is copied over the stub below.
+RUN mkdir -p /workspace/src/jetspace && touch /workspace/src/jetspace/__init__.py
+# torch is deliberately not a declared dependency: the base image already ships
+# the ROCm build, and a plain `pip install torch` would replace it with the
+# CPU/CUDA wheel.
 RUN python -m pip install --upgrade pip \
     && python -m pip install -e ".[dev]" \
     && python -c "import torch; print('torch', torch.__version__)"
 
 COPY . /workspace
+
+# Confirm the editable install still resolves subpackages now that the real
+# source has replaced the stub. Fails the build rather than surfacing at runtime.
+RUN python -c "import jetspace, jetspace.envs, jetspace.utils; print('jetspace', jetspace.__version__)"
 
 CMD ["/bin/bash"]

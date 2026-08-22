@@ -251,10 +251,16 @@ result should be reported as such rather than tuned around.
 
 ### M0, environment
 
-- [ ] Install WSL2 with Ubuntu 24.04 on the Windows host
-- [ ] Install Docker Desktop and enable the WSL2 backend
-- [ ] Confirm the Adrenalin driver is 26.2.2 or newer
-- [ ] Build the container and run `scripts/check_env.py` to a clean exit
+- [x] Install WSL2 with Ubuntu 24.04 on the Windows host
+- [x] Install Docker Desktop and launch it once to provision the backend
+- [x] Confirm the Adrenalin driver is 26.2.2 or newer
+- [x] Build the container image
+- [x] MuJoCo verified: physics steps and headless EGL rendering both pass
+- [ ] **Install the ROCm WSL runtime in the distro: `bash scripts/install_rocm_wsl.sh`**
+      (requires sudo; the Windows driver alone does not enable ROCm compute)
+- [ ] Re-run `scripts/check_env.py` to a clean exit
+- [ ] Enable Docker WSL integration for Ubuntu-24.04, so builds and training can
+      use the WSL-native filesystem rather than reaching across to `/mnt/c`
 - [ ] Record the result in `docs/results.md`
 
 ### M1, teleoperation and dataset

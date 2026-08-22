@@ -14,7 +14,7 @@ fail here — which is why `docker/compose.yaml` has separate profiles.
 ## Prerequisites (Windows host)
 
 1. **AMD Adrenalin >= 26.2.2.** ROCDXG needs a current Windows driver.
-2. **WSL2 with Ubuntu 24.04** — not installed on this box yet:
+2. **WSL2 with Ubuntu 24.04:**
    ```
    wsl --install -d Ubuntu-24.04
    ```
@@ -27,6 +27,44 @@ fail here — which is why `docker/compose.yaml` has separate profiles.
 
 ROCm >= 7.2.1 is the floor for RX 9000-series (gfx1201) support under WSL. The
 image pins 7.2.4.
+
+## The step that is easy to miss: ROCm must be installed in the distro
+
+**A current Windows driver is not sufficient on AMD.** This is the single most
+likely reason the GPU fails to appear, and it differs from NVIDIA in a way that
+misleads:
+
+- NVIDIA's Windows driver publishes its compute libraries directly into
+  `/usr/lib/wsl/lib`, so CUDA works inside WSL with nothing installed in the distro.
+- AMD's does not. A fully up-to-date Adrenalin driver gives you `/dev/dxg` and
+  `libdxcore.so`, and that is all. `/usr/lib/wsl/lib` will contain only
+  `libd3d12.so`, `libd3d12core.so` and `libdxcore.so`, and `/usr/lib/wsl/drivers/`
+  contains Windows driver INF folders with no Linux shared objects at all.
+
+ROCm compute under WSL is bridged by **ROCDXG** (`librocdxg`), a user-mode
+translation layer between the Linux ROCm runtime and the Windows driver stack. It
+ships in the ROCm packages and has to be installed inside the distro:
+
+```bash
+bash scripts/install_rocm_wsl.sh
+```
+
+The script is pinned to ROCm 7.2.4 to match the container image, requires `sudo`,
+and downloads several GB. It verifies the result by checking that `rocminfo`
+enumerates `gfx1201`.
+
+**The symptom of skipping this step** is that every other check passes — `/dev/dxg`
+present, driver libs mounted, PyTorch correctly identified as a ROCm build — while
+`torch.cuda.is_available()` returns False. Running `rocminfo` inside the container
+shows the actual cause:
+
+```
+WSL environment detected.
+hsa_init Failed, possibly no supported GPU devices
+```
+
+That message means the runtime recognised WSL but could not reach the GPU through
+it, which is exactly what a missing ROCDXG layer looks like.
 
 ### Docker Desktop or Docker Engine?
 
