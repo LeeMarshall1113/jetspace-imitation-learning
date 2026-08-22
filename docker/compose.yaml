@@ -1,0 +1,61 @@
+# Two profiles, one image. The difference is how the GPU is reached:
+#
+#   linux   - native Linux. ROCm talks to the Kernel Fusion Driver at /dev/kfd.
+#   wsl2    - Windows + WSL2. /dev/kfd DOES NOT EXIST here. The GPU is reached
+#             through /dev/dxg via AMD's ROCDXG translation layer, which needs
+#             the Windows driver libraries bind-mounted from /usr/lib/wsl.
+#             Requires ROCm >= 7.2.1 and Adrenalin >= 26.2.2 on the host.
+#   cpu     - no GPU. MuJoCo + dataset work still run fine; training will crawl.
+#
+# Usage:  docker compose --profile wsl2 run --rm dev
+name: jetspace
+
+x-common: &common
+  build:
+    context: ..
+    dockerfile: docker/Dockerfile
+  image: jetspace:rocm7.2.4
+  working_dir: /workspace
+  stdin_open: true
+  tty: true
+  ipc: host          # shared memory for dataloader workers
+  volumes:
+    - ..:/workspace
+    - hf-cache:/root/.cache/huggingface
+  environment:
+    - MUJOCO_GL=egl
+    - HSA_ENABLE_SDMA=0
+    # gfx1201 is officially supported in ROCm 7.2+, so no HSA_OVERRIDE_GFX_VERSION
+    # spoofing is needed. If you are on an older/unsupported card, set it here.
+
+services:
+  dev:
+    <<: *common
+    profiles: ["linux"]
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    group_add: ["video", "render"]
+    security_opt: ["seccomp:unconfined"]
+    cap_add: ["SYS_PTRACE"]
+
+  dev-wsl:
+    <<: *common
+    profiles: ["wsl2"]
+    devices:
+      - /dev/dxg
+    volumes:
+      - ..:/workspace
+      - hf-cache:/root/.cache/huggingface
+      - /usr/lib/wsl:/usr/lib/wsl:ro
+    environment:
+      - MUJOCO_GL=egl
+      - LD_LIBRARY_PATH=/usr/lib/wsl/lib
+    security_opt: ["seccomp:unconfined"]
+
+  dev-cpu:
+    <<: *common
+    profiles: ["cpu"]
+
+volumes:
+  hf-cache:

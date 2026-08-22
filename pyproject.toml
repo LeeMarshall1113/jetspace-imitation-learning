@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jetspace"
+version = "0.0.1"
+description = "Imitation learning + RL on a frozen JEPA latent world model"
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+license = { text = "Apache-2.0" }
+
+# NOTE: torch is deliberately absent. The ROCm base image ships a ROCm-built
+# torch; declaring it here would let pip swap in the CPU wheel and silently
+# kill GPU support. Outside Docker, install torch from the ROCm index first:
+#   pip install torch --index-url https://download.pytorch.org/whl/rocm7.2
+dependencies = [
+    "mujoco>=3.2",
+    "gymnasium>=1.0",
+    "numpy>=1.26",
+    "transformers>=4.44",     # V-JEPA 2 encoder
+    "huggingface-hub>=0.24",
+    "datasets>=2.20",
+    "omegaconf>=2.3",         # config loading
+    "imageio[ffmpeg]>=2.34",
+    "opencv-python-headless>=4.10",
+    "tqdm>=4.66",
+    "pygame>=2.6",            # gamepad teleop
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+]
+# Real-robot capture. Optional so the core stack installs clean.
+# Deliberately NO phone-depth dependency: the Galaxy S23+ has no ToF/LiDAR
+# (Samsung dropped depth sensors after the S20 Ultra), and V-JEPA 2 consumes
+# RGB anyway. See docs/architecture.md#sensing.
+robot = [
+    "pyrealsense2>=2.55; sys_platform != 'darwin'",  # if metric depth is ever needed
+    "pyserial>=3.5",                                  # SO-101 / feetech bus servos
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "scripts"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

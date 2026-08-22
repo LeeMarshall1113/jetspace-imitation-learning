@@ -1,0 +1,9 @@
+# These files are consumed inside a Linux container; CRLF breaks shell scripts
+# and can confuse Docker. Force LF regardless of host platform.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.mp4 binary
+*.pt binary
+*.pth binary
+*.safetensors binary
