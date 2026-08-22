@@ -18,10 +18,36 @@ fail here — which is why `docker/compose.yaml` has separate profiles.
    ```
    wsl --install -d Ubuntu-24.04
    ```
-3. **Docker Desktop** with the WSL2 backend enabled.
+3. **Docker Desktop**, then **launch it once**. Installing it is not enough:
+   Docker Desktop provisions its WSL2 backend distro on first launch, and until
+   that happens there is no engine and `docker` will not resolve. After first
+   launch, enable the Ubuntu distro under Settings > Resources > WSL Integration.
+4. Restart your shell after installing. The installer edits PATH, but existing
+   shells keep the old copy.
 
 ROCm >= 7.2.1 is the floor for RX 9000-series (gfx1201) support under WSL. The
 image pins 7.2.4.
+
+### Docker Desktop or Docker Engine?
+
+Either can work, but they differ in where containers actually execute, and that
+determines whether the GPU is reachable.
+
+- **Docker Desktop** runs containers inside its own `docker-desktop` WSL2 VM, not
+  inside your Ubuntu distro. GPU access therefore depends on that VM exposing
+  `/dev/dxg` and the DirectX libraries. This usually works, and it is the simpler
+  starting point.
+- **Docker Engine installed directly inside the Ubuntu 24.04 distro** (via apt,
+  no Docker Desktop) runs containers in that distro's own namespace, where
+  `/dev/dxg` and `/usr/lib/wsl` are unambiguously present.
+
+Start with Docker Desktop. **If `check_env.py` reports the GPU missing but the
+Windows driver is current, switch to Docker Engine inside Ubuntu** - that removes
+the extra VM boundary and is the more predictable configuration for ROCm.
+
+Note that the `wsl2` compose profile mounts `/usr/lib/wsl` specifically because
+ROCm needs the DirectX core libraries (`libdxcore.so`) from the Windows driver
+stack; mapping `/dev/dxg` alone is not sufficient.
 
 ## Build and run
 
