@@ -67,7 +67,7 @@ training then reads embeddings, never pixels.
 
 | Item | Cost |
 |------|------|
-| V-JEPA 2 weights (1.2B, bf16) | ~2.4 GB VRAM, inference only |
+| V-JEPA 2 ViT-L weights (326M, bf16) | **measured 0.65 GB** VRAM, inference only |
 | Action-conditioned head (trainable) | ~10-50M params |
 | Cached latents, 100 eps x 200 steps, pooled 1024-d | ~40 MB disk |
 | Cached latents, same, full patch tokens (256 x 1024) | ~10 GB disk |
@@ -75,6 +75,17 @@ training then reads embeddings, never pixels.
 
 Budget rule: **if a run does not fit in 16 GB, cache harder before renting a GPU.**
 Cloud NVIDIA is reserved for M6 or for Isaac-specific experiments.
+
+**Correction, measured 2026-08-23.** This document treated VRAM as the binding
+constraint on M3. It is not. The frozen ViT-L encoder peaks at **0.79 GB of
+15.9** — memory was never close to the limit, and the estimate above assumed the
+1.2B ViT-g variant we did not choose.
+
+The real constraint is **encoder throughput: ~5.2 frames/second**, or roughly two
+hours to cache 400 episodes. That is a wall-clock cost paid once rather than a
+memory problem, but it does mean the encode step should be treated as a batch
+job, and that rendering and encoding are both worth profiling before the
+data-efficiency sweep multiplies them.
 
 ## 4. Timeline
 

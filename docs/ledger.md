@@ -281,6 +281,22 @@ policies. Any decision made on loss alone would have been wrong, and the fix tha
 looked worst by both metrics at once (attempt 3) was the one that unblocked
 everything.
 
+### M1 — The 16 GB budget was never the constraint
+**Silent?** No — an unexamined assumption rather than a failure. **Cost:** shaped
+the plan for weeks.
+Every planning document treated VRAM as M3's main risk, and the compute budget
+was written around it. Measured: the frozen V-JEPA 2 ViT-L encoder peaks at
+**0.79 GB of 15.9**. The estimate had assumed the 1.2B ViT-g variant, and 326M
+parameters in bf16 is simply small.
+**What is actually binding:** encoder throughput, ~5.2 frames/second, or about
+two hours to cache 400 episodes.
+**Lesson:** a constraint nobody has measured is a guess wearing a number. This
+one was load-bearing in the architecture argument -- "the frozen encoder is what
+makes it fit" -- and was off by an order of magnitude. The architecture choice
+still looks right, but for throughput and reuse reasons, not memory ones.
+
+---
+
 ## Open
 
 - Rendering appears to be CPU-rasterized despite `MUJOCO_GL=egl` (~448% CPU
