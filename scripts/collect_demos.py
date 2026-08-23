@@ -175,7 +175,10 @@ def collect(args: argparse.Namespace) -> int:
 
     written = skipped = 0
     for ep in range(args.episodes):
-        obs = env.reset(seed=int(rng.integers(2**31)))
+        # Record the reset seed: without it the target position cannot be
+        # reproduced, and an episode that cannot be replayed cannot be verified.
+        ep_seed = int(rng.integers(2**31))
+        obs = env.reset(seed=ep_seed)
         if not policy.reset(env):
             skipped += 1
             continue
@@ -211,7 +214,7 @@ def collect(args: argparse.Namespace) -> int:
             print(f"  episode {ep}: FAILED, discarded")
             continue
 
-        writer.write(buffer, metadata={"policy": args.policy})
+        writer.write(buffer, metadata={"policy": args.policy, "seed": ep_seed})
         written += 1
         print(f"  episode {ep}: {len(buffer)} frames, success={buffer.success[-1]}")
 
