@@ -3,11 +3,11 @@
 #   linux   - native Linux. ROCm talks to the Kernel Fusion Driver at /dev/kfd.
 #   wsl2    - Windows + WSL2. /dev/kfd DOES NOT EXIST here. The GPU is reached
 #             through /dev/dxg via AMD's ROCDXG translation layer, which needs
-#             the Windows driver libraries bind-mounted from /usr/lib/wsl.
+#             librocdxg installed in the distro (scripts/install_rocm_wsl.sh).
 #             Requires ROCm >= 7.2.1 and Adrenalin >= 26.2.2 on the host.
 #   cpu     - no GPU. MuJoCo + dataset work still run fine; training will crawl.
 #
-# Usage:  docker compose --profile wsl2 run --rm dev
+# Usage:  docker compose -f docker/compose.yaml --profile wsl2 run --rm dev-wsl
 name: jetspace
 
 x-common: &common
@@ -19,12 +19,22 @@ x-common: &common
   stdin_open: true
   tty: true
   ipc: host          # shared memory for dataloader workers
+  # Run as the invoking user, not root. The container writes datasets,
+  # checkpoints and logs straight into the bind-mounted repo; as root those
+  # files come out root-owned and the host user cannot delete or edit them.
+  # Override for a non-1000 account:  export DOCKER_UID=$(id -u) DOCKER_GID=$(id -g)
+  user: "${DOCKER_UID:-1000}:${DOCKER_GID:-1000}"
   volumes:
     - ..:/workspace
-    - hf-cache:/root/.cache/huggingface
   environment:
     - MUJOCO_GL=egl
     - HSA_ENABLE_SDMA=0
+    # That UID has no passwd entry or home directory inside the image, so point
+    # HOME and the HF cache somewhere writable. Keeping the cache in the repo
+    # (gitignored) also means it is owned by the host user, unlike a named
+    # volume, which Docker would create root-owned.
+    - HOME=/workspace/.cache
+    - HF_HOME=/workspace/.cache/huggingface
     # gfx1201 is officially supported in ROCm 7.2+, so no HSA_OVERRIDE_GFX_VERSION
     # spoofing is needed. If you are on an older/unsupported card, set it here.
 
@@ -39,9 +49,9 @@ services:
     security_opt: ["seccomp:unconfined"]
     cap_add: ["SYS_PTRACE"]
 
-  # Mounts follow the ROCDXG upstream guidance for WSL containers. The three
-  # bind targets are fixed paths the ROCm runtime looks for -- do not "tidy"
-  # them into a single /usr/lib/wsl mount, which does not work.
+  # Mounts follow the ROCDXG upstream guidance for WSL containers. The bind
+  # targets are fixed paths the ROCm runtime looks for -- do not "tidy" them
+  # into a single /usr/lib/wsl mount, which does not work.
   #
   # PREREQUISITE: run scripts/install_rocm_wsl.sh in the distro first. Two of
   # these sources (/opt/rocm/...) only exist once ROCm + librocdxg are installed
@@ -55,7 +65,6 @@ services:
       - /dev/dxg
     volumes:
       - ..:/workspace
-      - hf-cache:/root/.cache/huggingface
       - /usr/lib/wsl/lib/libdxcore.so:/usr/lib/libdxcore.so:ro
       - /opt/rocm/lib/librocdxg.so.1:/usr/lib/librocdxg.so.1:ro
       - /opt/rocm/lib/librocdxg.so:/usr/lib/librocdxg.so:ro
@@ -66,6 +75,8 @@ services:
       # if moving to 1.2.1+ (which pairs with ROCm 7.14, not 7.2.x).
     environment:
       - MUJOCO_GL=egl
+      - HOME=/workspace/.cache
+      - HF_HOME=/workspace/.cache/huggingface
       # Mandatory below ROCm 7.13; we pin 7.2.4. Without it the runtime never
       # attempts the DXG path and hsa_init fails with "no supported GPU devices".
       - HSA_ENABLE_DXG_DETECTION=1
@@ -74,6 +85,3 @@ services:
   dev-cpu:
     <<: *common
     profiles: ["cpu"]
-
-volumes:
-  hf-cache:

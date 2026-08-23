@@ -54,3 +54,6 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+
+# Container HOME + HF cache (see docker/compose.yaml)
+.cache/
