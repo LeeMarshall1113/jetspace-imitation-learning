@@ -382,6 +382,7 @@ result should be reported as such rather than tuned around.
 |----------|----------------|
 | [`REQUIREMENTS.md`](REQUIREMENTS.md) | Success gates, compute budget, milestones, non-goals |
 | [`docs/results.md`](docs/results.md) | Measured outcomes against each gate — numbers only |
+| [`docs/task-hierarchy.md`](docs/task-hierarchy.md) | Task levels, what transfers between them, and the experiment that tests the thesis |
 | [`docs/ledger.md`](docs/ledger.md) | Every failure mode hit, how it was diagnosed, what fixed it |
 | [`docs/decisions.md`](docs/decisions.md) | Settled decisions and the reasoning behind them |
 | [`docs/architecture.md`](docs/architecture.md) | Frozen encoder, latent RL, backend seam, sensing |

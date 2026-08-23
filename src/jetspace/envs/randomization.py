@@ -55,8 +55,13 @@ class RandomizationConfig:
     camera_mode: str = "wide"            # "fixed" | "jitter" | "wide"
     camera_pos_jitter: float = 0.03      # metres, per axis; "jitter" mode only
     camera_azimuth_range: tuple[float, float] = (-115.0, 115.0)   # degrees
-    camera_elevation_range: tuple[float, float] = (12.0, 65.0)    # degrees
-    camera_distance_range: tuple[float, float] = (0.45, 0.95)     # metres
+    # Floors on elevation and distance are not conservatism -- below roughly 25
+    # degrees or 0.55 m the arm fills the frame and occludes the workspace, so
+    # the observation cannot contain the information the task needs. Widening
+    # past the point where the task is *observable* trains on impossible
+    # episodes rather than hard ones.
+    camera_elevation_range: tuple[float, float] = (25.0, 70.0)    # degrees
+    camera_distance_range: tuple[float, float] = (0.55, 1.00)     # metres
     camera_lookat: tuple[float, float, float] = (0.24, 0.0, 0.20)
     camera_lookat_jitter: float = 0.04   # metres, shifts aim point
 
