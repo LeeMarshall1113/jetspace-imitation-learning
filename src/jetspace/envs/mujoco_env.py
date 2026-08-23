@@ -24,7 +24,11 @@ REACH_XML = """
   <worldbody>
     <light pos="0 0 2" dir="0 0 -1" diffuse=".8 .8 .8"/>
     <geom name="floor" type="plane" size="1 1 .05" rgba=".3 .3 .35 1"/>
-    <camera name="front" pos="0 -1.1 0.8" xyaxes="1 0 0 0 0.6 0.8"/>
+    <!-- Top-down. The arm and targets are confined to the z=0.1 plane, so an
+         oblique view foreshortens the whole workspace into a bar and compresses
+         the target's y-position into near-invisibility. Overhead makes arm pose
+         and target position directly legible to both a CNN and a human. -->
+    <camera name="top" pos="0.22 0 1.45" xyaxes="1 0 0 0 1 0"/>
     <body name="link1" pos="0 0 0.1">
       <joint name="j1" type="hinge" axis="0 0 1" range="-3.14 3.14" damping="1.0"/>
       <geom type="capsule" fromto="0 0 0 0.25 0 0" size="0.03" rgba=".7 .7 .8 1"/>
@@ -49,7 +53,7 @@ SUCCESS_RADIUS = 0.05  # metres; also the success criterion in REQUIREMENTS.md
 
 
 class MujocoReachEnv(RobotEnv):
-    camera_names = ("front",)
+    camera_names = ("top",)
 
     def __init__(
         self,
