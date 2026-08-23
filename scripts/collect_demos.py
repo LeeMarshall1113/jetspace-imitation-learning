@@ -118,7 +118,9 @@ class HumanTeleop:
 
 
 def collect(args: argparse.Namespace) -> int:
-    env = SO101ReachEnv(image_size=args.image_size, max_steps=args.max_steps)
+    env = SO101ReachEnv(
+        image_size=args.image_size, max_steps=args.max_steps, randomize=args.randomize
+    )
     rng = np.random.default_rng(args.seed)
     policy = (
         ScriptedExpert(env, rng, noise=args.noise)
@@ -133,7 +135,8 @@ def collect(args: argparse.Namespace) -> int:
         action_dim=env.action_dim,
         cameras=env.camera_names,
         image_size=args.image_size,
-        extra_info={"policy": args.policy, "seed": args.seed, "robot": "so101"},
+        extra_info={"policy": args.policy, "seed": args.seed, "robot": "so101",
+                    "randomized": bool(args.randomize)},
     )
     print(f"Writing to {writer.root} (already contains {writer.num_episodes} episodes)")
     print(f"env: {env.action_dim} actuators @ {env.control_hz} Hz")
@@ -202,6 +205,8 @@ def main() -> int:
     p.add_argument("--max-steps", type=int, default=150)
     p.add_argument("--noise", type=float, default=0.015)
     p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--randomize", action="store_true",
+                   help="domain randomization: lighting, camera, clutter, dynamics, latency")
     p.add_argument("--keep-failures", action="store_true")
     p.add_argument("--summary-only", action="store_true")
     args = p.parse_args()

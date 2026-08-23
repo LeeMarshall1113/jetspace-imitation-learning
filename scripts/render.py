@@ -51,7 +51,9 @@ def contact_sheet(episodes: list[np.ndarray], cols: int = 8, pad: int = 2) -> np
     return sheet
 
 
-def rollout_frames(checkpoint: Path, seeds: list[int], max_steps: int) -> list[np.ndarray]:
+def rollout_frames(
+    checkpoint: Path, seeds: list[int], max_steps: int, randomize: bool = False
+) -> list[np.ndarray]:
     import torch
 
     from jetspace.envs.so101_env import SO101ReachEnv
@@ -67,7 +69,7 @@ def rollout_frames(checkpoint: Path, seeds: list[int], max_steps: int) -> list[n
     std = np.asarray(ckpt["norm"]["proprio_std"], dtype=np.float32)
     camera = ckpt.get("camera", "front")
 
-    env = SO101ReachEnv(image_size=224, max_steps=max_steps)
+    env = SO101ReachEnv(image_size=224, max_steps=max_steps, randomize=randomize)
     out = []
     for seed in seeds:
         obs = env.reset(seed=seed)
@@ -83,6 +85,27 @@ def rollout_frames(checkpoint: Path, seeds: list[int], max_steps: int) -> list[n
     return out
 
 
+def expert_frames(n: int, max_steps: int) -> list[np.ndarray]:
+    """Scripted-expert rollouts in the randomized world, for visual inspection."""
+    from jetspace.envs.so101_env import SO101ReachEnv
+
+    env = SO101ReachEnv(image_size=224, max_steps=max_steps, randomize=True)
+    rng = np.random.default_rng(0)
+    out = []
+    for i in range(n):
+        obs = env.reset(seed=900_000_000 + i)
+        frames, done = [obs.pixels["front"]], False
+        while not done:
+            action = env.ik_step(env.target_pos) + rng.normal(0, 0.015, size=env.action_dim)
+            result = env.step(action)
+            obs = result.obs
+            frames.append(obs.pixels["front"])
+            done = result.terminated or result.truncated
+        out.append(np.stack(frames))
+    env.close()
+    return out
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", default="data/episodes/so101_reach")
@@ -91,6 +114,8 @@ def main() -> int:
     ap.add_argument("--episodes", type=int, default=12)
     ap.add_argument("--cols", type=int, default=8)
     ap.add_argument("--max-steps", type=int, default=120)
+    ap.add_argument("--randomize", action="store_true",
+                   help="render the randomized world instead of the clean one")
     args = ap.parse_args()
 
     import imageio.v2 as imageio
@@ -100,8 +125,16 @@ def main() -> int:
 
     if args.checkpoint:
         seeds = [900_000_000 + i for i in range(args.episodes)]
-        episodes = rollout_frames(Path(args.checkpoint), seeds, args.max_steps)
+        episodes = rollout_frames(
+            Path(args.checkpoint), seeds, args.max_steps, randomize=args.randomize
+        )
         fps, label = 25, f"policy {Path(args.checkpoint).name}"
+    elif args.randomize:
+        # No checkpoint: show what the randomized world looks like, driven by
+        # the scripted expert. This is the picture to compare against a photo
+        # of the real setup.
+        episodes = expert_frames(args.episodes, args.max_steps)
+        fps, label = 25, "randomized world (scripted expert)"
     else:
         ds = EpisodeDataset(args.data)
         cam = ds.info["cameras"][0]

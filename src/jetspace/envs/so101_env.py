@@ -22,13 +22,28 @@ from pathlib import Path
 import numpy as np
 
 from .base import Observation, RobotEnv, StepResult
+from .randomization import DomainRandomizer, RandomizationConfig
 
 ASSET_DIR = Path("assets/robotstudio_so101")
 WRAPPER = "so101_reach.xml"
 
 # Written next to scene.xml so that <include> and the model's own
 # meshdir="assets" both resolve relatively.
-WRAPPER_XML = """<mujoco model="so101_reach">
+#: Distractor slots. Declared statically because MuJoCo models are compiled
+#: once; a slot is "absent" for an episode by being parked below the floor,
+#: which costs nothing and avoids recompiling per episode.
+N_DISTRACTOR_SLOTS = 4
+_PARKED = (0.0, 0.0, -5.0)
+
+_DISTRACTORS = "\n".join(
+    f'    <body name="distractor{i}" mocap="true" pos="0 0 -5">\n'
+    f'      <geom name="distractor{i}" type="box" size="0.02 0.02 0.02"'
+    f' rgba="0.6 0.5 0.4 1" contype="0" conaffinity="0"/>\n'
+    f"    </body>"
+    for i in range(N_DISTRACTOR_SLOTS)
+)
+
+WRAPPER_XML = f"""<mujoco model="so101_reach">
   <include file="scene.xml"/>
   <worldbody>
     <!-- Third-person view of the workspace. The model ships only a wrist
@@ -37,6 +52,7 @@ WRAPPER_XML = """<mujoco model="so101_reach">
     <body name="target" mocap="true" pos="0.30 0.0 0.25">
       <site name="target" size="0.018" rgba="0.20 0.85 0.35 0.85"/>
     </body>
+{_DISTRACTORS}
   </worldbody>
 </mujoco>
 """
@@ -64,6 +80,7 @@ class SO101ReachEnv(RobotEnv):
         frame_skip: int = 8,
         render: bool = True,
         asset_dir: str | Path = ASSET_DIR,
+        randomize: bool | RandomizationConfig = False,
     ) -> None:
         import mujoco
 
@@ -99,6 +116,13 @@ class SO101ReachEnv(RobotEnv):
             mujoco.Renderer(self.model, height=image_size, width=image_size) if render else None
         )
 
+        cfg = randomize if isinstance(randomize, RandomizationConfig) else RandomizationConfig(
+            enabled=bool(randomize)
+        )
+        self.randomizer = DomainRandomizer(self.model, cfg)
+        self._action_queue: list[np.ndarray] = []
+        self.n_distractors = 0
+
     # -- RobotEnv contract --------------------------------------------------
     @property
     def action_dim(self) -> int:
@@ -132,6 +156,9 @@ class SO101ReachEnv(RobotEnv):
                 self._renderer.update_scene(self.data, camera=cam)
                 pixels[cam] = self._renderer.render()
         proprio = np.concatenate([self.data.qpos, self.data.qvel]).astype(np.float32)
+        # Noise is added to the OBSERVATION, not to the simulator state: real
+        # encoders misreport a correct pose, they do not move the arm.
+        proprio = self.randomizer.observation_noise(proprio, self._rng)
         return Observation(pixels=pixels, proprio=proprio, extra={"dist": self._dist()})
 
     def ik_step(
@@ -165,17 +192,55 @@ class SO101ReachEnv(RobotEnv):
         if seed is not None:
             self._rng = np.random.default_rng(seed)
         self._mj.mj_resetData(self.model, self.data)
+        # Sample this episode's world: lighting, camera pose, masses, friction,
+        # servo gain, latency. Held fixed for the episode so a policy has to
+        # infer conditions from observation rather than average over them.
+        self.randomizer.reset(self._rng)
+        self._action_queue = []
+
         # Small pose jitter so every episode does not start from an identical
         # configuration; a policy trained on one start pose learns that pose.
         self.data.qpos[self.arm_dofs] += self._rng.normal(0, 0.03, size=len(self.arm_dofs))
         self.data.mocap_pos[0] = self._rng.uniform(TARGET_BOX_LOW, TARGET_BOX_HIGH)
+        self._place_distractors()
         self._mj.mj_forward(self.model, self.data)
         self._steps = 0
         return self._observe()
 
+    def _place_distractors(self) -> None:
+        """Scatter clutter, or park it out of frame.
+
+        Unused slots go below the floor rather than being deleted: the model is
+        compiled once, and recompiling per episode to add a box would dominate
+        the step time.
+        """
+        if not self.randomizer.cfg.enabled:
+            self.n_distractors = 0
+            for i in range(N_DISTRACTOR_SLOTS):
+                self.data.mocap_pos[1 + i] = _PARKED
+            return
+
+        lo, hi = self.randomizer.cfg.n_distractors
+        self.n_distractors = int(self._rng.integers(lo, hi + 1))
+        for i in range(N_DISTRACTOR_SLOTS):
+            if i < self.n_distractors:
+                pos = self._rng.uniform(TARGET_BOX_LOW, TARGET_BOX_HIGH)
+                # Keep clutter clear of the target so the task stays solvable;
+                # the point is visual distraction, not an impossible scene.
+                while np.linalg.norm(pos - self.data.mocap_pos[0]) < 0.08:
+                    pos = self._rng.uniform(TARGET_BOX_LOW, TARGET_BOX_HIGH)
+                self.data.mocap_pos[1 + i] = pos
+            else:
+                self.data.mocap_pos[1 + i] = _PARKED
+
     def step(self, action: np.ndarray) -> StepResult:
         low, high = self.action_bounds
-        self.data.ctrl[:] = np.clip(action, low, high)
+        # Serial servos do not act on a command the instant it is sent. Delay
+        # by the sampled number of control steps, holding the last command.
+        self._action_queue.append(np.clip(action, low, high))
+        delay = self.randomizer.action_latency
+        applied = self._action_queue[-1 - delay] if len(self._action_queue) > delay else self._action_queue[0]
+        self.data.ctrl[:] = applied
         for _ in range(self.frame_skip):
             self._mj.mj_step(self.model, self.data)
 
