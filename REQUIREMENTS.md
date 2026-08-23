@@ -96,7 +96,9 @@ Explicitly out of scope, to stop scope creep:
 
 ## 6. Open questions
 
-- [ ] **IEEE 6094992** ("we will be replicating large parts of this") is paywalled
-      and could not be identified. Need the title/authors before planning around it.
+- [x] **IEEE 6094992** resolved: Balaguer & Carpin, "Combining imitation and
+      reinforcement learning to fold deformable planar objects," IROS 2011. See
+      `docs/papers/balaguer-carpin-2011.md`. Confirms the imitation-seeds-RL
+      structure and supplies a reward formulation that ports to latent space.
 - [ ] Which task family for T beyond `reach`? Pick-and-place is the natural next step.
 - [ ] Real arm: SO-101 leader/follower pair (~$150-500) vs. sim-only indefinitely.

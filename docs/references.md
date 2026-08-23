@@ -47,12 +47,25 @@ cannot sit where the brief places them.
 community datasets (one curated pull spans 1,222 public datasets / ~38k episodes /
 ~184 hours), or our own teleop capture (M1).
 
-## Unresolved
+## Resolved
 
-**IEEE 6094992** — flagged in the brief as "we will be replicating large parts of
-this," but the record is paywalled and could not be identified from the document ID
-alone. **Needed: title and authors.** Nothing should be planned around it until we
-know what it is.
+**IEEE 6094992** is Balaguer & Carpin, "Combining imitation and reinforcement
+learning to fold deformable planar objects," IROS 2011, pp. 1405-1412. Named in
+the project brief as the paper to be substantially replicated, and previously
+unidentifiable from the document ID because the record is paywalled.
+
+Free author copy:
+<http://robotics.ucmerced.edu/sites/robotics.ucmerced.edu/files/page/documents/iros2011b.pdf>
+
+It is a direct structural match for this project: human demonstrations seed a
+two-layer imitation stage, which in turn seeds a modified PoWER RL stage,
+converging in 19 rollouts against 50-75 for comparable tasks. The reward is
+defined as distance from a rollout's final state to the nearest demonstration's
+final state, with no hand-engineered reward at all -- an idea that transfers
+directly to V-JEPA latent space and removes both the marker rig and the ICP step.
+
+Implementation notes and the full mapping onto JetSpace:
+[`papers/balaguer-carpin-2011.md`](papers/balaguer-carpin-2011.md).
 
 ## Hardware / platform sources
 

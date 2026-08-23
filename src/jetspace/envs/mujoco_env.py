@@ -77,6 +77,15 @@ class MujocoReachEnv(RobotEnv):
         rng = self.model.actuator_ctrlrange
         return rng[:, 0].copy(), rng[:, 1].copy()
 
+    @property
+    def control_hz(self) -> int:
+        """Control rate, derived rather than assumed.
+
+        Datasets record this so the physics timestep and frame_skip can change
+        without silently invalidating the timing of already-collected demos.
+        """
+        return int(round(1.0 / (self.model.opt.timestep * self.frame_skip)))
+
     # -- internals ---------------------------------------------------------
     def _tip_to_target(self) -> float:
         tip = self.data.site("tip").xpos
