@@ -53,7 +53,7 @@ def contact_sheet(episodes: list[np.ndarray], cols: int = 8, pad: int = 2) -> np
 
 def rollout_frames(
     checkpoint: Path, seeds: list[int], max_steps: int, randomize: bool = False,
-    task: str = "pickplace",
+    task: str = "pickplace", pretty: bool = False,
 ) -> list[np.ndarray]:
     import torch
 
@@ -71,7 +71,9 @@ def rollout_frames(
     camera = ckpt.get("camera", "front")
     norm, adim = ckpt["norm"], ckpt["action_dim"]
 
-    env = get_task(task)["env"](image_size=224, max_steps=max_steps, randomize=randomize)
+    env = get_task(task)["env"](
+        image_size=224, max_steps=max_steps, randomize=randomize, pretty=pretty
+    )
     out = []
     for seed in seeds:
         obs = env.reset(seed=seed)
@@ -129,9 +131,7 @@ def main() -> int:
     ap.add_argument("--gif-stride", type=int, default=2, help="keep every Nth frame")
     ap.add_argument("--pretty", action="store_true",
                    help="render visual meshes (11x slower); for human-facing output")
-    ap.add_argument("--pretty", action="store_true",
-                   help="render visual meshes (11x slower); for human-facing output")
-    p.add_argument("--randomize", action="store_true",
+    ap.add_argument("--randomize", action="store_true",
                    help="render the randomized world instead of the clean one")
     args = ap.parse_args()
     if args.data is None:
@@ -146,7 +146,7 @@ def main() -> int:
         seeds = [900_000_000 + i for i in range(args.episodes)]
         episodes = rollout_frames(
             Path(args.checkpoint), seeds, args.max_steps,
-            randomize=args.randomize, task=args.task,
+            randomize=args.randomize, task=args.task, pretty=args.pretty,
         )
         fps, label = 25, f"policy {Path(args.checkpoint).name}"
     elif args.randomize:
