@@ -83,7 +83,7 @@ submission.
 | # | Experiment | Feeds | Status |
 |---|---|---|---|
 | E1 | BC baseline per task, 3 seeds, frozen eval set | control | reach ✅ 85.7% |
-| E2 | Reward monotonicity on cached latents | go/no-go for A | not started |
+| E2 | Reward monotonicity on cached latents | go/no-go for A | **built**, `scripts/eval_reward.py` |
 | E3 | World-model rollout error vs horizon | claim B | not started |
 | E4 | Ensemble disagreement vs true error | claim B | not started |
 | E5 | Data-efficiency sweep: N\* vs prior tasks | claim A, headline figure | not started |
@@ -118,7 +118,31 @@ Robotics venues are already short-format — length is not the constraint.
 | Workshop (CoRL/NeurIPS/ICRA) | 4–8 pages | **Right first target.** High acceptance, fast feedback |
 | arXiv | any | Do this regardless, and first |
 
-**Recommended path:** arXiv preprint → workshop → conference if it survives.
+**DECIDED: arXiv preprint first, ~3-4 weeks.** Not ICRA (15 Sep) or ICLR
+(25 Sep) — both would mean submitting with the world model unbuilt, spending a
+first impression on an incomplete paper. The preprint has no gatekeeping, costs
+nothing, timestamps the work, and becomes the workshop submission the moment
+CFPs open.
+
+### The multi-paper arc
+
+Planned as a sequence rather than one paper, which is legitimate **provided each
+answers a different question**:
+
+| # | Question | Needs |
+|---|---|---|
+| **1** | How far can latent imagination be trusted, and does a world model amortise across tasks? | Simulation only — **this is the preprint** |
+| **2** | Does any of it survive contact with hardware? | One ~$122 SO-101 |
+| **3+** | Bimanual coordination; more task levels; cross-embodiment | A second arm, more sim work |
+
+Papers 1 and 2 ask genuinely different questions — a measurement about the model
+versus a transfer result about hardware — so this is not salami-slicing.
+
+**The failure mode to avoid: do not hold results back from paper 1 to save them
+for paper 2.** It is the classic mistake in a planned sequence, and it damages
+both — paper 1 reads as thin, and paper 2's contribution looks like something
+that should have been in paper 1. Everything sim-related belongs in paper 1.
+Paper 2's contribution is *hardware*, and that is enough on its own.
 
 ## 6. Decisions needed
 
