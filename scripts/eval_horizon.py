@@ -37,6 +37,7 @@ import torch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from jetspace.data.episode import EpisodeDataset  # noqa: E402
+from jetspace.models.vjepa import TUBELET  # noqa: E402
 from jetspace.models.predictor import ActionConditionedPredictor  # noqa: E402
 from jetspace.utils.device import get_device  # noqa: E402
 
@@ -152,12 +153,37 @@ def main() -> int:
         print(f"{h+1:>3} {model_e[h]:>10.5f} {static_e[h]:>12.5f} {shuf_e[h]:>13.5f} "
               f"{gain:>7.2f}x {aware:>12.2f}x")
 
+    # Frame rate comes from the dataset, not from a constant. Simulation runs at
+    # 25 Hz and imported real data at 15 Hz; hardcoding 25 silently reported the
+    # real horizon as 2.56 s when it was 4.27 s. A timing mismatch is
+    # indistinguishable from a domain gap unless it is stated, so state it.
+    fps = 25
+    try:
+        fps = json.loads((data / "info.json").read_text())["fps"]
+    except Exception:  # noqa: BLE001
+        print("  (no dataset fps found; assuming 25 Hz)")
+    latent_hz = fps / TUBELET
+
+    useful = (breakeven - 1) if breakeven else H
+    aware_h = (action_blind - 1) if action_blind else H
+    # Right-censored: the curve never crossed the threshold inside the tested
+    # range, so H is a lower bound on the horizon and not a measurement of it.
+    censored = breakeven is None
+    aware_censored = action_blind is None
+    ge = ">=" if censored else "  "
+    ga = ">=" if aware_censored else "  "
+
     print("\n" + "=" * 68)
-    print(f"USEFUL HORIZON     : {breakeven - 1 if breakeven else H} steps "
-          f"({(breakeven - 1 if breakeven else H) / 12.5:.2f} s at 25 Hz / tubelet 2)")
+    print(f"USEFUL HORIZON     : {ge}{useful} steps "
+          f"({useful / latent_hz:.2f} s at {fps} Hz / tubelet {TUBELET})")
     print("   (last horizon where imagination beats predicting no change)")
-    print(f"ACTION-AWARE UNTIL : {action_blind - 1 if action_blind else H} steps")
+    print(f"ACTION-AWARE UNTIL : {ga}{aware_h} steps")
     print("   (beyond this the rollout ignores which actions were taken)")
+    if censored or aware_censored:
+        print("\n   CENSORED: the model never crossed the threshold within the")
+        print(f"   {H} horizons tested, so this is a LOWER BOUND, not the horizon.")
+        print("   Re-run with a larger --max-horizon before quoting the number,")
+        print("   and never compare a censored bound against an uncensored one.")
     print("=" * 68)
 
     out = Path(args.out or f"cache/e3_horizon_{args.task}.json")
@@ -167,8 +193,14 @@ def main() -> int:
         "model_error": model_e.tolist(),
         "static_error": static_e.tolist(),
         "shuffled_error": shuf_e.tolist(),
-        "useful_horizon": (breakeven - 1) if breakeven else H,
-        "action_aware_horizon": (action_blind - 1) if action_blind else H,
+        "useful_horizon": useful,
+        "action_aware_horizon": aware_h,
+        "censored": censored,
+        "action_aware_censored": aware_censored,
+        "max_horizon_tested": H,
+        "fps": fps,
+        "tubelet": TUBELET,
+        "useful_horizon_seconds": useful / latent_hz,
         "episodes": len(loaded),
     }, indent=2))
     print(f"\nwrote {out}")

@@ -17,7 +17,11 @@ found, and what it means for each claim.
 | Adaptive imagination horizon from ensemble disagreement | PARTIALLY TAKEN | **AHEAD** |
 | Reward = latent distance to nearest demo, in imagination | PARTIALLY TAKEN | **AtomVLA** (near-verbatim) |
 | N\* falls as prior tasks accumulate | PARTIALLY TAKEN | VT-WM, RoboCat, LBM |
-| Sim-to-real gap measured in frozen latent space | *audit running* | — |
+| Sim-to-real gap in frozen latent space (N1) | PARTIALLY TAKEN (technique) / novel (combination) | Bridging the Sim2Real Gap |
+| Sim-trained world model tested on real (N2) | APPEARS NOVEL, tightly bracketed | Reconstruction or Semantics?, Simulation Distillation |
+| Real-vs-sim trustworthy horizon (N3) | APPEARS NOVEL | — (first to quantify a known effect) |
+| Frozen-model *interface* failure taxonomy | TAKEN / actively being taken | Causal Confusion; MiraBench; 5 more |
+| "Less data, more tasking" as a headline claim | TAKEN at industrial scale | GEN-1.5 (83% from 10–50 demos) |
 | Interface failure taxonomy | *audit running* | — |
 
 **Nothing came back fully TAKEN.** Every claim needs narrowing; none needs
@@ -230,6 +234,172 @@ The literature underneath E2, and it is **contested and active**.
 frozen V-JEPA latent distance beats raw pixels on reach (+0.177 ρ) and
 pick-and-place (+0.077) and loses on push (−0.296), with best ρ −0.423. Weak, real,
 and task-dependent — consistent with Fu & Hansen rather than with either extreme.
+
+---
+
+## 6b. Sim-to-real in representation space
+
+**"Bridging the Sim2Real Gap: Evaluating Vision Encoder Pre-Training for
+Visuomotor Policy Transfer"** — Jan 2025.
+[arXiv:2501.16389](https://arxiv.org/abs/2501.16389)
+**Owns the metric.** Evaluates 23 vision encoders with a "Domain Invariance
+Score" — inverse Euclidean distance between PCA-projected sim and real embedding
+**centroids**. Not V-JEPA; no real-vs-real control; no domain-randomisation test.
+Centroid-only is blind to spread, which is precisely what domain randomisation is
+supposed to change, so this is the precedent we extend rather than repeat.
+
+**"Reconstruction or Semantics? What Makes a Latent Space Useful for Robotic
+World Models"** — May 2026. [arXiv:2605.06388](https://arxiv.org/abs/2605.06388)
+**The closest methodological cousin to our E3, and the one to read properly.**
+Uses **frozen V-JEPA 2.1** to train action-conditioned latent world models and
+measures rollout degradation across horizons via an **inverse-dynamics probe** —
+the same instrument we used in `probe_action_signal.py`. Entirely real data
+(WidowX / Bridge V2): no simulation, no cross-domain comparison, no 2×2 table.
+**Must be cited and explicitly differentiated.**
+
+**"Simulation Distillation: Pretraining World Models in Simulation for Rapid
+Real-World Adaptation"** — Mar 2026.
+[arXiv:2603.15759](https://arxiv.org/html/2603.15759v1)
+Trains a world model in MuJoCo (UR5e) then adapts to real, freezing the encoder
+during finetuning. Nearest prior art for "train in sim, use on real" — but the
+encoder is a **self-trained ResNet-18**, not a shared frozen foundation encoder,
+and it reports post-adaptation performance rather than a rollout-accuracy grid.
+
+**"What do we learn from a large-scale study of pre-trained visual
+representations in sim and real?"** — 2023.
+[arXiv:2310.02219](https://arxiv.org/html/2310.02219)
+The "didn't you already do this?" paper a reviewer will raise. Measures only
+**downstream policy success correlation** between sim and real — never embedding
+distance. Easy to distinguish, impossible to omit.
+
+**SkyJEPA** — Jun 2026. [arXiv:2606.23444](https://arxiv.org/abs/2606.23444)
+JEPA-style latent dynamics trained on domain-randomised simulation with zero-shot
+real transfer, targeting long-horizon compounding error. Quadrotor, not an arm;
+encoder appears jointly trained. Evidence the pattern generalises across
+embodiments.
+
+**Useful for us:** V-JEPA 2's pretraining corpus is confirmed **real video only**,
+so the frozen encoder is not secretly sim-contaminated and the comparability
+assumption holds. Worth stating explicitly — reviewers will ask.
+
+### Metrics reviewers will expect
+
+Centroid distance alone is insufficient: domain randomisation can *recentre* the
+sim distribution without *covering* real, and a centroid metric would score that
+as success. Report a spread-sensitive metric alongside it.
+
+| Metric | Why | Citation |
+|---|---|---|
+| Centroid / mean-shift distance | Comparability with the existing precedent | [2501.16389](https://arxiv.org/abs/2501.16389) |
+| **MMD** | Nonparametric two-sample test; captures distributional difference | Gretton et al., JMLR 2012 |
+| **Fréchet distance** (FID-style) | Captures covariance, not just mean | Heusel et al., NeurIPS 2017 |
+| CKA | Standard for representation comparison, but designed for *same inputs across models* — using it across *different* inputs needs justification | Kornblith et al., ICML 2019 |
+
+Domain randomisation itself requires Tobin et al. 2017 and Sadeghi & Levine 2017.
+
+---
+
+## 6b-i. GEN-1.5 — the strongest motivation for N1, from an unexpected direction
+
+**Generalist AI, "GEN-1.5"** — <https://generalistai.com/blog/gen-1.5>
+A robot foundation model: 30 s of video memory plus language, sensor and
+proprioceptive input, emitting 100 Hz action trajectories, continuously
+pretrained for **8+ months** on a proprietary data engine.
+
+Reported: **59% ± 10%** one-shot success from a 3–12 s in-context demonstration
+with no gradient updates; **83% ± 9%** after 10 gradient steps on 1–5 minutes of
+data (~10–50 demonstrations), with weights moving **less than 0.15%**.
+
+Two things matter for us, and they point in opposite directions.
+
+**It does not scoop N1–N3.** No world model, no JEPA, no latent-space
+measurement, no rollout-horizon analysis, no embedding geometry of any kind. It
+is end-to-end action prediction, evaluated by task success. Different instrument
+entirely.
+
+**But it is the best available motivation for N1.** GEN-1.5 demonstrates
+**zero-shot sim-to-real transfer by in-context prompting**: a demonstration
+recorded entirely in simulation is placed in the model's context, and the real
+robot performs the task — *despite zero simulation data in pretraining.*
+
+That is our N1 hypothesis, observed working, at scale, by a well-resourced lab —
+**and offered without explanation or measurement.** They show that a model
+trained only on real video can absorb a simulated demonstration. Nobody has
+measured *why*: whether sim and real land in compatible regions of the
+representation, how far apart they actually are, whether that gap is smaller
+than the gap between two real datasets, or what domain randomisation does to it.
+
+For the introduction this is close to ideal. A visible, recent, industrial result
+whose mechanism is unmeasured is a much stronger motivation than "we could not
+find this tested." It reframes N1 from a gap-filling exercise into an explanation
+of something the field has just watched happen.
+
+**The caution.** GEN-1.5's few-shot numbers *are* the "less data for more
+tasking" thesis, demonstrated at a scale we cannot approach — 8 months of
+pretraining on proprietary data. That framing must not be claimed as our
+contribution. The audits had already pushed us from capability toward
+measurement; this confirms the direction. **We are not competing on capability.
+We are measuring something the capability results leave unexplained.**
+
+Also note the honesty of their own framing — the in-context and improvisation
+behaviours were *not* trained for, and emerged from scale. Emergent-and-
+unexplained is precisely the condition under which a careful measurement paper
+has value.
+
+---
+
+## 6c. The interface-failure taxonomy: do not write this paper
+
+A separate audit examined whether our four debugging findings — absolute actions
+being redundant with proprioception, global average pooling destroying spatial
+information, an action-blind world model beating its baseline, and a 30× action
+scale mismatch — constitute a publishable contribution about *frozen-model
+interfaces failing silently*.
+
+**They do not.** Verdict: **TAKEN**, and in one case being taken right now.
+
+| Our finding | Status | Prior art |
+|---|---|---|
+| Absolute joint targets ≈94% redundant with proprio → "echo" policy | **Taken since 2019** | Causal confusion / copycat problem |
+| Global average pooling → translation-invariant output | **Taken since 2016** | The origin story of the spatial softmax |
+| Action-blind world model beats do-nothing 4× | **Being taken now** | A 6-paper cluster, May–Aug 2026 |
+| 30× action/latent scale mismatch | Weakest precedent | Generic normalisation practice |
+
+- **de Haan, Jayaraman & Levine, "Causal Confusion in Imitation Learning,"
+  NeurIPS 2019** — [arXiv:1905.11979](https://arxiv.org/abs/1905.11979). Names
+  our finding exactly: more information yielding worse performance, because a
+  discriminative BC model exploits spurious correlation with observed state.
+  Our 94%/0.0003/9.3% numbers are our own; the mechanism is a decade old.
+- **Levine, Finn, Darrell & Abbeel, JMLR 2016** —
+  [arXiv:1504.00702](https://arxiv.org/abs/1504.00702). The spatial softmax
+  exists *because of* the pooling failure we rediscovered.
+- **Feng et al., "Demystifying Action Space Design," Feb 2026** —
+  [arXiv:2602.23408](https://arxiv.org/abs/2602.23408). 13,000+ real rollouts,
+  500+ models, absolute vs delta compared directly. Delta wins. Settled at a
+  scale we cannot approach.
+- **Mandlekar et al., robomimic, CoRL 2021** —
+  [arXiv:2108.03298](https://arxiv.org/abs/2108.03298).
+
+And the action-blindness cluster, all within six months of today:
+**MiraBench** ([2605.29360](https://arxiv.org/abs/2605.29360), "visual fidelity
+is a poor proxy for action fidelity"); **"Is the Future Compatible?"**
+([2605.07514](https://arxiv.org/abs/2605.07514), names action-state consistency
+a "missing reliability axis"); **Yeom et al.**
+([2606.07687](https://arxiv.org/abs/2606.07687), inverse-dynamics probing for
+action recoverability); **counterfactual controllability**
+([2606.24152](https://arxiv.org/abs/2606.24152), scores generation *conditioned
+on ground-truth versus random actions* — our shuffled-action test, as a named
+benchmark metric); **frozen-backbone grafting diagnostic**
+([2606.14153](https://arxiv.org/abs/2606.14153), proposes checking the interface
+before committing to an encoder — our exact instinct, already published as
+methodology).
+
+**Consequence.** Framed as discovery, this gets dismissed by anyone reviewing in
+the niche. Framed as an **engineering/reproducibility report** — four measured
+failures from one build, with the diagnostic that caught each, citing the 2026
+cluster rather than ignoring it — it is legitimate and useful, in the genre
+robomimic itself established. That is a **workshop paper or a technical report,
+not the main contribution.** The novelty budget stays with N1–N3.
 
 ---
 
