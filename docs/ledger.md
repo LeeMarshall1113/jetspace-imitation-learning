@@ -9,7 +9,7 @@ analysis — the section reviewers reward and almost nobody writes.
 
 **The recurring theme:** nearly every entry below is a *silent* failure. The
 code ran, the loss went down, the numbers looked plausible, and the system was
-wrong. Only three of the twenty-two threw an exception. The practical lesson is that
+wrong. Only three of the twenty-three threw an exception. The practical lesson is that
 "it ran without error" carries almost no information, and the countermeasure is
 to assert on quantities you can independently predict.
 
@@ -29,6 +29,13 @@ be fed fixed-length windows, we chose how to tile them, and the tiling ended up
 inside the representation. The lesson generalises past this project — any long
 sequence encoded in windows by a position-embedded transformer carries the
 tiling unless something removes it.
+
+**The fourth theme, and the one to watch hardest:** *twice* a false finding
+has come not from code but from comparing two conditions that differed in more
+than the variable under test (L7, and the E2 pixels/latents mix-up). Both times
+the error produced an exciting result, and both times the excitement was the
+warning sign. When an effect is large and lands in the most interesting
+direction, diff the conditions before believing it.
 
 **The second theme, visible only in hindsight:** defects stack. L3 concealed L4
 — the absolute action space made the loss look excellent, so there was no reason
@@ -173,24 +180,109 @@ position embedding; clean synthetic renders do not. So the artifact is strong in
 exactly the domain we were treating as the clean control, and absent in the one
 we were treating as messy.
 
-Two consequences, and the second is the expensive one:
+Three consequences, established by controlled runs rather than inferred:
 
-1. Every lag-sensitive sim number was contaminated — the E3 gain oscillated
-   between 3.4× and 13× on encoder phase alone. The qualitative conclusion
-   survives (the worst phase still beats the baseline 3.4×) but the figures had
-   a sawtooth in them that no reviewer would have missed.
-2. **N1 was about to measure this.** The plan was to compare sim and real latent
+1. **The do-nothing baseline is wrecked; the model's tracking is not.** E3's
+   gain oscillated between 3.4× and 13× on encoder phase alone, because the
+   baseline distance swings between 2.3 and 8.4. Holding everything but the
+   encode stride fixed, the model's own direction cosine barely moves:
+
+   | 1024-d, no PCA | comb | cosine |
+   |---|---|---|
+   | `push_s8n60` (stride 8) | 1.401× | 0.692 |
+   | `push_s1n60` (stride 1) | 1.126× | 0.695 |
+
+2. **Under PCA the artifact becomes load-bearing.** The comb is a large,
+   low-rank, periodic component, so it lands squarely in the top principal
+   directions. Projecting to 128 dimensions concentrates it, and the model
+   collects credit for predicting it:
+
+   | PCA-128 | comb | cosine |
+   |---|---|---|
+   | `push_s8n60_pca128` | 1.401× | **0.887** |
+   | `push_s1n60_pca128` | 1.126× | **0.832** |
+
+   Same comb, same models, opposite verdict — decided entirely by whether the
+   representation was projected first. A dimensionality-reduction step that
+   looks like preprocessing is deciding whether an artifact is measured.
+
+3. **N1 was about to measure this.** The plan was to compare sim and real latent
    distributions in the shared frozen space and call the difference a domain
    gap. A chunk of that difference would have been our own tiling — present in
-   sim, absent in real — and we would have published it as a finding about
-   simulators. The audit warned that the renderer was a confound; this is a
-   second confound underneath it, in the encoder call rather than the renderer,
-   and it was found by accident.
+   sim, absent in real — and PCA, which any such comparison would use, is
+   exactly the operation that magnifies it. The audit warned that the renderer
+   was a confound; this sits underneath it, in the encoder call, and it was
+   found by accident.
 
 **Reusable lesson.** Print the per-item curve before trusting the mean. The mean
 displacement ratio was 0.934 and looked healthy; the artifact was only visible
 once the values were laid out by horizon. Aggregates hide periodic structure by
 construction — that is what averaging is for.
+
+---
+
+## L7 — Two runs compared, four things different
+
+**Not a code defect. A reasoning defect, and the second of its kind.**
+
+While chasing L6 I reported that removing the comb collapsed push's direction
+cosine from 0.902 to 0.668, and concluded the artifact had been inflating the
+model's accuracy all along. I told Lee that, twice, and drew a further
+conclusion from it: that the world model was *better on real video than in
+simulation* — real 0.847 against sim 0.668 — which would have been the most
+interesting result of the day.
+
+Both claims were wrong, for the same reason. The checkpoint diff:
+
+| | original push | push_decombed |
+|---|---|---|
+| `pca_basis` | **(1024,)** | None |
+| `hidden` | **128** | 1024 |
+| cosine | 0.902 | 0.668 |
+
+The runs differed in PCA projection *and* width, not only in the comb. Matching
+directions inside a 128-dimensional principal subspace — which holds the
+dominant smooth trends — is much easier than in the full 1024. And
+`real_cubes` was also PCA-128, so "real beats sim" compared a projected real
+model against unprojected sim models. **`train_predictor.py` defaults to
+`--pca-dim 0`, but every original result was generated with `--pca-dim 128`
+passed on the command line.** Nothing recorded the divergence except the
+checkpoints.
+
+**What the matched comparison says.** Rebuilding the PCA-128 condition on
+comb-free latents:
+
+| PCA-128, 60 episodes | comb | cosine |
+|---|---|---|
+| sim push, stride 8 | 1.401× | 0.887 |
+| sim push, stride 1 | 1.126× | **0.832** |
+| real cubes | 1.014× | **0.847** |
+
+Sim's residual comb is not zero, so extrapolating to comb-free puts sim near
+0.81. Real sits at 0.847. **The two domains are equivalent, within the
+resolution the remaining task and frame-rate confounds allow.** Neither "real
+beats sim" nor "sim beats real" survives.
+
+That is a duller headline and a better result: it says a sim-trained latent
+world model is not disadvantaged relative to a real-trained one, which is the
+premise N2 needs.
+
+**Why this keeps happening.** It is the same failure as the E2 comparison
+earlier — latents scored cross-episode against pixels scored within-episode.
+Both times the mistake produced a *publishable-sounding* result, and both times
+the tell was the same: an unexpectedly large effect in the direction that would
+be most interesting. **A surprising result is not evidence; it is a prompt to
+diff the two conditions field by field before saying anything.**
+
+`diff_checkpoints.py` now exists to make that diff a command instead of an
+intention. It prints every non-weight field side by side and flags what differs.
+Run it before comparing any two runs.
+
+**The deeper problem it exposes.** Configuration that lives only in shell
+history is configuration that cannot be compared. `--pca-dim 128` was passed by
+hand weeks ago and then silently omitted, and nothing in the repository recorded
+that the results depended on it. Experiment settings belong in a file that is
+committed next to the numbers they produced.
 
 ---
 
