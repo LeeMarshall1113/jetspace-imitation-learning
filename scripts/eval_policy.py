@@ -31,22 +31,24 @@ from jetspace.policies.bc import BCPolicy, SimpleVisualEncoder  # noqa: E402
 from jetspace.utils.device import get_device  # noqa: E402
 
 
-def load_policy(path: Path, device: str) -> tuple[BCPolicy, np.ndarray, np.ndarray]:
+def load_policy(path: Path, device: str):
     ckpt = torch.load(path, map_location=device, weights_only=False)
     policy = BCPolicy(SimpleVisualEncoder(), ckpt["proprio_dim"], ckpt["action_dim"]).to(device)
     policy.load_state_dict(ckpt["state_dict"])
     policy.eval()
     mean = np.asarray(ckpt["norm"]["proprio_mean"], dtype=np.float32)
     std = np.asarray(ckpt["norm"]["proprio_std"], dtype=np.float32)
-    return policy, mean, std
+    return policy, mean, std, ckpt["norm"], ckpt.get("camera", "front"), ckpt["action_dim"]
 
 
-def rollout(env, policy, mean, std, camera, seed, device) -> tuple[bool, float]:  # noqa: ANN001
+def rollout(env, policy, mean, std, norm, camera, adim, seed, device) -> tuple[bool, float]:  # noqa: ANN001
     obs = env.reset(seed=seed)
     terminated = truncated = False
     best = float("inf")
     while not (terminated or truncated):
-        action = policy.act(obs.pixels[camera], (obs.proprio - mean) / std, device=device)
+        action = policy.act(
+            obs.pixels[camera], (obs.proprio - mean) / std, obs.proprio[:adim], norm, device=device
+        )
         result = env.step(action)
         best = min(best, result.info["dist"])
         obs = result.obs
@@ -90,12 +92,10 @@ def main() -> int:
     rates = []
 
     for path in paths:
-        policy, mean, std = load_policy(Path(path), device)
-        ckpt = torch.load(path, map_location="cpu", weights_only=False)
-        camera = ckpt.get("camera", "front")
+        policy, mean, std, norm, camera, adim = load_policy(Path(path), device)
         successes, dists = 0, []
         for seed in eval_seeds:
-            ok, best = rollout(env, policy, mean, std, camera, seed, device)
+            ok, best = rollout(env, policy, mean, std, norm, camera, adim, seed, device)
             successes += ok
             dists.append(best)
         rate = successes / len(eval_seeds)

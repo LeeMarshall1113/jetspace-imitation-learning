@@ -71,12 +71,20 @@ class BCPolicy(nn.Module):
         return self.head(torch.cat([self.encoder(pixels), proprio], dim=-1))
 
     @torch.no_grad()
-    def act(self, pixels, proprio, device: str = "cpu"):  # noqa: ANN001
-        """Single-observation inference for rollouts. Accepts numpy, returns numpy."""
+    def act(self, pixels, proprio, qpos, norm, device: str = "cpu"):  # noqa: ANN001
+        """Single-observation inference. Accepts numpy, returns an absolute command.
+
+        The network predicts a normalised DELTA; the absolute joint target is
+        reconstructed here as `qpos + delta`, so callers never have to know
+        which action space the policy was trained in.
+        """
         import numpy as np
 
         self.eval()
         px = torch.as_tensor(np.asarray(pixels), dtype=torch.float32, device=device)
         px = px.permute(2, 0, 1).unsqueeze(0) / 255.0
         pr = torch.as_tensor(np.asarray(proprio), dtype=torch.float32, device=device).unsqueeze(0)
-        return self(px, pr).squeeze(0).cpu().numpy()
+        pred = self(px, pr).squeeze(0).cpu().numpy()
+
+        delta = pred * np.asarray(norm["action_std"]) + np.asarray(norm["action_mean"])
+        return np.asarray(qpos) + delta

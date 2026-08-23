@@ -68,6 +68,7 @@ def rollout_frames(
     mean = np.asarray(ckpt["norm"]["proprio_mean"], dtype=np.float32)
     std = np.asarray(ckpt["norm"]["proprio_std"], dtype=np.float32)
     camera = ckpt.get("camera", "front")
+    norm, adim = ckpt["norm"], ckpt["action_dim"]
 
     env = SO101ReachEnv(image_size=224, max_steps=max_steps, randomize=randomize)
     out = []
@@ -75,7 +76,10 @@ def rollout_frames(
         obs = env.reset(seed=seed)
         frames, done = [obs.pixels[camera]], False
         while not done:
-            action = policy.act(obs.pixels[camera], (obs.proprio - mean) / std, device=device)
+            action = policy.act(
+                obs.pixels[camera], (obs.proprio - mean) / std, obs.proprio[:adim], norm,
+                device=device,
+            )
             result = env.step(action)
             obs = result.obs
             frames.append(obs.pixels[camera])

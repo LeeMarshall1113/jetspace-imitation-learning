@@ -44,7 +44,21 @@ class BCFrameDataset(Dataset):
 
         self.pixels = np.concatenate(pixels)       # (N, H, W, 3) uint8
         self.proprio = np.concatenate(proprio)     # (N, P) float32
-        self.actions = np.concatenate(actions)     # (N, A) float32
+        self.actions = np.concatenate(actions)     # (N, A) float64
+
+        # Predict the DELTA, not the absolute joint target.
+        #
+        # The expert commands `current_qpos + small_step`, so an absolute target
+        # is ~94% "where I already am" and only ~6% "where the target is".
+        # Regressing it directly means MSE is dominated by echoing proprio: on
+        # this dataset the trivial copy-your-own-position policy scores 0.000540
+        # and a trained network scored 0.000313 -- barely better, while
+        # succeeding 9% of the time. Predicting the residual puts 100% of the
+        # learning signal on the part that actually depends on the camera.
+        self.qpos = self.proprio[:, : self.actions.shape[1]]
+        self.delta = (self.actions - self.qpos).astype(np.float32)
+        self.action_mean = self.delta.mean(0, keepdims=True)
+        self.action_std = self.delta.std(0, keepdims=True) + 1e-6
 
         # Normalising proprio matters more than it looks: joint velocities and
         # joint angles differ by an order of magnitude here, and an unnormalised
@@ -58,8 +72,8 @@ class BCFrameDataset(Dataset):
     def __getitem__(self, i: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         px = torch.from_numpy(self.pixels[i]).permute(2, 0, 1).float() / 255.0
         pr = torch.from_numpy((self.proprio[i] - self.proprio_mean[0]) / self.proprio_std[0]).float()
-        ac = torch.from_numpy(self.actions[i]).float()
-        return px, pr, ac
+        target = (self.delta[i] - self.action_mean[0]) / self.action_std[0]
+        return px, pr, torch.from_numpy(target).float()
 
     @property
     def proprio_dim(self) -> int:
@@ -69,8 +83,11 @@ class BCFrameDataset(Dataset):
     def action_dim(self) -> int:
         return self.actions.shape[1]
 
-    def norm_stats(self) -> dict[str, list[float]]:
+    def norm_stats(self) -> dict[str, list[float] | str]:
         return {
             "proprio_mean": self.proprio_mean[0].tolist(),
             "proprio_std": self.proprio_std[0].tolist(),
+            "action_mean": self.action_mean[0].tolist(),
+            "action_std": self.action_std[0].tolist(),
+            "action_mode": "delta",
         }
