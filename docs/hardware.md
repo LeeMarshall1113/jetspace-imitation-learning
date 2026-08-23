@@ -1,83 +1,80 @@
 # Physical arm: recommendation
 
-Written ahead of need (see [`decisions.md`](decisions.md) D3 — simulation only for
-now). Prices checked 2026-08-22; treat them as indicative.
+Budget: **$1–300, ideally near $100.** Written ahead of need (see
+[`decisions.md`](decisions.md) D3 — simulation only for now). Prices checked
+2026-08-22; treat them as indicative.
 
-## First, a challenge to the requirement
+## Recommendation: SO-101 follower arm — ~$122
 
-The stated target was **5 lb (2.3 kg) payload**. That figure is worth questioning,
-because it is the single biggest cost driver here:
+**One arm, not a pair.** This is the decision that makes the budget work.
 
-| Payload | Realistic cost | Example |
-|---------|----------------|---------|
-| ~0.2 kg | $150 – $500 | SO-101 leader/follower pair |
-| ~1.9 kg | ~$1,600 – $1,900 | AR4 MK5 (self-built) |
-| ~5 kg | $6,000 – $10,000+ | UFactory xArm 6 and similar |
+The SO-101 is normally sold as a leader/follower pair, because the leader is what
+a human moves by hand to record demonstrations. Per [D1](decisions.md#d1--no-first-party-human-demonstrations-2026-08-22)
+we are **not recording our own human demonstrations** — we source them from public
+datasets. So the leader arm is dead weight. Buying only the follower halves the
+cost and lands almost exactly on target.
 
-Manipulation research runs on blocks, cups, and small household objects. V-JEPA
-2-AC's headline result is picking up **a cup**. Nothing in M1–M6 needs 2.3 kg, and
-insisting on it multiplies the budget roughly tenfold for capability the research
-will not exercise.
+| Item | Detail |
+|------|--------|
+| **Total** | **~$122 USD / €124** |
+| Servos | 6× Feetech STS3215, 7.4 V, 1/345 gear (~$14 each) |
+| Controller | 1× Waveshare ST3215 servo driver board |
+| Power | 5 V 5 A+, 5.5 × 2.1 mm barrel |
+| Structure | 3D-printed parts — STLs published, print them yourself |
+| Also needed | USB-C cable, 2 table clamps, Phillips #0/#1 screwdriver |
 
-That said, the recommendation below happens to land at 1.9 kg — close enough to the
-original ask that the tradeoff barely bites.
+Sources: [SO-ARM100 repo](https://github.com/TheRobotStudio/SO-ARM100) ·
+[Waveshare assembly wiki](https://www.waveshare.com/wiki/SO-ARM100/101_Kit_Aassembly)
 
-## Recommended: Annin Robotics AR4 MK5
+### Why this one, specifically
 
-**Open source, self-built, ~$1,600–1,900 all-in.**
+**It is the arm we are already simulating.** MuJoCo Menagerie ships an official
+high-fidelity MJCF model of the SO-101 (`robotstudio_so101`), and that is what
+`src/jetspace/envs/so101_env.py` loads. Sim and hardware therefore agree on
+kinematics, joint limits, link inertias and actuator gains *from day one*, rather
+than that mismatch being discovered at M6 when it is expensive.
 
-| Spec | Value |
-|------|-------|
-| Axes | 6 |
-| Payload | 4.15 lb (1.9 kg) |
-| Reach | 24.75 in |
-| Repeatability | 0.2 mm |
-| Control | Stepper motors, Arduino-based controller |
+**It is fully open source.** Published STLs, CAD, firmware and BOM. Anyone with a
+3D printer can build one for the cost of servos and filament — which matters for
+the project being genuinely reproducible by others, not just by us.
 
-Costing:
+**It is the LeRobot standard.** Our dataset writer already targets that format,
+and there is a large public demonstration corpus to bootstrap from — one curated
+pull spans 1,222 public datasets, ~38k episodes, ~184 hours. Given D1, that
+compatibility is worth more than any spec on the sheet.
 
-| Item | Price |
-|------|-------|
-| AR4 MK5 Combo Kit (aluminium, hardware, electrical) | from $1,189 |
-| Stepper motors + drivers + PSU (StepperOnline, sold separately) | ~$300–500 |
-| Servo gripper parts kit | $74.50 |
-| *(optional)* Pneumatic gripper instead | $139 |
-| *(optional)* CAD models, SOLIDWORKS/STEP | $99 |
+### What you give up
 
-<https://anninrobotics.com/robot-kits/>
+Payload is roughly **200–250 g**. That is foam blocks, small cups, 3D-printed
+objects — not the 5 lb originally floated. Worth being explicit that this is
+fine: V-JEPA 2-AC's headline result is *picking up a cup*, and nothing in M1–M6
+exercises more. Insisting on 2.3 kg would multiply the budget by roughly ten for
+capability the research never uses.
 
-**Why this one.** It is the rare option that satisfies both halves of the request at
-once: it is genuinely open source — 3D-printable parts, published CAD, off-the-shelf
-steppers, Arduino controller, so anyone can build their own from plans — *and* it
-reaches a real payload with 0.2 mm repeatability. Most open designs give up
-precision to stay cheap; this one does not. Buying the combo kit and building it
-yourself is the fast path; the plans mean a contributor with a printer can follow
-along for the cost of filament and motors.
+Repeatability is also modest — hobby serial servos with plastic gearing, no
+encoder feedback beyond the servo's own. Expect drift, and expect to recalibrate.
 
-**Cost of ownership:** it is a build, not an appliance. Budget a weekend or two for
-assembly and calibration, and expect stepper-based repeatability to drift more than
-a servo industrial arm would.
+## If the budget were larger
 
-## Cheap alternative: SO-101 leader/follower pair
+Recorded so the tradeoff is visible, not because it is recommended now.
 
-**~$150–500.** Payload around 200 g — enough for foam blocks and light objects,
-not much else.
+| Option | Payload | Cost | Open source |
+|--------|---------|------|-------------|
+| SO-101 follower **(recommended)** | ~0.25 kg | **~$122** | Yes |
+| SO-101 leader + follower pair | ~0.25 kg | ~$230 | Yes |
+| [Annin AR4 MK5](https://anninrobotics.com/robot-kits/) | 1.9 kg | ~$1,600–1,900 | Yes |
+| UFactory xArm 6 | 5 kg | $6,000+ | No |
 
-The real argument for it is ecosystem: it is the LeRobot standard, so it drops
-straight into the dataset format we already write, and there is a large public
-corpus of SO-101 demonstrations to bootstrap from (one curated pull spans 1,222
-public datasets, ~38k episodes, ~184 hours). Given D1 — source demos from public
-data rather than recording our own — that compatibility is worth more than payload.
-
-**Recommendation if buying only one:** start here. It is ~10% of the AR4's cost,
-matches the data we plan to train on, and will reveal every sim-to-real problem
-we have. Move to the AR4 only when a task genuinely needs the payload or reach.
+The AR4 MK5 is the one to graduate to if a task ever genuinely needs payload and
+reach: 6-axis, 4.15 lb, 24.75 in, 0.2 mm repeatability, and still open source
+(combo kit from $1,189 plus ~$300–500 of motors from StepperOnline). It is a
+build, not an appliance — budget a weekend or two.
 
 ## Rejected
 
-- **UFactory xArm 6 / Lite 6** — 5 kg payload, but $6k+ and closed source. Fails
-  both the budget and the open-source requirement.
-- **myCobot 280/320** — around $1–3k for 250 g–1 kg payload. Worse value than the
-  AR4 and not open source.
-- **Used industrial (UR3 and similar)** — 3 kg payload, but $10k+ used, heavy,
-  and needs a safety assessment before it goes on a desk.
+- **Generic hobby servo arm kits ($50–80).** Cheaper, but MG996R-class servos have
+  no position feedback worth the name, and no simulation model exists. Every hour
+  saved on price is spent on calibration and a hand-written URDF.
+- **myCobot 280/320** — $1–3k for 0.25–1 kg. Worse value than the AR4, not open source.
+- **Used industrial (UR3 and similar)** — 3 kg but $10k+, heavy, and needs a safety
+  assessment before it goes on a desk.
