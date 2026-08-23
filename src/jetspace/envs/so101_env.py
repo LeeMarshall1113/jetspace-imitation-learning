@@ -296,3 +296,28 @@ class SO101ReachEnv(RobotEnv):
         if self._renderer is not None:
             self._renderer.close()
             self._renderer = None
+
+
+class ReachExpert:
+    """Damped-least-squares IK toward the target.
+
+    Noise is executed but not labelled: the perturbation supplies off-path
+    states, the label is the clean action the expert would take from wherever it
+    landed. Labelling the noise instead made 41.6% of the training target
+    unpredictable (see docs/ledger.md L5).
+    """
+
+    def __init__(self, env, rng, noise: float = 0.015):  # noqa: ANN001
+        self.env = env
+        self.rng = rng
+        self.noise = noise
+        self.label = None
+
+    def reset(self, env) -> bool:  # noqa: ANN001
+        self.label = None
+        return True
+
+    def act(self, obs):  # noqa: ANN001
+        clean = self.env.ik_step(self.env.target_pos)
+        self.label = clean
+        return clean + self.rng.normal(0.0, self.noise, size=clean.shape)

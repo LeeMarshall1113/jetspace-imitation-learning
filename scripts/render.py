@@ -52,11 +52,12 @@ def contact_sheet(episodes: list[np.ndarray], cols: int = 8, pad: int = 2) -> np
 
 
 def rollout_frames(
-    checkpoint: Path, seeds: list[int], max_steps: int, randomize: bool = False
+    checkpoint: Path, seeds: list[int], max_steps: int, randomize: bool = False,
+    task: str = "pickplace",
 ) -> list[np.ndarray]:
     import torch
 
-    from jetspace.envs.so101_env import SO101ReachEnv
+    from jetspace.envs.registry import get_task
     from jetspace.policies.bc import BCPolicy, SimpleVisualEncoder
     from jetspace.utils.device import get_device
 
@@ -70,7 +71,7 @@ def rollout_frames(
     camera = ckpt.get("camera", "front")
     norm, adim = ckpt["norm"], ckpt["action_dim"]
 
-    env = SO101ReachEnv(image_size=224, max_steps=max_steps, randomize=randomize)
+    env = get_task(task)["env"](image_size=224, max_steps=max_steps, randomize=randomize)
     out = []
     for seed in seeds:
         obs = env.reset(seed=seed)
@@ -89,9 +90,9 @@ def rollout_frames(
     return out
 
 
-def expert_frames(n: int, max_steps: int) -> list[np.ndarray]:
+def expert_frames(n: int, max_steps: int, task: str = "pickplace") -> list[np.ndarray]:
     """Scripted-expert rollouts in the randomized world, for visual inspection."""
-    from jetspace.envs.so101_env import SO101ReachEnv
+    from jetspace.envs.registry import get_task
 
     env = SO101ReachEnv(image_size=224, max_steps=max_steps, randomize=True)
     rng = np.random.default_rng(0)
@@ -103,7 +104,7 @@ def expert_frames(n: int, max_steps: int) -> list[np.ndarray]:
             action = env.ik_step(env.target_pos) + rng.normal(0, 0.015, size=env.action_dim)
             result = env.step(action)
             obs = result.obs
-            frames.append(obs.pixels["front"])
+            frames.append(obs.pixels[env.camera_names[0]])
             done = result.terminated or result.truncated
         out.append(np.stack(frames))
     env.close()
@@ -112,12 +113,13 @@ def expert_frames(n: int, max_steps: int) -> list[np.ndarray]:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--data", default="data/episodes/so101_reach")
+    ap.add_argument("--data", default=None)
     ap.add_argument("--checkpoint", default=None, help="render policy rollouts instead of demos")
     ap.add_argument("--out", default="renders")
     ap.add_argument("--episodes", type=int, default=12)
     ap.add_argument("--cols", type=int, default=8)
-    ap.add_argument("--max-steps", type=int, default=120)
+    ap.add_argument("--task", default="pickplace", choices=["reach", "pickplace"])
+    ap.add_argument("--max-steps", type=int, default=400)
     ap.add_argument("--gif", action="store_true",
                    help="also write episodes.gif, sized for embedding in a README")
     ap.add_argument("--gif-size", type=int, default=200)
@@ -125,6 +127,8 @@ def main() -> int:
     ap.add_argument("--randomize", action="store_true",
                    help="render the randomized world instead of the clean one")
     args = ap.parse_args()
+    if args.data is None:
+        args.data = f"data/episodes/{args.task}"
 
     import imageio.v2 as imageio
 
@@ -134,14 +138,15 @@ def main() -> int:
     if args.checkpoint:
         seeds = [900_000_000 + i for i in range(args.episodes)]
         episodes = rollout_frames(
-            Path(args.checkpoint), seeds, args.max_steps, randomize=args.randomize
+            Path(args.checkpoint), seeds, args.max_steps,
+            randomize=args.randomize, task=args.task,
         )
         fps, label = 25, f"policy {Path(args.checkpoint).name}"
     elif args.randomize:
         # No checkpoint: show what the randomized world looks like, driven by
         # the scripted expert. This is the picture to compare against a photo
         # of the real setup.
-        episodes = expert_frames(args.episodes, args.max_steps)
+        episodes = expert_frames(args.episodes, args.max_steps, task=args.task)
         fps, label = 25, "randomized world (scripted expert)"
     else:
         ds = EpisodeDataset(args.data)

@@ -35,44 +35,13 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from jetspace.data.episode import EpisodeBuffer, EpisodeDataset, EpisodeWriter  # noqa: E402
-from jetspace.envs.so101_env import SO101ReachEnv  # noqa: E402
-
-
-class ScriptedExpert:
-    """Damped-least-squares IK toward the target.
-
-    Noise is **executed but not labelled**. The perturbation is what pushes the
-    arm off the optimal path so the dataset contains recoverable states; the
-    label is the clean action the expert would take *from wherever it ended up*.
-
-    Labelling the noisy action instead -- which the first version did -- asks the
-    policy to predict a random number generator. Measured on the collected data,
-    41.6% of the target's variance was injected noise, and for the wrist and
-    gripper joints it was over 100%: those deltas were pure noise, because the
-    gripper is not in the IK objective at all. That put a floor of ~0.416 under
-    a normalised validation loss that could otherwise reach 0.
-    """
-
-    def __init__(self, env: SO101ReachEnv, rng: np.random.Generator, noise: float = 0.015):
-        self.env = env
-        self.rng = rng
-        self.noise = noise
-        self.label: np.ndarray | None = None
-
-    def reset(self, env: SO101ReachEnv) -> bool:
-        self.label = None
-        return True
-
-    def act(self, obs) -> np.ndarray:  # noqa: ANN001 - Observation
-        clean = self.env.ik_step(self.env.target_pos)
-        self.label = clean                       # supervise on this
-        return clean + self.rng.normal(0.0, self.noise, size=clean.shape)  # execute this
+from jetspace.envs.registry import get_task  # noqa: E402
 
 
 class HumanTeleop:
     """Keyboard teleoperation via pygame. Requires a display."""
 
-    def __init__(self, env: SO101ReachEnv, mode: str, step: float = 0.03):
+    def __init__(self, env: object, mode: str, step: float = 0.03):
         import pygame
 
         self.pygame = pygame
@@ -95,7 +64,7 @@ class HumanTeleop:
         self.quit = False
         self.restart = False
 
-    def reset(self, env: SO101ReachEnv) -> bool:
+    def reset(self, env: object) -> bool:
         self._cmd = np.asarray(env.data.qpos[: self.action_dim], dtype=np.float32).copy()
         self.restart = False
         return True
@@ -131,19 +100,19 @@ class HumanTeleop:
 
 
 def collect(args: argparse.Namespace) -> int:
-    env = SO101ReachEnv(
-        image_size=args.image_size, max_steps=args.max_steps, randomize=args.randomize
-    )
+    spec = get_task(args.task)
+    steps = args.max_steps or spec["default_steps"]
+    env = spec["env"](image_size=args.image_size, max_steps=steps, randomize=args.randomize)
     rng = np.random.default_rng(args.seed)
     policy = (
-        ScriptedExpert(env, rng, noise=args.noise)
+        spec["expert"](env, rng, noise=args.noise)
         if args.policy == "scripted"
         else HumanTeleop(env, args.policy)
     )
 
     writer = EpisodeWriter(
         args.out,
-        task="so101_reach",
+        task=args.task,
         fps=env.control_hz,
         action_dim=env.action_dim,
         cameras=env.camera_names,
@@ -216,9 +185,10 @@ def main() -> int:
     )
     p.add_argument("--policy", choices=["scripted", "keyboard", "gamepad"], default="scripted")
     p.add_argument("--episodes", type=int, default=400)
-    p.add_argument("--out", default="data/episodes/so101_reach")
+    p.add_argument("--task", default="pickplace", choices=["reach", "pickplace"])
+    p.add_argument("--out", default=None)
     p.add_argument("--image-size", type=int, default=224)
-    p.add_argument("--max-steps", type=int, default=150)
+    p.add_argument("--max-steps", type=int, default=None)
     p.add_argument("--noise", type=float, default=0.015)
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--randomize", action="store_true",
@@ -226,6 +196,8 @@ def main() -> int:
     p.add_argument("--keep-failures", action="store_true")
     p.add_argument("--summary-only", action="store_true")
     args = p.parse_args()
+    if args.out is None:
+        args.out = f"data/episodes/{args.task}"
 
     if args.summary_only:
         print(EpisodeDataset(args.out).summary())

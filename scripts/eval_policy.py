@@ -26,7 +26,7 @@ import torch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from jetspace.data.episode import EpisodeDataset  # noqa: E402
-from jetspace.envs.so101_env import SO101ReachEnv  # noqa: E402
+from jetspace.envs.registry import get_task  # noqa: E402
 from jetspace.policies.bc import BCPolicy, SimpleVisualEncoder  # noqa: E402
 from jetspace.utils.device import get_device  # noqa: E402
 
@@ -62,10 +62,14 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--checkpoints", nargs="+", default=["checkpoints/bc_seed*.pt"])
     ap.add_argument("--eval-seeds", default="configs/eval_seeds.json")
-    ap.add_argument("--train-data", default="data/episodes/so101_reach")
-    ap.add_argument("--max-steps", type=int, default=120)
+    ap.add_argument("--task", default="pickplace", choices=["reach", "pickplace"])
+    ap.add_argument("--train-data", default=None)
+    ap.add_argument("--task", default="pickplace", choices=["reach", "pickplace"])
+    ap.add_argument("--max-steps", type=int, default=400)
     ap.add_argument("--device", default="auto")
     args = ap.parse_args()
+    if args.train_data is None:
+        args.train_data = f"data/episodes/{args.task}"
 
     spec = json.loads(Path(args.eval_seeds).read_text())
     eval_seeds = spec["seeds"]
@@ -88,7 +92,7 @@ def main() -> int:
         return 1
 
     device = get_device(args.device)
-    env = SO101ReachEnv(image_size=224, max_steps=args.max_steps)
+    env = get_task(args.task)["env"](image_size=224, max_steps=args.max_steps)
     rates = []
 
     for path in paths:
