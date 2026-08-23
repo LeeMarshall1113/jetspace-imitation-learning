@@ -69,6 +69,9 @@ def main() -> int:
     # against a different quantity entirely.
     basis = ckpt.get("pca_basis")
     basis = torch.tensor(basis, device=device) if basis is not None else None
+    # Actions must be normalised exactly as in training.
+    a_mu = torch.tensor(ckpt["norm"].get("a_mu", [0.0]), device=device)
+    a_sd = torch.tensor(ckpt["norm"].get("a_sd", [1.0]), device=device)
 
     ds = EpisodeDataset(data)
     fpl = json.loads((lat_dir / "info.json").read_text())["frames_per_latent"]
@@ -107,7 +110,7 @@ def main() -> int:
     with torch.no_grad():
         for k, (z, a) in enumerate(loaded):
             zt = torch.from_numpy(z).to(device)
-            at = torch.from_numpy(a).to(device)
+            at = (torch.from_numpy(a).to(device) - a_mu) / a_sd
             zn = (zt - mu) / sd
             if basis is not None:
                 zn = zn @ basis
@@ -124,7 +127,8 @@ def main() -> int:
                 other = loaded[(k + 1) % len(loaded)][1]
                 if len(other) >= H:
                     s = int(rng.integers(0, max(1, len(other) - H)))
-                    a_sh = torch.from_numpy(other[s : s + H]).to(device).unsqueeze(0)
+                    a_sh = (torch.from_numpy(other[s : s + H]).to(device) - a_mu) / a_sd
+                    a_sh = a_sh.unsqueeze(0)
                     p_sh = model.rollout(zn[t : t + 1], a_sh)[0]
                     err_shuffled.append(((p_sh - truth) ** 2).mean(dim=(1, 2)).cpu().numpy())
 

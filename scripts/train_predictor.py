@@ -119,6 +119,17 @@ def main() -> int:
     mu, sd = z0.mean((0, 1)), z0.std((0, 1)) + 1e-6
     z0n, tgtn = (z0 - mu) / sd, (tgt - mu) / sd
 
+    # Normalise the ACTIONS too. Forgetting this cost three architectural fixes:
+    # commanded displacements have std ~0.033 against the latent's 1.0, a 30x
+    # mismatch, so with standard init the action embedding contributed almost
+    # nothing and the model had no numerical reason to attend to it. The world
+    # model looked action-blind because the action was, numerically, invisible.
+    a_mu = acts.reshape(-1, adim).mean(0)
+    a_sd = acts.reshape(-1, adim).std(0) + 1e-6
+    print(f"action scale before norm: std {acts.std():.5f} vs latent 1.0 "
+          f"({1.0 / max(float(acts.std()), 1e-9):.0f}x mismatch)")
+    acts = (acts - a_mu) / a_sd
+
     basis = None
     if args.pca_dim > 0:
         # Predict in a PCA subspace rather than raw latent space.
@@ -205,7 +216,10 @@ def main() -> int:
         {
             "state_dict": best_state,
             "hidden": hidden, "grid": grid, "action_dim": adim,
-            "norm": {"mu": mu.numpy().tolist(), "sd": sd.numpy().tolist()},
+            "norm": {
+                "mu": mu.numpy().tolist(), "sd": sd.numpy().tolist(),
+                "a_mu": a_mu.numpy().tolist(), "a_sd": a_sd.numpy().tolist(),
+            },
             "pca_basis": basis.numpy().tolist() if basis is not None else None,
             "config": vars(args),
             "val_loss": best, "static_baseline": static,
