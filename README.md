@@ -8,9 +8,18 @@ demonstrations and improved by reinforcement learning inside the resulting laten
 world model. The objective is a single policy that transfers to held-out variations
 of a task without task-specific retraining.
 
-**Status:** M0 complete (environment verified on AMD/ROCm). M1 in progress —
-dataset pipeline built and replay-verified; human demos outstanding. No models
-are trained yet. See [`docs/results.md`](docs/results.md) for measured outcomes.
+**Status:** M0 complete (environment verified on AMD/ROCm). M1 complete. M2
+(behavior-cloning baseline) in progress. See [`docs/results.md`](docs/results.md)
+for measured outcomes against every gate.
+
+<p align="center">
+  <img src="docs/media/episodes.gif" alt="SO-101 arm reaching for a target under domain randomization" width="640">
+</p>
+
+<p align="center"><em>The SO-101 reaching for the green target. Every episode
+resamples the world: camera viewpoint, lighting, surface colours, clutter, link
+masses, joint friction, servo gain and control latency. Nothing here is a fixed
+scene — that is the point.</em></p>
 
 <p align="center">
   <img src="docs/media/episodes.gif" alt="SO-101 arm reaching for a target under domain randomization" width="640">
@@ -30,12 +39,14 @@ Recorded on <code>feat/m2-behavior-cloning</code>, which is ahead of this branch
 - [Approach](#approach)
 - [Hardware and platform constraints](#hardware-and-platform-constraints)
 - [Setup](#setup)
+- [Seeing what it does](#seeing-what-it-does)
 - [Verifying the installation](#verifying-the-installation)
 - [Troubleshooting](#troubleshooting)
 - [Repository layout](#repository-layout)
 - [Branching model](#branching-model)
 - [Roadmap](#roadmap)
 - [To do](#to-do)
+- [Documentation](#documentation)
 - [References](#references)
 - [License](#license)
 - [Disclosure](#disclosure)
@@ -193,6 +204,37 @@ pip install -e ".[dev]"
 
 Python 3.11 or 3.12 is required. Python 3.13 and newer are ahead of the ML stack.
 
+## Seeing what it does
+
+Numbers tell you whether a policy works; pictures tell you why it doesn't.
+
+```bash
+python scripts/render.py --data data/episodes/reach
+```
+
+```bash
+python scripts/render.py --checkpoint checkpoints/bc_seed0.pt
+```
+
+Both write into `renders/`:
+
+| File | What it shows |
+|------|---------------|
+| `contact_sheet.png` | One row per episode, time running left to right |
+| `episodes.mp4` | The same episodes as video, with a gap between attempts |
+
+The contact sheet is the more useful of the two. A video shows one run; the grid
+shows twenty at once, which is how you notice that the arm always drifts one way,
+or that a whole cluster of target positions never gets reached. It has already
+paid for itself twice — it revealed that the camera was mounted nearly edge-on to
+the arm's plane of motion, and later that a trained policy was executing the same
+motion regardless of where the target was.
+
+![Contact sheet: four episodes, time running left to right](docs/media/contact_sheet.png)
+
+One row per episode, time left to right. Note that no two rows share a lighting
+setup, a viewpoint, or the same clutter.
+
 ## Verifying the installation
 
 Always run this first, inside the container:
@@ -230,7 +272,8 @@ The script exits non-zero on any required failure, making it suitable as a CI ga
 
 ```
 docker/            ROCm image and compose profiles (wsl2 / linux / cpu)
-scripts/           check_env.py and entry points
+scripts/           check_env.py, collect_demos.py, train_bc.py,
+                   eval_policy.py, verify_replay.py, render.py
 src/jetspace/
   envs/            RobotEnv abstraction and MuJoCo backend
   data/            teleoperation capture, dataset, latent caching
@@ -242,11 +285,22 @@ docs/              architecture, setup, references
 
 ## Branching model
 
-| Branch | Purpose |
-|--------|---------|
-| `main` | Environment setup. Must always build and pass `check_env.py`. |
-| `dev` | Integration branch. Feature work merges here first. |
-| `feat/*` | Feature branches, for example `feat/isaac-backend`. |
+| Branch | Purpose | State |
+|--------|---------|-------|
+| `main` | Must always build and pass `check_env.py`. | M0 + M1 |
+| `dev` | Integration branch. Feature work merges here first. | tracks `main` |
+| `feat/m2-behavior-cloning` | The M2 baseline, evaluator and render tooling. | active |
+| `feat/isaac-backend` | Isaac Sim backend, for contributors with RTX hardware. | stub |
+
+Feature branches merge into `dev`, and `dev` into `main`, when the work is
+**verified** — the image builds, `check_env.py` exits 0, and any behaviour the
+branch claims is backed by a check that would fail if it broke.
+
+**Merging is not gated on the milestone's result.** Those are separate things,
+and conflating them is a trap: a milestone can be honestly, informatively
+negative, and stranding its infrastructure on a branch because the number came
+back low would be exactly backwards. Whether a gate was met belongs in
+[`docs/results.md`](docs/results.md), recorded either way.
 
 ## Roadmap
 
@@ -291,10 +345,14 @@ result should be reported as such rather than tuned around.
 - [ ] Human teleop demos (keyboard/gamepad implemented but need a display)
 - [ ] Freeze the evaluation set before any training begins
 
-### M2, behavior cloning baseline
+### M2, behavior cloning baseline — IN PROGRESS
 
-- [ ] Implement the BC training loop and the evaluation harness
-- [ ] Report mean and standard deviation across three seeds
+- [x] BC policy with an injectable visual encoder (so M3 swaps in V-JEPA cleanly)
+- [x] Training loop with an episode-level train/val split
+- [x] Frozen 100-seed evaluation set (`configs/eval_seeds.json`), leak-checked
+- [x] Evaluator reporting mean and standard deviation across three seeds
+- [ ] Train three seeds and record the result in `docs/results.md`
+- [ ] Decide whether reach clears the 70% gate, or the task needs to be harder
 
 ### M3, frozen encoder and action head
 
@@ -317,6 +375,24 @@ result should be reported as such rather than tuned around.
 - [ ] Choose a task family beyond `reach`. Pick-and-place is the natural next step.
 - [ ] Decide on physical hardware: an SO-101 leader and follower pair, or simulation only.
 - [ ] Create `feat/isaac-backend` once an RTX-equipped contributor is available.
+
+## Documentation
+
+| Document | What it covers |
+|----------|----------------|
+| [`REQUIREMENTS.md`](REQUIREMENTS.md) | Success gates, compute budget, milestones, non-goals |
+| [`docs/results.md`](docs/results.md) | Measured outcomes against each gate — numbers only |
+| [`docs/ledger.md`](docs/ledger.md) | Every failure mode hit, how it was diagnosed, what fixed it |
+| [`docs/decisions.md`](docs/decisions.md) | Settled decisions and the reasoning behind them |
+| [`docs/architecture.md`](docs/architecture.md) | Frozen encoder, latent RL, backend seam, sensing |
+| [`docs/hardware.md`](docs/hardware.md) | Costed physical-arm recommendation |
+| [`docs/setup.md`](docs/setup.md) | WSL2 / ROCm / Docker setup and failure modes |
+| [`docs/references.md`](docs/references.md) | Source audit, including corrections to the original brief |
+| [`docs/papers/balaguer-carpin-2011.md`](docs/papers/balaguer-carpin-2011.md) | Implementation notes on the paper this project builds on |
+
+The ledger is the unusual one. Thirteen of its fifteen entries produced **no
+error message** — the code ran, the loss fell, and the system was wrong. It
+records the diagnostic method for each, which is the reusable part.
 
 ## References
 

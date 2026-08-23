@@ -154,4 +154,53 @@ identically-timed trajectories would hide the problem until training.
 
 ## M2 — Behavior cloning baseline
 
-Not started.
+**Status: FAILED THE GATE** (2026-08-22). Recorded rather than tuned around.
+
+Gate: >=70% success on held-out target positions.
+
+| Checkpoint | Success | Median closest approach |
+|---|---|---|
+| `bc_seed0.pt` | 7.0% | 15.2 cm |
+| `bc_seed1.pt` | 38.0% | 5.7 cm |
+| `bc_seed2.pt` | 29.0% | 7.6 cm |
+| **Mean** | **24.7% +- 13.0%** | — |
+
+Leak check passed: 0 of 100 eval seeds appear in the training data.
+
+### Diagnosis
+
+Validation loss was tiny (0.00062) while success was 24.7%. That gap is the whole
+story, and the rollout contact sheet makes it visible: **every episode executes the
+same motion regardless of where the target is.** The policy learned one average
+trajectory and ignores the image entirely. It also never terminates — roughly 118
+steps per episode against ~33 for the demonstrations.
+
+Two causes, both defects in how the demonstrations were generated rather than in
+the policy:
+
+1. **The demonstrated action depends on unobservable episode phase.** The scripted
+   expert eases from start pose to IK goal as a function of an internal timestep
+   counter. Early in an episode that action is near the *start* pose and nearly
+   identical across every target, so mean-squared error is minimised by ignoring
+   the target and predicting the average. The target only becomes predictive late
+   in the episode, by which point the policy is off-distribution.
+
+2. **Exploration noise decays to zero.** The expert injects noise scaled by
+   `(1 - eased)`, so demonstrations cover the start of the trajectory and nothing
+   off the optimal path near the goal. There is no recovery behaviour to imitate,
+   so small errors compound with nothing to correct them.
+
+### Fix
+
+Command the IK goal directly as the action rather than an eased interpolation
+toward it. The position servo already smooths the motion, so the easing bought
+nothing visually and cost the policy its only learnable signal: with a constant
+per-episode goal, image -> action becomes a clean function of the target. Constant
+(not decaying) action noise during collection then supplies off-path coverage.
+
+This is a fix to a genuine defect, not a loosening of the gate. The gate stays at
+70%.
+
+**Caveat worth stating:** even once this passes, `reach` has a closed-form
+solution, so a high number here demonstrates that the pipeline works and nothing
+more. See D2 in `decisions.md` — headline claims come from pick-and-place.

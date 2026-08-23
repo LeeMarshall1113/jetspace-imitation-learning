@@ -57,3 +57,9 @@ Thumbs.db
 
 # Container HOME + HF cache (see docker/compose.yaml)
 .cache/
+
+# Rendered videos and contact sheets
+renders/
+
+# Robot models fetched from MuJoCo Menagerie (scripts/fetch_assets.py)
+assets/
