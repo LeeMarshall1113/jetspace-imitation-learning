@@ -96,6 +96,8 @@ def main() -> int:
     ap.add_argument("--lr", type=float, default=3e-4)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--val-frac", type=float, default=0.15)
+    ap.add_argument("--pca-dim", type=int, default=0,
+                    help="predict in a PCA subspace of this size; 0 uses raw latents")
     args = ap.parse_args()
 
     data = Path(args.data or f"data/episodes/{args.task}")
@@ -116,6 +118,29 @@ def main() -> int:
     # happen to be large.
     mu, sd = z0.mean((0, 1)), z0.std((0, 1)) + 1e-6
     z0n, tgtn = (z0 - mu) / sd, (tgt - mu) / sd
+
+    basis = None
+    if args.pca_dim > 0:
+        # Predict in a PCA subspace rather than raw latent space.
+        #
+        # Measured: |z_t+1 - z_t| ~ 160 while |z_t+16 - z_t| ~ 110. The latent
+        # moves further between adjacent frames than it drifts over sixteen, so
+        # frame-to-frame change is dominated by high-frequency variation that no
+        # model can predict. Forward prediction in that space spends its capacity
+        # on noise -- which is why the world model looked action-blind while a
+        # linear inverse-dynamics probe recovered the action at R^2 up to 0.74.
+        #
+        # Projecting to the top components keeps the structure and drops the
+        # part that is not there to be learned.
+        flat = z0n.reshape(-1, hidden)
+        sub = flat[:: max(1, len(flat) // 20000)]
+        _, S, Vt = torch.linalg.svd(sub - sub.mean(0), full_matrices=False)
+        basis = Vt[: args.pca_dim].T.contiguous()
+        kept = (S[: args.pca_dim] ** 2).sum() / (S**2).sum()
+        print(f"PCA: {hidden} -> {args.pca_dim} dims, {kept:.1%} of variance kept")
+        z0n = z0n @ basis
+        tgtn = tgtn @ basis
+        hidden = args.pca_dim
 
     idx = rng.permutation(n)
     n_val = max(1, int(args.val_frac * n))
@@ -181,6 +206,7 @@ def main() -> int:
             "state_dict": best_state,
             "hidden": hidden, "grid": grid, "action_dim": adim,
             "norm": {"mu": mu.numpy().tolist(), "sd": sd.numpy().tolist()},
+            "pca_basis": basis.numpy().tolist() if basis is not None else None,
             "config": vars(args),
             "val_loss": best, "static_baseline": static,
         },

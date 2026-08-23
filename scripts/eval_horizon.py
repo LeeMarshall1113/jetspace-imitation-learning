@@ -65,6 +65,10 @@ def main() -> int:
     model.eval()
     mu = torch.tensor(ckpt["norm"]["mu"], device=device)
     sd = torch.tensor(ckpt["norm"]["sd"], device=device)
+    # Evaluate in whatever space the model was trained in, or the comparison is
+    # against a different quantity entirely.
+    basis = ckpt.get("pca_basis")
+    basis = torch.tensor(basis, device=device) if basis is not None else None
 
     ds = EpisodeDataset(data)
     fpl = json.loads((lat_dir / "info.json").read_text())["frames_per_latent"]
@@ -105,6 +109,8 @@ def main() -> int:
             zt = torch.from_numpy(z).to(device)
             at = torch.from_numpy(a).to(device)
             zn = (zt - mu) / sd
+            if basis is not None:
+                zn = zn @ basis
 
             starts = range(0, len(z) - H, max(1, (len(z) - H) // 4))
             for t in starts:
