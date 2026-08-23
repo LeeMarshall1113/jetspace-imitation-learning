@@ -9,9 +9,18 @@ analysis — the section reviewers reward and almost nobody writes.
 
 **The recurring theme:** nearly every entry below is a *silent* failure. The
 code ran, the loss went down, the numbers looked plausible, and the system was
-wrong. Only three of the twenty threw an exception. The practical lesson is that
+wrong. Only three of the twenty-one threw an exception. The practical lesson is that
 "it ran without error" carries almost no information, and the countermeasure is
 to assert on quantities you can independently predict.
+
+**The third theme, and the most reusable:** **every substantive defect has been
+an encoding or scaling choice, not a modelling one.** Absolute vs delta actions
+(twice, at two levels of the stack), global pooling vs spatial softmax, and
+unnormalised action conditioning. Each presented as "the model will not learn",
+and not once was the answer a bigger network, more epochs, or a different
+architecture. When a small trained head is bolted onto a large frozen model, the
+failures cluster in the *interface* — how actions are encoded, how features are
+pooled, how inputs are scaled.
 
 **The second theme, visible only in hindsight:** defects stack. L3 concealed L4
 — the absolute action space made the loss look excellent, so there was no reason
@@ -273,6 +282,40 @@ result that happened to be interesting.
 **Lesson:** a baseline evaluated under easier conditions than the method is not
 a baseline. This is the mirror image of L3: there the dumb baseline was too
 strong to notice, here it was too strong to believe.
+
+### W1 — The world model ignored its actions, through three fixes
+**Silent?** **Yes, and it looked like success.** The model beat the do-nothing
+baseline by 3–4×, which reads as a working world model with a comfortable
+horizon. **Cost:** ~3 h across four attempts.
+**Caught by** the shuffled-action baseline: rolling out with actions from a
+different episode gave within 1% of the same error (1.01× / 1.01× / 1.00×
+across the three tasks). Every other metric looked fine.
+
+Three plausible fixes failed in sequence:
+
+| Attempt | Hypothesis | Result |
+|---|---|---|
+| 1 | Absolute joint targets are redundant with the observation | still 1.00× |
+| 2 | Half the actions were discarded by tubelet subsampling | still 1.00× |
+| 3 | Forward prediction is fitting high-frequency latent noise | still 1.00× |
+
+**The actual cause, found by measuring the inputs instead:** commanded
+displacements have std **0.033** against the latents' normalised **1.0** — a
+**30× scale mismatch**. I normalised the latents and not the actions, so the
+action embedding contributed almost nothing and the model had no numerical
+reason to attend to it. It was not ignoring the action; the action was
+numerically invisible.
+
+**Fix:** normalise the actions. Action-awareness went 1.00× → **1.18–1.31×**.
+
+**Lessons, in order of usefulness:**
+1. **Check the scale of every input before changing the architecture.** Three
+   architectural hypotheses, each plausible, none touching the cause.
+2. **A model that beats the obvious baseline can still be broken.** Only a
+   baseline designed to fail — feeding *wrong* actions — exposed it.
+3. Attempt 3 was not wasted: PCA-subspace prediction independently improved the
+   gain (reach 2.84× → 4.60×, push 4.01× → 7.33×). A fix can be worth keeping
+   even when it does not solve the problem you aimed it at.
 
 ---
 
