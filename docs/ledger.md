@@ -1,0 +1,191 @@
+# Engineering ledger
+
+Every failure mode hit, how it was diagnosed, and what fixed it. Kept because
+the diagnoses are worth more than the fixes: most of these produced **no error
+message**, and the method that exposed each one is reusable.
+
+If this project produces a paper, this is the raw material for its failure
+analysis — the section reviewers reward and almost nobody writes.
+
+**The recurring theme:** nearly every entry below is a *silent* failure. The
+code ran, the loss went down, the numbers looked plausible, and the system was
+wrong. Only two of the fifteen threw an exception. The practical lesson is that
+"it ran without error" carries almost no information, and the countermeasure is
+to assert on quantities you can independently predict.
+
+---
+
+## Legend
+
+| Column | Meaning |
+|---|---|
+| **Silent?** | Did it fail without an error message? |
+| **Cost** | Rough time between introducing and catching it |
+
+---
+
+## Platform and environment
+
+### P1 — Isaac Sim cannot run on AMD
+**Silent?** No — caught in planning, before any code.
+Isaac Sim 5.1 requires an NVIDIA RTX GPU, minimum RTX 4080; cards without RT
+cores are unsupported. The project brief specified Isaac Sim on a machine with a
+Radeon RX 9070 XT. **Fix:** MuJoCo as the default backend, with `RobotEnv` as a
+seam so Isaac remains a sibling for RTX contributors.
+**Lesson:** verify the hardware requirements of every named dependency before
+designing around it.
+
+### P2 — `amdgpu-install --usecase=wsl` does not exist
+**Silent?** No — failed loudly. **Cost:** ~20 min.
+Widely recommended online, absent from the installer (`--list-usecase` confirms).
+**Fix:** ROCDXG (`librocdxg`) is the actual bridge, a separate project with its
+own `.deb`.
+**Lesson:** a confidently-worded tutorial is not a source. The installer's own
+`--list-*` output is.
+
+### P3 — AMD ships no compute runtime into WSL
+**Silent?** Partially — `rocminfo` reported `hsa_init Failed`, which reads like a
+driver problem. **Cost:** ~1 h.
+NVIDIA's Windows driver publishes CUDA libraries straight into `/usr/lib/wsl/lib`,
+so CUDA works in WSL with nothing installed in the distro. AMD's does not: a fully
+current Adrenalin driver supplies `/dev/dxg` and `libdxcore.so` and nothing else.
+**Diagnosed by** listing `/usr/lib/wsl/lib` (three D3D12 libraries, no compute
+runtime) and `/usr/lib/wsl/drivers/` (Windows INF folders, zero `.so` files).
+**Fix:** install ROCm + librocdxg 1.2.0 inside the distro.
+**Lesson:** reasoning by analogy from a different vendor is how you lose an hour.
+
+### P4 — Docker Desktop cannot resolve the required bind mounts
+**Silent?** Would have been.
+ROCDXG needs `/opt/rocm/lib/librocdxg.so` bind-mounted in. Bind sources are
+resolved by the **daemon**, and Docker Desktop's daemon runs in its own
+`docker-desktop` VM, which has no `/opt/rocm`. Enabling WSL Integration does not
+help — that only exposes the CLI.
+**Fix:** Docker Engine installed directly in the Ubuntu distro.
+**Lesson:** "where does the daemon run" is a different question from "where do I
+type the command".
+
+### P5 — `dids.conf` is not shipped by librocdxg 1.2.0
+**Silent?** Would have been, dangerously.
+Upstream's container instructions list it among required mounts. `dpkg -L
+rocdxg-roct` shows the package contains only the `librocdxg.so*` symlinks and a
+LICENSE. Docker **auto-creates missing bind sources as directories**, so mounting
+it would have produced an empty directory rather than an error.
+**Lesson:** verify a file exists before bind-mounting it; Docker will not tell you.
+
+### P6 — Containers ran as root
+**Silent?** No — surfaced as `Permission denied` on 102 files. **Cost:** ~15 min.
+Every dataset, checkpoint and render written into the bind-mounted repo came out
+root-owned and undeletable by the host user.
+**Fix:** `user:` in compose, with `HOME`/`HF_HOME` relocated into the repo since
+that UID has no home directory in the image.
+
+### P7 — Editable install without the package tree
+**Silent?** No — build failed. **Cost:** ~10 min.
+The Dockerfile's dependency layer copied only `pyproject.toml`, but an editable
+install resolves `where = ["src"]` at install time.
+**Fix:** stub the tree in the cacheable layer, copy real source over it, and add
+an import check so a regression fails the build rather than surfacing at runtime.
+
+---
+
+## Simulation
+
+### S1 — MuJoCo defaults to degrees; the arm was clamped to a 6° sweep
+**Silent?** **Yes — completely.** No error, no warning. **Cost:** ~45 min.
+`range="-3.14 3.14"` compiled to ±3.14 *degrees* (0.0548 rad). Every scripted
+demonstration failed while the IK was provably exact (FK error 0.00000).
+**Diagnosed by** decomposing generalized forces at equilibrium:
+`qfrc_constraint` exactly cancelled `qfrc_actuator`, with `nefc=2` and both
+constraints of type `mjCNSTR_LIMIT_JOINT`. A gain/damping sweep had already ruled
+out tuning — steady-state error scaled as 1/kp and damping had *zero* effect,
+which is the signature of a static force balance rather than a dynamic one.
+**Fix:** `<compiler angle="radian"/>`.
+**Lesson:** when a plausible fix (more gain, more damping) does nothing at all,
+stop tuning and decompose the forces. "No effect whatsoever" is a strong signal.
+
+### S2 — Camera mounted edge-on to the plane of motion
+**Silent?** Yes. **Caught by** looking at a contact sheet.
+The camera sat nearly edge-on to the arm's plane, foreshortening the workspace
+into a horizontal bar and compressing the target's position to near-invisible.
+**Fix:** top-down camera (later, wide viewpoint randomization).
+**Lesson:** render the data and look at it. This cost one glance and would have
+cost days as a mysterious accuracy ceiling.
+
+### S3 — IK took the full correction; episodes had no trajectory
+**Silent?** Partially — visible as 2–8 frame episodes. **Cost:** ~10 min.
+The arm snapped to the IK solution in a couple of steps, leaving nothing to imitate.
+**Fix:** scale the correction (`gain=0.07`), giving a 25–40 step approach.
+
+### S4 — Camera index 0 is the model's wrist camera
+**Silent?** Would have been. Caught by review before running.
+The randomizer wrote `cam_pos[0]`, but `so101.xml` ships its own `wrist_cam`,
+compiled first and occupying index 0. It would have jiggled a camera bolted to
+the arm while leaving the third-person view pinned.
+**Fix:** resolve cameras by name.
+**Lesson:** index into MuJoCo arrays by name, always. Include order is not yours
+to control.
+
+---
+
+## Data
+
+### D1 — Episodes recorded no reset seed
+**Silent?** Yes — nothing failed, the gate was simply uncheckable.
+Without the seed the target position cannot be reproduced, so "replay verified"
+could not be tested at all.
+**Fix:** record the seed per episode; `verify_replay.py` reports rather than
+silently skips episodes lacking one.
+
+### D2 — float32 action storage broke exact replay
+**Silent?** No — the verifier caught it. **Cost:** ~20 min, and produced the most
+interesting number in the project so far.
+**Diagnosed by** replaying the same trajectory three ways: float64 actions
+reproduced it to **0.000e+00** (so the simulator is exactly deterministic), while
+the same actions quantized to float32 diverged **1.87e-04** — from a quantization
+error of **2.95e-08 rad**, an amplification of **~6300× over 17 steps**.
+**Fix:** store actions float64; they are a rounding error in the byte budget next
+to 224×224×3 images.
+**Carry forward:** that amplification bounds how far any open-loop rollout —
+including a *latent* one in M3/M4 — can be trusted before it stops describing the
+same trajectory.
+
+---
+
+## Learning
+
+### L1 — Demonstrated action depended on unobservable episode time
+**Silent?** Yes. Validation loss 0.00062, success **24.7%**. **Cost:** ~1 h.
+The expert eased toward its goal on an internal step counter, so early actions
+were nearly identical across every target. MSE was minimised by ignoring the
+target and predicting the mean trajectory.
+**Diagnosed by** the rollout contact sheet: every episode executed the *same
+motion* regardless of where the target was.
+**Fix:** make the action a function of observable state (DLS IK).
+
+### L2 — Exploration noise decayed to zero
+**Silent?** Yes, and compounded L1.
+Noise scaled by `(1 - eased)` left no off-path states near the goal, so an
+imitator had no recovery behaviour to copy and small errors compounded uncorrected.
+**Fix:** constant-magnitude noise.
+
+### L3 — Absolute action targets drowned the informative signal
+**Silent?** Yes. Validation loss 0.00031, success **9.3%**. **Cost:** ~30 min.
+**Diagnosed by** computing the score of a trivial baseline on the real dataset:
+"output my own current joint position" achieves MSE **0.000540**; the trained
+network achieved **0.000313** — barely better than ignoring the camera entirely.
+Measured directly: mean `|delta|` 0.0176 against mean `|action|` 0.2928, so **94%
+of the regression target was "where I already am"**.
+**Fix:** predict the normalised residual.
+**Lesson — the most reusable one here:** always score the dumbest possible
+baseline on your own data. A loss number means nothing until you know what
+trivial behaviour scores. This single check would have caught L1 too.
+
+---
+
+## Open
+
+- Rendering appears to be CPU-rasterized despite `MUJOCO_GL=egl` (~448% CPU
+  during evaluation, ~1 h for 45,000 frames). Unconfirmed. Matters for M3, which
+  must push the whole dataset through the encoder.
+- Whether wide camera randomization is learnable at all by a small CNN on 200
+  demonstrations, or whether it needs the frozen V-JEPA encoder to be tractable.
