@@ -86,13 +86,81 @@ submission.
 | E2 | Reward monotonicity on cached latents | go/no-go for A | **built**, `scripts/eval_reward.py` |
 | E3 | World-model rollout error vs horizon | claim B | not started |
 | E4 | Ensemble disagreement vs true error | claim B | not started |
-| E5 | Data-efficiency sweep: N\* vs prior tasks | claim A, headline figure | not started |
+| E5 | Data-efficiency sweep: N\* vs prior tasks, **three curves** (world model / multi-task BC / scratch BC) | claim A, headline figure | not started — design revised after novelty audit |
 | E6 | Ablation: frozen V-JEPA vs scratch CNN, identical training | isolates the encoder's contribution | not started |
 | E7 | Viewpoint generality: fixed vs wide camera | supports the encoder argument | partial |
 | E8 | Sim-to-real on a physical SO-101 | credibility | needs hardware |
 
 **E2 is the cheapest and most decisive.** If latent distance is not monotone
 along demonstrations, claim A is dead and B becomes the headline. Run it first.
+
+## 3b. Novelty audit — E5 transfer experiment (2026-08-23)
+
+Adversarial literature check. **Verdict: PARTIALLY TAKEN.**
+
+The qualitative claim — a multi-task world model needs fewer demonstrations on a
+new task than training from scratch — is **well established across at least six
+papers**. What appears genuinely unpublished is the *controlled sweep*: number of
+prior tasks as the independent variable, N\*(k) plotted as a curve, against a
+flat no-world-model baseline.
+
+Closest prior art, and how each differs:
+
+| Paper | What it does | Why it does not pre-empt |
+|---|---|---|
+| **Visuo-Tactile World Models** (Meta FAIR + UW, [2602.06001](https://arxiv.org/abs/2602.06001), Feb 2026) | Multi-task world model on 8 contact-rich tasks — *including our exact four* — adapts to a held-out task with 20 demos, 77% on a real robot | **One fixed prior-task-set size (8), no sweep, and no BC baseline in the transfer experiment.** Establishes the phenomenon, not the curve |
+| **RoboCat** (DeepMind, [2306.11706](https://arxiv.org/abs/2306.11706)) | "More diverse training data → more efficient adaptation" | Pure behavior cloning, **no world model**; two conditions, not a curve |
+| **Data Scaling Laws in IL** (ICLR 2025, [2410.18647](https://arxiv.org/abs/2410.18647)) | The field's reference for demos-needed curves | BC only; sweeps environments/objects for *one* task, not prior task count |
+| **LBM examination** (TRI, [2507.05331](https://arxiv.org/abs/2507.05331)) | Multitask finetuning needs <30% of single-task data | Diffusion-policy BC; sweeps pretraining *volume*, not task count |
+| **Newt** ([2511.19584](https://arxiv.org/abs/2511.19584)) | Massively multitask world model, few-shot held-out, *with* BC baselines | Locomotion/Atari/navigation, not manipulation; aggregate numbers, no N\* curve |
+
+**VT-WM is the paper to worry about.** Same lineage as V-JEPA, same task family,
+published six months ago. It must be cited and honestly positioned — the
+distinction is that it reports one adaptation point and we report the curve.
+
+### Required design changes (before running E5)
+
+The audit surfaced a confound that would have invalidated the headline. Fixing
+it now costs a day; discovering it in review costs the paper.
+
+**1. The baseline as specified is confounded.** Comparing a world model
+pretrained on k prior tasks against BC trained from scratch on the new task only
+conflates two things: *world model vs BC*, and *pretraining vs no pretraining*.
+A reviewer will say the gap is just pretraining.
+
+> **Fix: add a multi-task-BC-pretrained baseline** — same prior-task exposure,
+> no world model. Three curves, not two. Only the gap between world-model and
+> multi-task-BC isolates the actual claim.
+
+**2. The curriculum is nested, not merely longer.** reach ⊂ push ⊂ pick-place ⊂
+stack share subskills, so a falling N\* may reflect *specifically relevant*
+shared skills rather than a world model improving with scale. This is the
+standard confound in curriculum work ([2402.06434](https://arxiv.org/abs/2402.06434)),
+and the Data Scaling Laws paper's own finding — that diversity beats count —
+sharpens it: with four points we cannot distinguish task *count* from task
+*diversity*.
+
+> **Fix: report at least one shuffled or unrelated-prior-task ordering.** If the
+> curve still falls when prior tasks are not nested toward the target, the claim
+> survives; if it does not, the honest finding is "relevant subskills transfer",
+> which is still publishable and is not what we would have claimed.
+
+**3. Four or five x-axis points cannot support "monotonic".** N\* is a
+threshold-crossing statistic, noisy and sensitive to the chosen threshold.
+
+> **Fix: multiple seeds per point with error bars, and report the curve at two
+> thresholds** so the shape is not an artifact of one arbitrary cutoff.
+
+**4. One hand-picked ordering invites "engineered to work".**
+
+> **Fix: where compute allows, average over random k-subsets** of the task pool
+> rather than a single fixed sequence.
+
+**5. Every clean sweep in the literature is in simulation; every real-robot
+result is a single adaptation point.** That split is informative — the
+experiment is plausibly unpublished less because nobody thought of it than
+because doing it rigorously on hardware is expensive. Expect a sim2real
+objection, and answer it explicitly rather than hoping it does not arrive.
 
 ## 4. What reviewers will attack
 
