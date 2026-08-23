@@ -118,6 +118,10 @@ def main() -> int:
     ap.add_argument("--episodes", type=int, default=12)
     ap.add_argument("--cols", type=int, default=8)
     ap.add_argument("--max-steps", type=int, default=120)
+    ap.add_argument("--gif", action="store_true",
+                   help="also write episodes.gif, sized for embedding in a README")
+    ap.add_argument("--gif-size", type=int, default=200)
+    ap.add_argument("--gif-stride", type=int, default=2, help="keep every Nth frame")
     ap.add_argument("--randomize", action="store_true",
                    help="render the randomized world instead of the clean one")
     args = ap.parse_args()
@@ -160,6 +164,28 @@ def main() -> int:
     print(f"{label}: {len(episodes)} episodes")
     print(f"  {sheet_path}  ({sheet.shape[1]}x{sheet.shape[0]})")
     print(f"  {video_path}  ({len(video)} frames @ {fps} fps)")
+
+    if args.gif:
+        # GitHub renders GIFs inline in a README but will not play a committed
+        # mp4, so this is the format that actually shows up on the page.
+        # Subsampled and downscaled hard, because an inline asset that takes a
+        # second to load is worse than no asset.
+        from PIL import Image
+
+        frames = [
+            Image.fromarray(f).resize((args.gif_size, args.gif_size), Image.BILINEAR)
+            for f in video[:: args.gif_stride]
+        ]
+        gif_path = out / "episodes.gif"
+        frames[0].save(
+            gif_path,
+            save_all=True,
+            append_images=frames[1:],
+            duration=int(1000 * args.gif_stride / fps),
+            loop=0,
+            optimize=True,
+        )
+        print(f"  {gif_path}  ({len(frames)} frames, {gif_path.stat().st_size / 1e6:.1f} MB)")
     return 0
 
 
