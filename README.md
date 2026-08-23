@@ -8,7 +8,9 @@ demonstrations and improved by reinforcement learning inside the resulting laten
 world model. The objective is a single policy that transfers to held-out variations
 of a task without task-specific retraining.
 
-**Status:** M0 (environment setup). No models are trained yet.
+**Status:** M0 complete (environment verified on AMD/ROCm). M1 in progress —
+dataset pipeline built and replay-verified; human demos outstanding. No models
+are trained yet. See [`docs/results.md`](docs/results.md) for measured outcomes.
 
 ---
 
@@ -126,10 +128,17 @@ provides a separate profile for each case.
    ```
    wsl --install -d Ubuntu-24.04
    ```
-3. **Docker Desktop** with the WSL2 backend enabled under Settings, General.
+3. **ROCm and librocdxg inside the distro** — a current Windows driver is not
+   sufficient on AMD, unlike NVIDIA:
+   ```
+   bash scripts/install_rocm_wsl.sh
+   ```
+4. **Docker Engine inside the distro** (`curl -fsSL https://get.docker.com | sudo sh`).
+   Docker Desktop cannot be used for GPU work here: it resolves bind mounts in its
+   own VM, which has no `/opt/rocm`. See [`docs/setup.md`](docs/setup.md).
 
 ROCm 7.2.1 is the minimum version supporting RX 9000-series GPUs under WSL. The
-container image pins ROCm 7.2.4.
+container image pins ROCm 7.2.4, paired with librocdxg 1.2.0.
 
 ### Build and run
 
@@ -147,7 +156,7 @@ docker compose -f docker/compose.yaml --profile wsl2 run --rm dev-wsl
 
 | Profile | Service | Use case |
 |---------|---------|----------|
-| `wsl2` | `dev-wsl` | Windows 11 with WSL2 and a Radeon GPU. Uses `/dev/dxg`, mounts `/usr/lib/wsl`. |
+| `wsl2` | `dev-wsl` | Windows 11 with WSL2 and a Radeon GPU. Uses `/dev/dxg` and the ROCDXG bridge. |
 | `linux` | `dev` | Native Linux. Uses `/dev/kfd` and `/dev/dri`. |
 | `cpu` | `dev-cpu` | No GPU. Simulation and dataset work run; training will be very slow. |
 
@@ -198,8 +207,9 @@ The script exits non-zero on any required failure, making it suitable as a CI ga
 
 | Symptom | Cause and resolution |
 |---------|----------------------|
-| `/dev/dxg` missing | Not running under WSL2, or Docker Desktop is not using the WSL2 backend. |
-| `/usr/lib/wsl/lib` not mounted | Bind-mount absent. Use the `wsl2` profile rather than `linux`. |
+| `/dev/dxg` missing | Not running under WSL2, or the Adrenalin driver is older than 26.2.2. |
+| `librocdxg.so` not mounted | Run `scripts/install_rocm_wsl.sh` in the distro, and use Docker Engine rather than Docker Desktop. |
+| Files written by the container are root-owned | `export DOCKER_UID=$(id -u) DOCKER_GID=$(id -g)` if your account is not uid 1000. |
 | ROCm build check fails | A `pip install torch` replaced the ROCm wheel. Reinstall from the ROCm index. |
 | GPU not visible to PyTorch | Adrenalin driver too old, or the GPU is not exposed to WSL. |
 | Matmul fails although the GPU is visible | ROCm and driver version mismatch. Check `rocm-smi` against the ROCm compatibility matrix. |
