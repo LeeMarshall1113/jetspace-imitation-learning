@@ -69,9 +69,14 @@ working ROCm/AMD/WSL2 pipeline and a ledger of nineteen failure modes.
 - Best as a *section plus artifact*, not a headline — but it is the floor that
   guarantees the project has value if A and B both fail.
 
-**Recommendation: A as the spine, B as the result you actually publish, C as the
-artifact.** B is the best novelty-per-hour under the constraints and cannot
-produce a null paper.
+**DECIDED (see D-P4): B is the headline, A is the stretch, C is the artifact.**
+
+The ordering follows from wanting a positive result. B returns a measured
+quantity whatever the answer is, so it cannot produce a null paper. A is a
+comparison, and a comparison that loses is the one thing reviewers reject
+outright. Structuring it this way means A working *upgrades* the paper from a
+measurement to a method, while A failing costs a section rather than the
+submission.
 
 ## 3. Experiments required
 
@@ -119,10 +124,10 @@ Robotics venues are already short-format — length is not the constraint.
 
 These are open. Each changes what gets built next.
 
-### D-P1 — Which claim is the headline?
-A (latent RL), B (trust horizon), or C (reproducibility). **Recommendation: A as
-spine, B as headline, C as artifact** — but run E2 first, because a negative E2
-settles it for you.
+### D-P1 — Which claim is the headline? — SETTLED by D-P4
+B (trust horizon) headlines, A (latent RL) is the stretch, C (reproducibility)
+is the released artifact. Run E2 first: it tells us whether A is live before any
+budget goes to it.
 
 ### D-P2 — Sim-only, or buy the arm?
 The SO-101 follower is **~$122** and the sim already uses that exact model.
@@ -135,10 +140,34 @@ Three exist. Stack (level 3) would strengthen the transfer curve by adding a
 fourth point. **Recommendation: three for a workshop paper, four for a
 conference.**
 
-### D-P4 — Do we pre-commit to publishing a negative result?
-If E5 shows flat curves, that is a real finding about JEPA world models and
-almost nobody publishes it. **Recommendation: yes, and decide now** — deciding
-after seeing the data is how results get quietly buried.
+### D-P4 — Negative results — DECIDED: aim for a positive result
+
+You are right about main conferences: a paper whose result is "our method did
+not beat the baseline" is very hard to place at ICRA, CoRL or NeurIPS. That is
+a real constraint and it changes the plan.
+
+**But it changes *which claim* is the headline, not whether the project can
+succeed**, because there are two different kinds of "negative" and only one of
+them is unpublishable:
+
+| | Example | Publishable? |
+|---|---|---|
+| **A failed comparison** | "Latent RL did not beat behavior cloning" | Hard. This is what reviewers reject |
+| **A measurement** | "JEPA latent rollouts stay accurate for N steps, then diverge" | **Yes — a number is a number** |
+
+Claim B is deliberately of the second kind. "How far can latent imagination be
+trusted?" returns a quantity whether the answer is 5 steps or 50, and either
+answer is useful to anyone building on V-JEPA. It cannot produce a null paper.
+Claim A can.
+
+**Consequence for the plan:** make **B the headline and A the stretch**. If A
+works, it upgrades the paper from a measurement to a method. If it does not, the
+paper is still a measurement paper and still publishable — the outcome you want,
+without gambling the whole submission on the risky claim.
+
+This is a stronger position than pre-committing to publish a negative, and it is
+why E2 (reward monotonicity) runs first: it tells us whether A is live before we
+spend anything on it.
 
 ### D-P5 — What gets released?
 Code is a given. Data (~GB of episodes), cached latents, and trained checkpoints
@@ -146,14 +175,53 @@ are all optional and all increase usefulness. **Recommendation: code + eval
 seeds + checkpoints; regenerate data from seeds** — it is smaller and proves
 reproducibility more convincingly than shipping the bytes.
 
-### D-P6 — Authorship?
-Single-author is fine and common for workshop papers. If anyone else contributes
-compute, hardware or experiments, agree order *before* the work, not after.
+### D-P6 — Authorship — DECIDED: solo for now
 
-### D-P7 — Deadline?
-Nothing is deadline-driven yet, which means nothing forces the scope to close.
-**Recommendation: pick a workshop deadline and work backwards** — it is the
-cheapest forcing function available.
+Sole author, repository owner, final say on direction. Outside help possible
+later.
+
+**One thing to set up now, while it is free:** if a collaborator does arrive,
+agree author order and contribution scope *in writing before* they start. It is
+an awkward conversation before any work exists and a much worse one after.
+`CONTRIBUTING.md` is the natural place, and writing it while sole author costs
+nothing.
+
+### D-P7 — Deadline — real dates, checked 2026-08-23
+
+| Venue | Submission | Conference | Verdict |
+|---|---|---|---|
+| **ICRA 2027** | **15 Sep 2026** | May 2027, Seoul | **~3 weeks away. Too soon** |
+| **ICLR 2027** | abstract 18 Sep, paper **25 Sep 2026** | Apr 2027 | ~4.5 weeks. Very tight, not impossible |
+| CoRL 2027 | not yet announced | ~mid 2027 | Previous cycle closed May. **Best fit** |
+| IROS 2027 | not yet announced | ~Oct 2027 | Typically ~March |
+| NeurIPS 2026 workshops | not yet announced | Dec 2026 | **Watch for these — the right first target** |
+
+**Recommendation: target a NeurIPS 2026 workshop, with CoRL 2027 as the real
+goal.**
+
+Reasoning: ICRA at three weeks would mean submitting E5 unrun, which is the
+headline figure. ICLR at four and a half weeks is theoretically reachable but
+would consume the entire budget on writing rather than experiments, and ICLR is
+a poor venue fit for a robotics systems paper anyway.
+
+NeurIPS 2026 workshop CFPs usually appear September–October for a December
+event. That is roughly 6–10 weeks of runway, which is enough to run E2–E5 and
+write eight pages — and workshop review is fast, so feedback arrives in time to
+shape a CoRL 2027 submission.
+
+**Working backwards from a notional 15 October workshop deadline:**
+
+| When | What |
+|---|---|
+| Week 1 (now) | E2 reward monotonicity — decides whether A is live |
+| Weeks 2–3 | E3/E4 rollout error and ensemble disagreement — **the headline figure** |
+| Weeks 4–5 | E5 data-efficiency sweep across three tasks |
+| Week 6 | E6 ablation: frozen V-JEPA vs scratch CNN |
+| Weeks 7–8 | Writing, figures, arXiv preprint |
+
+**Do the arXiv preprint regardless and early.** It has no deadline, no
+gatekeeping, and it timestamps the work — which matters in an area where several
+groups are plainly circling the same idea.
 
 ## 7. What is already paper-ready
 
