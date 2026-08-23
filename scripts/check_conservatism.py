@@ -130,15 +130,30 @@ def main() -> int:
     print("\n" + "=" * 60)
     print(f"mean displacement ratio  {R.mean():.3f}   (1.0 = moves as far as reality)")
     print(f"mean direction cosine    {C.mean():.3f}   (1.0 = moves the right way)")
-    if R.mean() < 0.5:
+    # The original test was one-sided and scored a model that overshot by 47%
+    # with a near-random direction (ratio 1.475, cosine 0.459) as healthy.
+    # Moving too far is a failure too, and direction has to gate the verdict:
+    # travelling exactly the right distance the wrong way is not prediction.
+    if C.mean() < 0.5:
+        print("\nVERDICT: DIRECTION IS NEAR-RANDOM (cosine < 0.5). Whatever the")
+        print("  displacement ratio says, this model is not predicting, and any")
+        print("  horizon number derived from it is meaningless.")
+    elif R.mean() > 1.25:
+        print("\nVERDICT: THE MODEL OVERSHOOTS. It moves considerably farther")
+        print("  than reality does, inflating apparent motion without tracking")
+        print("  it. Not conservatism -- the opposite failure.")
+    elif R.mean() < 0.5:
         print("\nVERDICT: THE MODEL UNDER-MOVES. Slow error growth is partly")
         print("  conservatism, not accuracy. The E3 headline must be restated.")
     elif R.mean() < 0.8:
         print("\nVERDICT: mildly conservative. Report the ratio alongside the")
         print("  horizon curve so the number is interpretable.")
+    elif C.mean() < 0.8:
+        print("\nVERDICT: right distance, wrong way. Displacement is healthy but")
+        print("  direction is not; report both or the ratio flatters the model.")
     else:
-        print("\nVERDICT: the model moves about as far as reality does. Slow")
-        print("  error growth reflects accuracy, not standing still.")
+        print("\nVERDICT: the model moves about as far as reality does, in the")
+        print("  right direction. Slow error growth reflects accuracy.")
     print("=" * 60)
 
     out = Path(f"cache/conservatism_{args.task}.json")
@@ -147,6 +162,8 @@ def main() -> int:
         "task": args.task, "displacement_ratio": R.tolist(),
         "direction_cosine": C.tolist(), "mean_ratio": float(R.mean()),
         "mean_cosine": float(C.mean()),
+        "overshoots": bool(R.mean() > 1.25),
+        "direction_random": bool(C.mean() < 0.5),
     }, indent=2))
     print(f"\nwrote {out}")
     return 0

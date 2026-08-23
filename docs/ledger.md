@@ -9,18 +9,26 @@ analysis — the section reviewers reward and almost nobody writes.
 
 **The recurring theme:** nearly every entry below is a *silent* failure. The
 code ran, the loss went down, the numbers looked plausible, and the system was
-wrong. Only three of the twenty-one threw an exception. The practical lesson is that
+wrong. Only three of the twenty-two threw an exception. The practical lesson is that
 "it ran without error" carries almost no information, and the countermeasure is
 to assert on quantities you can independently predict.
 
 **The third theme, and the most reusable:** **every substantive defect has been
 an encoding or scaling choice, not a modelling one.** Absolute vs delta actions
-(twice, at two levels of the stack), global pooling vs spatial softmax, and
-unnormalised action conditioning. Each presented as "the model will not learn",
-and not once was the answer a bigger network, more epochs, or a different
-architecture. When a small trained head is bolted onto a large frozen model, the
-failures cluster in the *interface* — how actions are encoded, how features are
-pooled, how inputs are scaled.
+(twice, at two levels of the stack), global pooling vs spatial softmax,
+unnormalised action conditioning, and now the encoder's own window phase
+(L6). Five for five. Each presented as "the model will not learn" or "this
+number looks wrong", and not once was the answer a bigger network, more epochs,
+or a different architecture. When a small trained head is bolted onto a large
+frozen model, the failures cluster in the *interface* — how actions are encoded,
+how features are pooled, how inputs are scaled, how the frozen model is *called*.
+
+L6 extends the theme one level further out than the others. The first four were
+interfaces we wrote. The fifth is an interface we merely *used*: V-JEPA has to
+be fed fixed-length windows, we chose how to tile them, and the tiling ended up
+inside the representation. The lesson generalises past this project — any long
+sequence encoded in windows by a position-embedded transformer carries the
+tiling unless something removes it.
 
 **The second theme, visible only in hindsight:** defects stack. L3 concealed L4
 — the absolute action space made the loss look excellent, so there was no reason
@@ -100,6 +108,89 @@ The Dockerfile's dependency layer copied only `pyproject.toml`, but an editable
 install resolves `where = ["src"]` at install time.
 **Fix:** stub the tree in the cacheable layer, copy real source over it, and add
 an import check so a regression fails the build rather than surfacing at runtime.
+
+---
+
+## L6 — The encoder's window phase, stamped into every latent
+
+**Symptom.** None, for weeks. E3 ran, the world model beat its baseline, and the
+headline number was defensible. The artifact only surfaced because a
+conservatism check was re-run at horizon 96 instead of 24 and the *per-horizon*
+values were printed rather than the mean.
+
+**What the numbers looked like.** The do-nothing baseline — plain
+`‖z_t+h − z_t‖`, no model anywhere in it — was periodic in `h`:
+
+| h mod 8 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+|---|---|---|---|---|---|---|---|---|
+| baseline distance | **2.88** | 8.14 | 7.85 | 7.24 | **5.56** | 7.53 | 7.56 | 8.40 |
+| direction cosine | **0.756** | 0.935 | 0.929 | 0.920 | 0.895 | 0.927 | 0.925 | 0.929 |
+
+Latents exactly 8 apart sat 2.8× closer together than latents 7 apart. A robot
+arm cannot move that way. Something other than the robot was in the latents.
+
+**Diagnosis.** `VJEPAEncoder.encode` tiles a clip in overlapping windows with
+
+    stride = max(TUBELET, chunk - 2 * margin)      # 32 - 16 = 16 frames
+
+16 frames is 8 latents at tubelet 2, so latents 8 apart occupy the *same offset
+inside their respective windows* and share V-JEPA's temporal position
+embedding. The position embedding is additive and depends only on that offset,
+so same-phase latents get pulled together no matter what the robot did.
+
+**Confirmation, by making the artifact move.** `check_chunk_phase.py` re-encodes
+with different strides and searches every plausible period rather than only the
+predicted one:
+
+| chunk | margin | stride | predicted period | measured | comb |
+|---|---|---|---|---|---|
+| 32 | 8 | 16f | 8 | **8** | 1.40× |
+| 32 | 12 | 8f | 4 | **4** | 1.31× |
+| 32 | 4 | 24f | 12 | **12** | 1.52× |
+| 32 | 15 | 2f | 1 | 2 | 1.26× |
+
+Three exact matches, and comb strength falls monotonically as the stride
+shrinks. The period is a property of how we called the encoder, not of the data.
+
+**Fix, and its limits.** `decomb_latents.py` subtracts the per-phase mean, which
+is the right shape for an additive artifact and costs nothing. It is a stopgap,
+not a solution: each phase holds only about n/period samples, so the phase mean
+partly fits real content and takes it along. Push goes 1.669 → 0.941 and reach
+1.438 → 0.845 — much closer to flat, but overshooting it. The principled fix is
+a one-tubelet stride, which removes the phase by construction at roughly 8× the
+encoding cost.
+
+**The part that matters more than the bug.** The comb is a *simulation*
+phenomenon:
+
+| | push | pickplace | reach | **real_cubes** |
+|---|---|---|---|---|
+| comb ratio | 1.669× | 1.533× | 1.438× | **1.014×** |
+
+Real teleoperation video shows essentially no comb. Sensor noise, lighting
+flicker and motion blur give real frames enough content variance to swamp the
+position embedding; clean synthetic renders do not. So the artifact is strong in
+exactly the domain we were treating as the clean control, and absent in the one
+we were treating as messy.
+
+Two consequences, and the second is the expensive one:
+
+1. Every lag-sensitive sim number was contaminated — the E3 gain oscillated
+   between 3.4× and 13× on encoder phase alone. The qualitative conclusion
+   survives (the worst phase still beats the baseline 3.4×) but the figures had
+   a sawtooth in them that no reviewer would have missed.
+2. **N1 was about to measure this.** The plan was to compare sim and real latent
+   distributions in the shared frozen space and call the difference a domain
+   gap. A chunk of that difference would have been our own tiling — present in
+   sim, absent in real — and we would have published it as a finding about
+   simulators. The audit warned that the renderer was a confound; this is a
+   second confound underneath it, in the encoder call rather than the renderer,
+   and it was found by accident.
+
+**Reusable lesson.** Print the per-item curve before trusting the mean. The mean
+displacement ratio was 0.934 and looked healthy; the artifact was only visible
+once the values were laid out by horizon. Aggregates hide periodic structure by
+construction — that is what averaging is for.
 
 ---
 
