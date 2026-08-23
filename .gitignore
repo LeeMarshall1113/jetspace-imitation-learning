@@ -60,3 +60,6 @@ Thumbs.db
 
 # Rendered videos and contact sheets
 renders/
+
+# Robot models fetched from MuJoCo Menagerie (scripts/fetch_assets.py)
+assets/
