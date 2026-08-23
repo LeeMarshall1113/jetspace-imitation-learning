@@ -90,12 +90,14 @@ def rollout_frames(
     return out
 
 
-def expert_frames(n: int, max_steps: int, task: str = "pickplace") -> list[np.ndarray]:
+def expert_frames(
+    n: int, max_steps: int, task: str = "pickplace", pretty: bool = False
+) -> list[np.ndarray]:
     """Scripted-expert rollouts in the randomized world, for visual inspection."""
     from jetspace.envs.registry import get_task
 
     spec = get_task(task)
-    env = spec["env"](image_size=224, max_steps=max_steps, randomize=True)
+    env = spec["env"](image_size=224, max_steps=max_steps, randomize=True, pretty=pretty)
     expert = spec["expert"](env, np.random.default_rng(0))
     out = []
     for i in range(n):
@@ -125,7 +127,11 @@ def main() -> int:
                    help="also write episodes.gif, sized for embedding in a README")
     ap.add_argument("--gif-size", type=int, default=200)
     ap.add_argument("--gif-stride", type=int, default=2, help="keep every Nth frame")
-    ap.add_argument("--randomize", action="store_true",
+    ap.add_argument("--pretty", action="store_true",
+                   help="render visual meshes (11x slower); for human-facing output")
+    ap.add_argument("--pretty", action="store_true",
+                   help="render visual meshes (11x slower); for human-facing output")
+    p.add_argument("--randomize", action="store_true",
                    help="render the randomized world instead of the clean one")
     args = ap.parse_args()
     if args.data is None:
@@ -147,7 +153,9 @@ def main() -> int:
         # No checkpoint: show what the randomized world looks like, driven by
         # the scripted expert. This is the picture to compare against a photo
         # of the real setup.
-        episodes = expert_frames(args.episodes, args.max_steps, task=args.task)
+        episodes = expert_frames(
+            args.episodes, args.max_steps, task=args.task, pretty=args.pretty
+        )
         fps, label = 25, "randomized world (scripted expert)"
     else:
         ds = EpisodeDataset(args.data)

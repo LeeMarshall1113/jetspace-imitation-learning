@@ -102,7 +102,10 @@ class HumanTeleop:
 def collect(args: argparse.Namespace) -> int:
     spec = get_task(args.task)
     steps = args.max_steps or spec["default_steps"]
-    env = spec["env"](image_size=args.image_size, max_steps=steps, randomize=args.randomize)
+    env = spec["env"](
+        image_size=args.image_size, max_steps=steps,
+        randomize=args.randomize, pretty=args.pretty,
+    )
     rng = np.random.default_rng(args.seed)
     policy = (
         spec["expert"](env, rng, noise=args.noise)
@@ -191,6 +194,8 @@ def main() -> int:
     p.add_argument("--max-steps", type=int, default=None)
     p.add_argument("--noise", type=float, default=0.015)
     p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--pretty", action="store_true",
+                   help="render visual meshes (11x slower); for human-facing output")
     p.add_argument("--randomize", action="store_true",
                    help="domain randomization: lighting, camera, clutter, dynamics, latency")
     p.add_argument("--keep-failures", action="store_true")

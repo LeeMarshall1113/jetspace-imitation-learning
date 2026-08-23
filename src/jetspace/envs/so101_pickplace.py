@@ -83,6 +83,27 @@ WRAPPER_XML = f"""<mujoco model="so101_pickplace">
 """
 
 
+#: Which MuJoCo geom groups to render.
+#:
+#: The SO-101 model carries 21 high-poly STL meshes in group 2 (visual) and
+#: simple primitives in group 3 (collision). Rendering the meshes costs 11x:
+#: measured 8.4 fps with them, 91.1 fps without, and resolution barely matters
+#: (224 -> 8.6 steps/s, 96 -> 7.1), which is what identifies the cost as scene
+#: traversal rather than rasterisation.
+#:
+#: Paying that 11x buys visual fidelity we have reason to think is not load
+#: bearing: colours are domain-randomized anyway, and the sim-to-real bridge is
+#: the frozen V-JEPA encoder, which was pretrained on real video -- neither a
+#: pretty mesh render nor a blocky one resembles a photograph. Whether the
+#: difference matters is testable, and worth an ablation rather than an
+#: assumption.
+#:
+#: FAST is the default for collection and evaluation sweeps. PRETTY is for
+#: renders shown to humans and for the eventual sim-to-real experiments.
+RENDER_FAST = (0, 1, 3)      # primitives only
+RENDER_PRETTY = (0, 1, 2, 3, 4)
+
+
 class SO101PickPlaceEnv(RobotEnv):
     """Pick a cube off the floor and place it on the goal marker."""
 
@@ -97,6 +118,7 @@ class SO101PickPlaceEnv(RobotEnv):
         render: bool = True,
         asset_dir: str | Path = ASSET_DIR,
         randomize: bool | RandomizationConfig = False,
+        pretty: bool = False,
         servo: str = DEFAULT_SERVO,
     ) -> None:
         import mujoco
@@ -142,6 +164,11 @@ class SO101PickPlaceEnv(RobotEnv):
         self._renderer = (
             mujoco.Renderer(self.model, height=image_size, width=image_size) if render else None
         )
+        self.pretty = pretty
+        self._scene_option = mujoco.MjvOption()
+        self._scene_option.geomgroup[:] = 0
+        for g in (RENDER_PRETTY if pretty else RENDER_FAST):
+            self._scene_option.geomgroup[g] = 1
         cfg = randomize if isinstance(randomize, RandomizationConfig) else RandomizationConfig(
             enabled=bool(randomize)
         )
@@ -233,7 +260,9 @@ class SO101PickPlaceEnv(RobotEnv):
         pixels = {}
         if self._renderer is not None:
             for cam in self.camera_names:
-                self._renderer.update_scene(self.data, camera=cam)
+                self._renderer.update_scene(
+                    self.data, camera=cam, scene_option=self._scene_option
+                )
                 pixels[cam] = self._renderer.render()
         # Arm state only. Cube pose is deliberately NOT in proprio: the policy
         # has to see the object, which is the whole point of a visual task.
