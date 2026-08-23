@@ -249,19 +249,17 @@ result should be reported as such rather than tuned around.
 
 ## To do
 
-### M0, environment
+### M0, environment — COMPLETE (2026-08-22)
 
 - [x] Install WSL2 with Ubuntu 24.04 on the Windows host
-- [x] Install Docker Desktop and launch it once to provision the backend
 - [x] Confirm the Adrenalin driver is 26.2.2 or newer
+- [x] Install ROCm 7.2.4 and librocdxg 1.2.0 in the distro
+- [x] Install native Docker Engine in the distro (Docker Desktop cannot work here)
 - [x] Build the container image
-- [x] MuJoCo verified: physics steps and headless EGL rendering both pass
-- [ ] **Install the ROCm WSL runtime in the distro: `bash scripts/install_rocm_wsl.sh`**
-      (requires sudo; the Windows driver alone does not enable ROCm compute)
-- [ ] Re-run `scripts/check_env.py` to a clean exit
-- [ ] Enable Docker WSL integration for Ubuntu-24.04, so builds and training can
-      use the WSL-native filesystem rather than reaching across to `/mnt/c`
-- [ ] Record the result in `docs/results.md`
+- [x] `scripts/check_env.py` exits 0 — GPU enumerated as `gfx1201`, 15.9 GiB,
+      bf16 matmul on device, MuJoCo physics and headless EGL rendering
+- [x] Record the result in [`docs/results.md`](docs/results.md)
+- [ ] Benchmark throughput (MuJoCo steps/sec, training step time) for a baseline
 
 ### M1, teleoperation and dataset
 

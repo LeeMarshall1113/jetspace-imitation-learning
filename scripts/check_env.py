@@ -22,7 +22,15 @@ PASS, FAIL, WARN = "  [ok]  ", "  [FAIL]", "  [warn]"
 _failures: list[str] = []
 
 
-def _report(ok: bool, label: str, detail: str = "", required: bool = True) -> bool:
+def _report(
+    ok: bool, label: str, detail: str = "", hint: str = "", required: bool = True
+) -> bool:
+    """Report one check.
+
+    `detail` is context worth seeing either way (a measurement, a version).
+    `hint` is remediation and prints only on failure -- otherwise a passing run
+    tells you to go fix things that are not broken.
+    """
     if ok:
         mark = PASS
     elif required:
@@ -30,7 +38,8 @@ def _report(ok: bool, label: str, detail: str = "", required: bool = True) -> bo
         _failures.append(label)
     else:
         mark = WARN
-    print(f"{mark} {label}" + (f" - {detail}" if detail else ""))
+    suffix = detail if ok else " ".join(x for x in (detail, hint) if x)
+    print(f"{mark} {label}" + (f" - {suffix}" if suffix else ""))
     return ok
 
 
@@ -43,12 +52,12 @@ def check_host() -> None:
         _report(
             os.path.exists("/dev/dxg"),
             "WSL2 GPU device /dev/dxg",
-            "update Adrenalin to 26.2.2+ on the Windows host",
+            hint="update Adrenalin to 26.2.2+ on the Windows host",
         )
         _report(
             os.path.exists("/usr/lib/libdxcore.so"),
             "libdxcore.so bind-mounted",
-            "from /usr/lib/wsl/lib on the host (wsl2 compose profile)",
+            hint="from /usr/lib/wsl/lib on the host (wsl2 compose profile)",
         )
         # The ROCDXG translation layer is the piece people miss: unlike NVIDIA,
         # AMD's Windows driver does not deliver a compute runtime into WSL. It
@@ -56,7 +65,7 @@ def check_host() -> None:
         _report(
             os.path.exists("/usr/lib/librocdxg.so"),
             "librocdxg.so bind-mounted (ROCDXG bridge)",
-            "run scripts/install_rocm_wsl.sh in the distro, not in this container",
+            hint="run scripts/install_rocm_wsl.sh in the distro, not in this container",
         )
         # Upstream lists dids.conf among the required mounts, but librocdxg 1.2.0
         # does not ship it. Informational only - do not make this required.
@@ -70,7 +79,7 @@ def check_host() -> None:
         _report(
             os.environ.get("HSA_ENABLE_DXG_DETECTION") == "1",
             "HSA_ENABLE_DXG_DETECTION=1",
-            "required for ROCm < 7.13; set in the wsl2 compose profile",
+            hint="required for ROCm < 7.13; set in the wsl2 compose profile",
         )
     else:
         _report(os.path.exists("/dev/kfd"), "ROCm kernel driver /dev/kfd")
@@ -89,7 +98,8 @@ def check_torch() -> None:
     hip = getattr(torch.version, "hip", None)
     cuda = getattr(torch.version, "cuda", None)
     print(f"         torch {torch.__version__}  |  hip={hip}  cuda={cuda}")
-    _report(hip is not None, "torch is a ROCm build", "a CPU/CUDA wheel replaced the ROCm one")
+    _report(hip is not None, "torch is a ROCm build",
+            hint="a CPU/CUDA wheel replaced the ROCm one")
 
     if not _report(torch.cuda.is_available(), "GPU visible to torch"):
         return
@@ -98,7 +108,8 @@ def check_torch() -> None:
     vram = torch.cuda.get_device_properties(0).total_memory / 1024**3
     gfx = getattr(torch.cuda.get_device_properties(0), "gcnArchName", "?")
     print(f"         device 0: {name}  |  {vram:.1f} GiB  |  arch {gfx}")
-    _report(vram >= 12, "VRAM >= 12 GiB", f"{vram:.1f} GiB - see REQUIREMENTS.md", required=False)
+    _report(vram >= 12, "VRAM >= 12 GiB", f"{vram:.1f} GiB",
+            hint="see REQUIREMENTS.md", required=False)
 
     # Availability lies more often than a real kernel launch does.
     try:
