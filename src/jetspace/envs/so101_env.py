@@ -71,9 +71,18 @@ SUCCESS_RADIUS = 0.04  # metres; also the success criterion in REQUIREMENTS.md
 # So the simulated arm is ~1.5x stronger than the one you would order, and a
 # policy trained against it can learn motions the real servos cannot execute.
 #
-# Measured on this model: holding the arm extended horizontally saturates the
-# actuator at 2.94 N-m and still sags 31 degrees. At 1.91 N-m it sags further,
-# and some commanded poses become unreachable rather than merely inaccurate.
+# Honest caveat on how much this currently matters: measured across all four
+# variants, the reach task solves 20/20 regardless, because reaching an empty
+# point in space never loads the servos near their limit. Torque only starts to
+# bind once the arm has to LIFT something, which reach does not.
+#
+# (An earlier note here claimed a 31-degree gravity sag proved the arm was too
+# weak. That was a misdiagnosis: the arm was resting on the ground plane --
+# ncon=1 against `floor`, with qfrc_constraint cancelling the actuator. The
+# figure was identical across a 2x torque range, which is what gave it away.)
+#
+# Setting it correctly is still right: it costs nothing and removes a mismatch
+# that would otherwise surface only on hardware, once a payload exists.
 SERVO_TORQUE_NM = {
     "sts3215_7.4v_1_147": 1.41,   # C046, 14.4 kg-cm
     "sts3215_7.4v_1_345": 1.91,   # C001, 19.5 kg-cm  <- SO-101 follower default

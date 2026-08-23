@@ -9,7 +9,7 @@ analysis — the section reviewers reward and almost nobody writes.
 
 **The recurring theme:** nearly every entry below is a *silent* failure. The
 code ran, the loss went down, the numbers looked plausible, and the system was
-wrong. Only three of the eighteen threw an exception. The practical lesson is that
+wrong. Only three of the nineteen threw an exception. The practical lesson is that
 "it ran without error" carries almost no information, and the countermeasure is
 to assert on quantities you can independently predict.
 
@@ -244,6 +244,21 @@ executing the noisy action, so replaying labels could not reproduce it.
 **Lesson:** the second time a verification gate caught something that would
 otherwise have shipped silently (see D2). Gates that check a property you can
 independently predict keep paying for themselves.
+
+### S5 — Misread floor contact as gravity sag
+**Silent?** No — the fix having *zero* effect is what exposed it. **Cost:** ~10 min.
+Commanding the arm to an extended pose showed 31 degrees of tracking error with
+the actuator at its torque ceiling, which read as "the servos are too weak".
+Setting torque correctly and re-measuring gave **the same 31.1 degrees across a
+2x range of torque limits**, and 20/20 reach success at every level.
+**Diagnosed by** dumping contacts and constraint forces: `ncon=1` against
+`floor`, with `qfrc_constraint` exactly cancelling `qfrc_actuator`. The arm was
+resting on the ground plane, and the floor does not care how strong the servo is.
+**Lesson:** the same one as S1, arriving from the other direction — when a change
+has *no* effect across a range that should matter, the mechanism is not the one
+being varied. There, damping had zero effect and the cause was a joint limit;
+here, torque had zero effect and the cause was floor contact. "Nothing happened"
+is a measurement, not a null result.
 
 ---
 
