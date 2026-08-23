@@ -14,6 +14,11 @@ from .base import Observation, RobotEnv, StepResult
 
 REACH_XML = """
 <mujoco model="reach">
+  <!-- MuJoCo defaults to DEGREES. Without this, range="-3.14 3.14" is read as
+       +/-3.14 degrees (0.055 rad) and the arm is silently clamped to a 6-degree
+       sweep: no error, no warning, just a joint-limit constraint force that
+       looks exactly like an underpowered actuator. -->
+  <compiler angle="radian"/>
   <option timestep="0.002" integrator="implicitfast"/>
   <visual><global offwidth="640" offheight="480"/></visual>
   <worldbody>
@@ -21,10 +26,10 @@ REACH_XML = """
     <geom name="floor" type="plane" size="1 1 .05" rgba=".3 .3 .35 1"/>
     <camera name="front" pos="0 -1.1 0.8" xyaxes="1 0 0 0 0.6 0.8"/>
     <body name="link1" pos="0 0 0.1">
-      <joint name="j1" type="hinge" axis="0 0 1" range="-3.14 3.14"/>
+      <joint name="j1" type="hinge" axis="0 0 1" range="-3.14 3.14" damping="1.0"/>
       <geom type="capsule" fromto="0 0 0 0.25 0 0" size="0.03" rgba=".7 .7 .8 1"/>
       <body name="link2" pos="0.25 0 0">
-        <joint name="j2" type="hinge" axis="0 0 1" range="-2.5 2.5"/>
+        <joint name="j2" type="hinge" axis="0 0 1" range="-2.5 2.5" damping="1.0"/>
         <geom type="capsule" fromto="0 0 0 0.25 0 0" size="0.025" rgba=".6 .6 .75 1"/>
         <site name="tip" pos="0.25 0 0" size="0.02" rgba="1 .4 .2 1"/>
       </body>
@@ -34,8 +39,8 @@ REACH_XML = """
     </body>
   </worldbody>
   <actuator>
-    <position joint="j1" kp="20" ctrlrange="-3.14 3.14"/>
-    <position joint="j2" kp="20" ctrlrange="-2.5 2.5"/>
+    <position joint="j1" kp="50" ctrlrange="-3.14 3.14"/>
+    <position joint="j2" kp="50" ctrlrange="-2.5 2.5"/>
   </actuator>
 </mujoco>
 """
