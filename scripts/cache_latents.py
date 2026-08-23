@@ -40,7 +40,9 @@ def main() -> int:
     ap.add_argument("--out", default=None)
     ap.add_argument("--pool-grid", type=int, default=4,
                     help="spatial tokens per side; 16 keeps V-JEPA's native grid")
-    ap.add_argument("--chunk", type=int, default=16, help="frames per forward pass")
+    ap.add_argument("--chunk", type=int, default=32, help="frames per forward pass")
+    ap.add_argument("--margin", type=int, default=8,
+                    help="context frames discarded at each window edge")
     ap.add_argument("--dtype", default="float16", choices=["float16", "float32"],
                     help="storage dtype; float16 halves disk for no measurable loss")
     ap.add_argument("--limit", type=int, default=None)
@@ -72,7 +74,7 @@ def main() -> int:
             skipped += 1
             continue
         frames = ds[i][f"pixels_{camera}"]
-        z = enc.encode(frames, chunk=args.chunk).numpy().astype(store_dtype)
+        z = enc.encode(frames, chunk=args.chunk, margin=args.margin).numpy().astype(store_dtype)
         np.save(dest, z)
         total_frames += len(frames)
 
@@ -93,6 +95,8 @@ def main() -> int:
         "frames_per_latent": enc.spec.frames_per_latent,
         "dtype": args.dtype,
         "camera": camera,
+        "chunk": args.chunk,
+        "margin": args.margin,
         "source": str(data),
         "episodes": n,
     }

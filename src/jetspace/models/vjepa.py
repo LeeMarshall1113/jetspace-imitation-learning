@@ -104,31 +104,48 @@ class VJEPAEncoder(nn.Module):
         return ((x - mean) / std).unsqueeze(0).to(self.dtype)
 
     @torch.no_grad()
-    def encode(self, frames: np.ndarray, chunk: int = 32) -> torch.Tensor:
-        """Encode one episode.
+    def encode(self, frames: np.ndarray, chunk: int = 32, margin: int = 8) -> torch.Tensor:
+        """Encode one episode with OVERLAPPING windows.
 
         Args:
             frames: (T, H, W, 3) uint8.
-            chunk: frames per forward pass. Bounds peak memory — the token count
+            chunk: frames per forward pass. Bounds peak memory — token count
                 grows linearly in clip length, and a 400-frame episode encoded in
                 one pass would not fit.
+            margin: frames of context discarded at each window edge.
 
         Returns:
             (T', grid, grid, hidden) where T' = T // tubelet.
+
+        **Why the overlap matters.** V-JEPA attends across the whole clip, so a
+        latent's value depends on which frames were encoded alongside it.
+        Encoding in disjoint windows therefore puts a discontinuity at every
+        boundary: measured at 1.24x the interior step size, and visible
+        downstream as a period-8 ripple in the do-nothing baseline of E3 (see
+        docs/results.md). Windows now overlap by `margin` frames on each side and
+        only the interior latents are kept, so every emitted latent was computed
+        with real context on both sides.
         """
         if frames.shape[0] < TUBELET:
             raise ValueError(f"Need at least {TUBELET} frames, got {frames.shape[0]}")
 
-        outs = []
-        # Truncate to a whole number of tubelets; a trailing odd frame has no
-        # temporal partner and the model cannot place it.
         usable = (frames.shape[0] // TUBELET) * TUBELET
-        for start in range(0, usable, chunk):
+        margin = (margin // TUBELET) * TUBELET          # keep tubelet alignment
+        stride = max(TUBELET, chunk - 2 * margin)
+
+        outs = []
+        start = 0
+        while start < usable:
             end = min(start + chunk, usable)
             if (end - start) % TUBELET:
-                end -= 1
+                end -= (end - start) % TUBELET
             if end <= start:
                 break
+            # How many latents to trim from each edge of this window: none at
+            # the true start or end of the episode, since there is no context to
+            # be missing there.
+            trim_lo = 0 if start == 0 else margin // TUBELET
+            trim_hi = 0 if end >= usable else margin // TUBELET
             x = self._preprocess(frames[start:end])
             feats = self.model.get_vision_features(x)          # (1, N, hidden)
             n_t = (end - start) // TUBELET
@@ -143,7 +160,13 @@ class VJEPAEncoder(nn.Module):
                 feats = f.permute(0, 2, 3, 1)
             else:
                 feats = feats.squeeze(0)
-            outs.append(feats.float().cpu())
+
+            keep = feats[trim_lo : n_t - trim_hi if trim_hi else n_t]
+            if len(keep):
+                outs.append(keep.float().cpu())
+            if end >= usable:
+                break
+            start += stride
 
         return torch.cat(outs, dim=0)
 
