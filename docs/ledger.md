@@ -9,7 +9,7 @@ analysis — the section reviewers reward and almost nobody writes.
 
 **The recurring theme:** nearly every entry below is a *silent* failure. The
 code ran, the loss went down, the numbers looked plausible, and the system was
-wrong. Only three of the nineteen threw an exception. The practical lesson is that
+wrong. Only three of the twenty threw an exception. The practical lesson is that
 "it ran without error" carries almost no information, and the countermeasure is
 to assert on quantities you can independently predict.
 
@@ -259,6 +259,20 @@ has *no* effect across a range that should matter, the mechanism is not the one
 being varied. There, damping had zero effect and the cause was a joint limit;
 here, torque had zero effect and the cause was floor contact. "Nothing happened"
 is a measurement, not a null result.
+
+### E1 — The first E2 was not a comparison
+**Silent?** Yes — it produced a clean, plausible, wrong answer. **Cost:** ~1 h.
+Scored V-JEPA latents **cross-episode** against raw pixels **within-episode** and
+concluded "pixels beat V-JEPA everywhere." Within an episode the image trivially
+converges on its own final frame as the arm settles, so pixel distance looks
+near-perfect (−0.972 on reach) for a reason that says nothing about transfer.
+**Caught by** asking why the control was so strong, rather than accepting a
+result that happened to be interesting.
+**Fix:** run every representation in both conditions; judge on cross-episode.
+**Result:** the conclusion inverted — latents beat pixels on 2 of 3 tasks.
+**Lesson:** a baseline evaluated under easier conditions than the method is not
+a baseline. This is the mirror image of L3: there the dumb baseline was too
+strong to notice, here it was too strong to believe.
 
 ---
 

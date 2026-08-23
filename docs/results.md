@@ -242,3 +242,77 @@ before any training:
 because the estimate assumed the 1.2B ViT-g variant rather than the 326M ViT-L
 actually chosen. The binding constraint is encoder throughput, not memory. See
 ledger M1.
+
+---
+
+## E2 — Is latent distance a usable reward? (2026-08-23)
+
+**Verdict: WEAK but real. Claim A is not dead; expect a hard RL problem.**
+
+The go/no-go for the reward design. Measures Spearman rank correlation between
+timestep and distance-to-goal along successful demonstrations — a perfect
+progress signal scores −1.0.
+
+| Task | within: latent | within: pixels | **cross: latent** | **cross: pixels** | Encoder wins? |
+|---|---|---|---|---|---|
+| reach (4×4 grid) | −0.524 | −0.972 | **−0.404** | −0.243 | **yes, +0.161** |
+| reach (16×16 grid) | −0.521 | −0.974 | **−0.423** | −0.246 | **yes, +0.177** |
+| pickplace | −0.443 | −0.515 | **−0.333** | −0.256 | **yes, +0.077** |
+| push | −0.350 | −0.905 | −0.239 | **−0.535** | no, −0.296 |
+
+Proprioception scores −0.02 to −0.31 throughout — near zero, as it must be,
+since joint angles carry no information about where the *object* is. That is the
+sanity check confirming the measurement itself works.
+
+### Finding 1 — within-episode comparison is misleading, and it inverts the answer
+
+Judged **within** an episode, raw pixel distance looks overwhelming: −0.972 on
+reach against the latent's −0.521. Judged **cross-episode**, the ordering
+reverses on two of three tasks.
+
+The reason is that within an episode the image trivially converges on its own
+final frame as the arm settles. That measures visual similarity to one
+remembered picture, not transferable task progress — and optimising it is the
+classic failure mode that motivated learned embeddings in the first place.
+
+**The first version of this experiment made exactly that mistake**, scoring
+latents cross-episode against pixels within-episode, and would have reported
+"pixels beat V-JEPA everywhere." Only the cross-episode column is meaningful,
+because a fresh rollout has no endpoint of its own to compare against.
+
+### Finding 2 — the encoder earns its place, narrowly, on 2 of 3 tasks
+
+Cross-episode, frozen V-JEPA latents beat raw pixels on reach (+0.177) and
+pick-and-place (+0.077), and lose on push (−0.296).
+
+Push being the exception is plausible rather than mysterious: it is the task
+whose image is dominated by a single large, slowly-moving object, which raw
+pixel distance captures directly. In reach and pick-and-place the arm's
+configuration dominates the frame and the object is small — the regime where a
+learned representation should help and apparently does.
+
+### Finding 3 — spatial pooling is nearly free
+
+Re-caching reach at V-JEPA's native 16×16 grid instead of 4×4 — a 16× increase
+in spatial resolution and in storage — moves cross-episode ρ from −0.404 to
+−0.423. **A 0.019 improvement for 16× the disk.** The aggressive pooling chosen
+for storage was not the limitation, which rules out the most obvious explanation
+for the weak absolute numbers.
+
+### What this means for the project
+
+- **The reward has signal but it is noisy.** Best cross-episode ρ is −0.423 and
+  only 54–59% of steps decrease, against 50% for chance. RL on this will be hard,
+  which is what the WEAK verdict encodes.
+- **Consistent with the sufficiency literature.** Fu & Hansen (2026) find frozen
+  foundation embeddings carry control-irrelevant nuisance, "most acute in
+  high-dimensional-action manipulation." These numbers look like that.
+- **Also consistent with AtomVLA's 97% on LIBERO.** A weak dense signal can still
+  train a policy, particularly with the demonstrations doing the heavy lifting.
+  Weak is not useless.
+- **This is a publishable measurement in its own right**, and it is the kind the
+  positioning argument calls for: the field assumes frozen V-JEPA latents make a
+  good progress signal; here is what that assumption is actually worth, per task,
+  with the dumb baseline scored alongside.
+
+**Reproduce:** `python scripts/eval_reward.py --task {reach,push,pickplace}`
