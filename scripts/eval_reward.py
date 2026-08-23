@@ -80,7 +80,8 @@ def summarise(name: str, per_episode: list[dict[str, float]]) -> dict[str, float
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--task", default="pickplace", choices=["reach", "push", "pickplace"])
+    ap.add_argument("--task", default="pickplace",
+                    help="names the default data/cache paths; any string is valid")
     ap.add_argument("--data", default=None)
     ap.add_argument("--latents", default=None)
     ap.add_argument("--limit", type=int, default=60)

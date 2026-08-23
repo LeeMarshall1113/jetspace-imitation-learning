@@ -35,7 +35,8 @@ from jetspace.data.episode import EpisodeDataset  # noqa: E402
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--task", default="pickplace", choices=["reach", "push", "pickplace"])
+    ap.add_argument("--task", default="pickplace",
+                    help="names the default data/cache paths; any string is valid")
     ap.add_argument("--data", default=None)
     ap.add_argument("--out", default=None)
     ap.add_argument("--pool-grid", type=int, default=4,

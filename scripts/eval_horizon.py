@@ -43,7 +43,8 @@ from jetspace.utils.device import get_device  # noqa: E402
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--task", default="pickplace", choices=["reach", "push", "pickplace"])
+    ap.add_argument("--task", default="pickplace",
+                    help="names the default data/cache paths; any string is valid")
     ap.add_argument("--checkpoint", default=None)
     ap.add_argument("--data", default=None)
     ap.add_argument("--latents", default=None)

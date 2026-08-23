@@ -86,7 +86,8 @@ def load_pairs(task: str, data: Path, lat_dir: Path, horizon: int):
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--task", default="pickplace", choices=["reach", "push", "pickplace"])
+    ap.add_argument("--task", default="pickplace",
+                    help="names the default data/cache paths; any string is valid")
     ap.add_argument("--data", default=None)
     ap.add_argument("--latents", default=None)
     ap.add_argument("--out", default="checkpoints")
