@@ -282,8 +282,15 @@ docs/              architecture, setup, references
 | `feat/m2-behavior-cloning` | The M2 baseline, evaluator and render tooling. | active |
 | `feat/isaac-backend` | Isaac Sim backend, for contributors with RTX hardware. | stub |
 
-Feature branches merge into `dev`, and `dev` into `main` once its milestone gate
-is measured and recorded in `docs/results.md`.
+Feature branches merge into `dev`, and `dev` into `main`, when the work is
+**verified** — the image builds, `check_env.py` exits 0, and any behaviour the
+branch claims is backed by a check that would fail if it broke.
+
+**Merging is not gated on the milestone's result.** Those are separate things,
+and conflating them is a trap: a milestone can be honestly, informatively
+negative, and stranding its infrastructure on a branch because the number came
+back low would be exactly backwards. Whether a gate was met belongs in
+[`docs/results.md`](docs/results.md), recorded either way.
 
 ## Roadmap
 
