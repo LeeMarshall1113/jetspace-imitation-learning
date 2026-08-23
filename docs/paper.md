@@ -45,7 +45,7 @@ direction, which is precisely this.
 - **Check before committing:** measure reward monotonicity on cached latents.
   Cheap, and it is a go/no-go.
 
-### B — How far can latent imagination be trusted?
+### B — How far can latent imagination be trusted? (HEADLINE — see audit §3)
 
 Train an ensemble of small action heads on the frozen encoder; use their
 disagreement to set the imagination horizon adaptively rather than fixing it.
@@ -93,6 +93,58 @@ submission.
 
 **E2 is the cheapest and most decisive.** If latent distance is not monotone
 along demonstrations, claim A is dead and B becomes the headline. Run it first.
+
+## 3. Novelty audit — claim B, the headline (2026-08-23)
+
+**Verdict: PARTIALLY TAKEN, and narrower than assumed.** This is the most
+consequential of the three audits, because B was chosen as the *safe* headline.
+
+| Paper | What it does | Why it does not fully pre-empt |
+|---|---|---|
+| **AHEAD** ([2606.02486](https://arxiv.org/abs/2606.02486), CMU, Jun 2026) | Frozen VLA + latent world model, rolls forward an **adaptive horizon**, halting when uncertainty crosses a threshold | Not JEPA — built on frozen *OpenVLA* tokens. Uncertainty is variance over 5 stochastic samples from **one** flow-matching model, not independent ensemble heads. Reports a fixed-K ablation table, not an accuracy-vs-horizon curve |
+| **Terver, Ponce, Bardes, LeCun** ([2512.24497](https://arxiv.org/html/2512.24497), May 2026) | Large ablation of JEPA world models; formalises that embedding-space errors **grow exponentially with horizon** | **Theoretical** statement, not an empirical characterisation. No ensembles, no adaptive horizon |
+| **V-JEPA 2-AC** ([2506.09985](https://arxiv.org/abs/2506.09985)) | The model itself; already notes accuracy "decreases with longer autoregressive rollouts" | Uses a **fixed** horizon as a hyperparameter. No ensemble, no per-state adaptivity |
+| **ELVIS** ([2605.04709](https://arxiv.org/abs/2605.04709), May 2026) | Ensemble of latent **critics** gates a time-varying λ-return | Reconstructive Dreamer RSSM; ensemble over value functions, not dynamics heads; weights returns rather than truncating rollouts |
+| **GIRL** ([2604.07426](https://arxiv.org/abs/2604.07426), Apr 2026) | Uncertainty-adaptive trust-region bottleneck on imagination drift | Reconstructive; bounds KL drift, not step count; frozen DINOv2 used only for a grounding loss |
+
+Classical lineage confirms the *mechanism* is old outside this substrate: STEVE
+(2018), DMVE/AdaMVE ([2009.09593](https://arxiv.org/abs/2009.09593)), PETS, MBPO.
+
+**AHEAD is the damaging one.** It removes the framing "nobody has done adaptive
+horizon on a frozen pretrained backbone" entirely. It must be cited and
+benchmarked against, not worked around.
+
+### What survives, stated honestly
+
+The novelty is now a **conjunction**, and the strongest single piece is the
+cheapest one:
+
+1. **The first empirical accuracy-vs-horizon curve for V-JEPA 2 specifically.**
+   Terver et al. argue error grows exponentially; V-JEPA 2-AC notes it
+   qualitatively; **nobody has published the measured, state-conditioned curve
+   for the released checkpoint.** This is a measurement, so it produces a
+   positive result regardless of shape — which is exactly why B was chosen.
+2. A **literal bootstrap ensemble** of independently-initialised action-conditioned
+   heads, distinct from AHEAD's single-model sample variance and from ELVIS's
+   critic ensemble.
+3. Benchmarked against fixed-horizon V-JEPA 2-AC, AHEAD's halting rule, and the
+   STEVE/DMVE lineage retrofitted to the frozen-JEPA setting — which is what
+   justifies claiming multi-head ensembles beat single-model sample variance
+   *in this substrate*.
+
+Point 1 alone is defensible and cheap. Points 2 and 3 turn it from a measurement
+note into a paper.
+
+### Strategic reading across all three audits
+
+Every closest competitor is dated **March–June 2026**. The area is moving fast
+enough that the gap will narrow again before October. Two consequences:
+
+- **Speed matters more than scope.** Ship the preprint with point 1 measured
+  rather than waiting to complete points 2 and 3.
+- **Nothing came back fully TAKEN.** Three adversarial audits found no paper
+  doing any of the three claims exactly. The claims need narrowing, not
+  abandoning — which is a good outcome for a day's checking.
 
 ## 3a. Novelty audit — claim A, RL inside a frozen JEPA (2026-08-23)
 
