@@ -94,6 +94,59 @@ submission.
 **E2 is the cheapest and most decisive.** If latent distance is not monotone
 along demonstrations, claim A is dead and B becomes the headline. Run it first.
 
+## 3a. Novelty audit — claim A, RL inside a frozen JEPA (2026-08-23)
+
+Adversarial check, ~25 searches including a citation-graph pull of the 50 papers
+citing V-JEPA 2. **Verdict: PARTIALLY TAKEN.** No paper does exactly this, but
+every ingredient has prior art and the gaps are narrow enough that the claim
+must be scoped precisely to survive.
+
+**Baseline confirmed unchanged:** V-JEPA 2-AC still uses CEM at inference — a
+frozen encoder plus a small action-conditioned predictor, optimising action
+sequences to minimise L1 latent distance to a goal embedding. No learned policy,
+no RL. V-JEPA 2.1 ([2603.14482](https://arxiv.org/abs/2603.14482), Mar 2026)
+improves the representation (+20pt grasp success) but does not replace CEM.
+
+| Paper | What it does | Why it does not pre-empt |
+|---|---|---|
+| **Dreamer-CDP** ([2603.07083](https://arxiv.org/abs/2603.07083), ICLR 2026 workshop) | Genuine Dreamer actor-critic on a decoder-free, non-reconstructive predictor | **World model is not frozen** — jointly trained from scratch, small CNN on Crafter. Mechanism proof at toy scale |
+| **FF-JEPA** ([2606.09311](https://arxiv.org/abs/2606.09311), Jun 2026) | Frozen JEPA world model + learned high-level latent planner | Planner trained by **imitation, not RL**; CEM explicitly retained underneath |
+| **PiJEPA** ([2603.25981](https://arxiv.org/abs/2603.25981), Mar 2026) | Frozen **V-JEPA 2** + BC policy that warm-starts MPPI | Policy only *initialises* the planner; never replaces it; imitation not RL |
+| **WAM-RL** ([2606.17906](https://arxiv.org/abs/2606.17906), Jun 2026) | Real RL with a world-action model in the V-JEPA 2 lineage | Uses **reconstruction rewards** — a pixel decoder is load-bearing, failing the non-reconstructive premise outright |
+| **R2-Dreamer** ([2603.18202](https://arxiv.org/abs/2603.18202), Mar 2026) | Decoder-free DreamerV3 via redundancy reduction | Not JEPA architecturally; jointly trained, not frozen |
+
+### The gap, stated precisely
+
+**Every frozen-JEPA-backbone paper chose imitation learning or kept CEM/MPPI.
+Every genuine Dreamer-style RL-in-imagination paper trains the world model
+jointly rather than freezing a large pretrained one. Nobody has crossed those
+two lines.**
+
+### The narrower claim that survives
+
+> Train a Dreamer-style actor-critic by backpropagation through imagined
+> rollouts entirely inside a **frozen, large-scale pretrained** non-reconstructive
+> video JEPA — specifically V-JEPA 2's own backbone — and show it matches or
+> beats CEM on V-JEPA 2-AC's own benchmark.
+
+Each qualifier is load-bearing: drop "frozen" and it is Dreamer-CDP; drop "RL"
+and it is FF-JEPA or PiJEPA; drop "non-reconstructive" and it is WAM-RL.
+
+### Feasibility risk — more important than the novelty finding
+
+The audit flagged a mechanistic reason this may not work, independent of E2:
+
+> Policy-gradient credit assignment through imagined rollouts normally wants the
+> latent space and the value function to **co-adapt**. Freezing a V-JEPA-2-scale
+> backbone that was never optimised for control could make actor and value
+> learning materially harder.
+
+That is a plausible explanation for *why* the gap exists — the field may have
+tried and quietly abandoned it. It should be stated in our own writeup as a
+known risk rather than discovered in review, and it strengthens the decision to
+headline claim B: if the actor cannot learn through a frozen backbone, B still
+produces a number.
+
 ## 3b. Novelty audit — E5 transfer experiment (2026-08-23)
 
 Adversarial literature check. **Verdict: PARTIALLY TAKEN.**
