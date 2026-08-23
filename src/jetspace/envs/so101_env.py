@@ -119,7 +119,7 @@ class SO101ReachEnv(RobotEnv):
         cfg = randomize if isinstance(randomize, RandomizationConfig) else RandomizationConfig(
             enabled=bool(randomize)
         )
-        self.randomizer = DomainRandomizer(self.model, cfg)
+        self.randomizer = DomainRandomizer(self.model, cfg, camera_name=self.camera_names[0])
         self._action_queue: list[np.ndarray] = []
         self.n_distractors = 0
 

@@ -43,9 +43,23 @@ class RandomizationConfig:
 
     enabled: bool = True
 
-    # -- visual ---------------------------------------------------------
-    camera_pos_jitter: float = 0.03      # metres, per axis
-    camera_lookat_jitter: float = 0.02   # metres, shifts aim point
+    # -- camera ---------------------------------------------------------
+    # "jitter" nudges the nominal viewpoint; "wide" resamples it anywhere on a
+    # shell around the workspace. Wide is a much harder task -- the policy can
+    # no longer memorise a fixed image-to-workspace mapping and has to infer
+    # where it is looking from -- but a fixed viewpoint is also the single least
+    # realistic assumption in the whole setup, so it is the right default to
+    # aim at. Keep both so the cost of viewpoint generality is measurable
+    # rather than assumed.
+    camera_mode: str = "wide"            # "fixed" | "jitter" | "wide"
+    camera_pos_jitter: float = 0.03      # metres, per axis; "jitter" mode only
+    camera_azimuth_range: tuple[float, float] = (-115.0, 115.0)   # degrees
+    camera_elevation_range: tuple[float, float] = (12.0, 65.0)    # degrees
+    camera_distance_range: tuple[float, float] = (0.45, 0.95)     # metres
+    camera_lookat: tuple[float, float, float] = (0.24, 0.0, 0.20)
+    camera_lookat_jitter: float = 0.04   # metres, shifts aim point
+
+    # -- lighting and materials -----------------------------------------
     light_pos_jitter: float = 0.6        # metres, per axis
     light_diffuse_range: tuple[float, float] = (0.4, 1.0)
     material_hue_jitter: float = 0.12    # per-channel rgba shift on scene geoms
@@ -69,9 +83,23 @@ class RandomizationConfig:
 class DomainRandomizer:
     """Applies `RandomizationConfig` to a compiled MuJoCo model in place."""
 
-    def __init__(self, model, config: RandomizationConfig | None = None) -> None:  # noqa: ANN001
+    def __init__(
+        self,
+        model,  # noqa: ANN001
+        config: RandomizationConfig | None = None,
+        camera_name: str = "front",
+    ) -> None:
+        import mujoco
+
         self.model = model
         self.cfg = config or RandomizationConfig()
+        # Resolve by NAME, never by index. The SO-101 model ships its own
+        # wrist_cam, which is compiled first and therefore occupies index 0;
+        # randomizing that would move a camera bolted to the arm while leaving
+        # the third-person view -- the one that matters -- pinned in place.
+        self.cam_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_CAMERA, camera_name)
+        if self.cam_id < 0:
+            raise ValueError(f"No camera named {camera_name!r} in the model")
         # Snapshot the nominal model once. Re-randomizing from already-randomized
         # values compounds, and after a few hundred episodes the arm is made of
         # something that is not plastic.
@@ -82,6 +110,7 @@ class DomainRandomizer:
             "actuator_gainprm": model.actuator_gainprm.copy(),
             "actuator_biasprm": model.actuator_biasprm.copy(),
             "cam_pos": model.cam_pos.copy(),
+            "cam_quat": model.cam_quat.copy(),
             "light_pos": model.light_pos.copy(),
             "light_diffuse": model.light_diffuse.copy(),
             "geom_rgba": model.geom_rgba.copy(),
@@ -110,11 +139,9 @@ class DomainRandomizer:
         m.actuator_gainprm[:, 0] = self.nominal["actuator_gainprm"][:, 0] * gain_scale
         m.actuator_biasprm[:, 1] = self.nominal["actuator_biasprm"][:, 1] * gain_scale
 
-        # -- visual -----------------------------------------------------
+        # -- camera -----------------------------------------------------
         if m.ncam:
-            m.cam_pos[:] = self.nominal["cam_pos"] + rng.normal(
-                0, c.camera_pos_jitter, size=self.nominal["cam_pos"].shape
-            )
+            self._randomize_camera(rng)
         if m.nlight:
             m.light_pos[:] = self.nominal["light_pos"] + rng.normal(
                 0, c.light_pos_jitter, size=self.nominal["light_pos"].shape
@@ -132,6 +159,52 @@ class DomainRandomizer:
 
         # -- control ----------------------------------------------------
         self.action_latency = int(rng.integers(c.action_latency_steps[0], c.action_latency_steps[1] + 1))
+
+    def _randomize_camera(self, rng: np.random.Generator) -> None:
+        """Place the third-person camera and aim it at the workspace.
+
+        Only the named third-person camera is moved. The SO-101 model's own
+        wrist camera is rigidly attached to the arm and therefore already
+        viewpoint invariant -- moving it would be meaningless.
+        """
+        import mujoco
+
+        m, c, i = self.model, self.cfg, self.cam_id
+        if c.camera_mode == "fixed":
+            m.cam_pos[i] = self.nominal["cam_pos"][i]
+            m.cam_quat[i] = self.nominal["cam_quat"][i]
+            return
+        if c.camera_mode == "jitter":
+            m.cam_pos[i] = self.nominal["cam_pos"][i] + rng.normal(0, c.camera_pos_jitter, size=3)
+            m.cam_quat[i] = self.nominal["cam_quat"][i]
+            return
+
+        # "wide": resample position on a spherical shell around the workspace.
+        az = np.deg2rad(rng.uniform(*c.camera_azimuth_range))
+        el = np.deg2rad(rng.uniform(*c.camera_elevation_range))
+        dist = rng.uniform(*c.camera_distance_range)
+        lookat = np.asarray(c.camera_lookat) + rng.normal(0, c.camera_lookat_jitter, size=3)
+
+        # Azimuth 0 is the nominal front view, looking along +y toward the arm.
+        offset = dist * np.array(
+            [np.cos(el) * np.sin(az), -np.cos(el) * np.cos(az), np.sin(el)]
+        )
+        pos = lookat + offset
+
+        # MuJoCo cameras look along -z of their own frame, with +y up in image.
+        z_cam = pos - lookat
+        z_cam /= np.linalg.norm(z_cam)
+        world_up = np.array([0.0, 0.0, 1.0])
+        if abs(z_cam @ world_up) > 0.999:      # degenerate straight-down case
+            world_up = np.array([0.0, 1.0, 0.0])
+        x_cam = np.cross(world_up, z_cam)
+        x_cam /= np.linalg.norm(x_cam)
+        y_cam = np.cross(z_cam, x_cam)
+
+        quat = np.zeros(4)
+        mujoco.mju_mat2Quat(quat, np.stack([x_cam, y_cam, z_cam], axis=1).flatten())
+        m.cam_pos[i] = pos
+        m.cam_quat[i] = quat
 
     def observation_noise(self, proprio: np.ndarray, rng: np.random.Generator) -> np.ndarray:
         if not self.cfg.enabled or self.cfg.proprio_noise_std <= 0:
