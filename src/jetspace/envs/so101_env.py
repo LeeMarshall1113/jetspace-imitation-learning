@@ -63,6 +63,25 @@ TIP_SITE = "gripperframe"
 ARM_JOINTS = ("shoulder_pan", "shoulder_lift", "elbow_flex", "wrist_flex", "wrist_roll")
 SUCCESS_RADIUS = 0.04  # metres; also the success criterion in REQUIREMENTS.md
 
+# Feetech STS3215 stall torque by variant, in N-m (kg-cm x 0.0980665).
+#
+# This matters more than it looks. The Menagerie model ships forcerange
+# +/-2.94 N-m, which is the **12 V** variant. The SO-101 follower BOM we
+# recommend buys 6x C001 at 7.4 V, 1:345 gearing -- 19.5 kg-cm, or 1.91 N-m.
+# So the simulated arm is ~1.5x stronger than the one you would order, and a
+# policy trained against it can learn motions the real servos cannot execute.
+#
+# Measured on this model: holding the arm extended horizontally saturates the
+# actuator at 2.94 N-m and still sags 31 degrees. At 1.91 N-m it sags further,
+# and some commanded poses become unreachable rather than merely inaccurate.
+SERVO_TORQUE_NM = {
+    "sts3215_7.4v_1_147": 1.41,   # C046, 14.4 kg-cm
+    "sts3215_7.4v_1_345": 1.91,   # C001, 19.5 kg-cm  <- SO-101 follower default
+    "sts3215_7.4v_1_191": 2.69,   # C044, 27.4 kg-cm
+    "sts3215_12v": 2.94,          # 30 kg-cm; what Menagerie ships
+}
+DEFAULT_SERVO = "sts3215_7.4v_1_345"
+
 # Sampled target volume, in the base frame. Chosen to sit inside the arm's
 # reachable envelope while still requiring all five joints to move.
 TARGET_BOX_LOW = np.array([0.12, -0.22, 0.08])
@@ -81,6 +100,7 @@ class SO101ReachEnv(RobotEnv):
         render: bool = True,
         asset_dir: str | Path = ASSET_DIR,
         randomize: bool | RandomizationConfig = False,
+        servo: str = DEFAULT_SERVO,
     ) -> None:
         import mujoco
 
@@ -96,6 +116,14 @@ class SO101ReachEnv(RobotEnv):
             wrapper.write_text(WRAPPER_XML)
 
         self.model = mujoco.MjModel.from_xml_path(str(wrapper))
+        # Retune the actuators to the servo actually being bought, before the
+        # randomizer snapshots nominal values.
+        if servo not in SERVO_TORQUE_NM:
+            raise ValueError(f"Unknown servo {servo!r}; choose from {sorted(SERVO_TORQUE_NM)}")
+        self.servo = servo
+        torque = SERVO_TORQUE_NM[servo]
+        self.model.actuator_forcerange[:] = np.array([-torque, torque])
+        self.model.actuator_forcelimited[:] = 1
         self.data = mujoco.MjData(self.model)
         self.image_size = image_size
         self.max_steps = max_steps

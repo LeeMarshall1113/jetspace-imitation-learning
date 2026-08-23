@@ -16,7 +16,8 @@ What is randomized here, and which real-world failure each one targets:
 | Distractor objects | A real desk is not empty |
 | Link masses | 3D-print density varies; the CAD model is not the object |
 | Joint damping and friction | Gear slop, cable drag, grease, wear, temperature |
-| Actuator gain | Servo torque varies with voltage and heat |
+| Actuator gain | Servo stiffness varies with voltage and heat |
+| Actuator stall torque | A hot servo on a sagging battery is weaker |
 | Proprioception noise | Serial servos report quantized, slightly wrong angles |
 | Action latency | USB serial round-trip is not instantaneous |
 
@@ -70,6 +71,10 @@ class RandomizationConfig:
     damping_scale_range: tuple[float, float] = (0.6, 1.6)
     frictionloss_scale_range: tuple[float, float] = (0.5, 2.0)
     actuator_gain_scale_range: tuple[float, float] = (0.8, 1.25)
+    # Stall torque falls as the servo heats and as the battery sags. A real
+    # STS3215 late in a session is meaningfully weaker than a cold one on a
+    # bench supply, so never randomize this upward past nominal.
+    actuator_force_scale_range: tuple[float, float] = (0.75, 1.0)
 
     # -- observation and control ----------------------------------------
     proprio_noise_std: float = 0.004     # radians; STS3215 feedback is coarse
@@ -109,6 +114,7 @@ class DomainRandomizer:
             "dof_frictionloss": model.dof_frictionloss.copy(),
             "actuator_gainprm": model.actuator_gainprm.copy(),
             "actuator_biasprm": model.actuator_biasprm.copy(),
+            "actuator_forcerange": model.actuator_forcerange.copy(),
             "cam_pos": model.cam_pos.copy(),
             "cam_quat": model.cam_quat.copy(),
             "light_pos": model.light_pos.copy(),
@@ -138,6 +144,9 @@ class DomainRandomizer:
         gain_scale = u(*c.actuator_gain_scale_range, size=m.nu)
         m.actuator_gainprm[:, 0] = self.nominal["actuator_gainprm"][:, 0] * gain_scale
         m.actuator_biasprm[:, 1] = self.nominal["actuator_biasprm"][:, 1] * gain_scale
+        m.actuator_forcerange[:] = self.nominal["actuator_forcerange"] * u(
+            *c.actuator_force_scale_range
+        )
 
         # -- camera -----------------------------------------------------
         if m.ncam:
