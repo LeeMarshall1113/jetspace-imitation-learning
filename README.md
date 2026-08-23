@@ -8,9 +8,10 @@ demonstrations and improved by reinforcement learning inside the resulting laten
 world model. The objective is a single policy that transfers to held-out variations
 of a task without task-specific retraining.
 
-**Status:** M0 complete (environment verified on AMD/ROCm). M1 complete. M2
-(behavior-cloning baseline) in progress. See [`docs/results.md`](docs/results.md)
-for measured outcomes against every gate.
+**Status:** M0–M2 complete. The behavior-cloning baseline passes its gate at
+**85.7% ± 2.6%** (gate: 70%). M3 — the frozen V-JEPA 2 encoder — is next.
+See [`docs/results.md`](docs/results.md) for measured outcomes against every gate,
+and [`docs/ledger.md`](docs/ledger.md) for the four attempts it took to get there.
 
 <p align="center">
   <img src="docs/media/episodes.gif" alt="SO-101 arm reaching for a target under domain randomization" width="640">
@@ -20,6 +21,14 @@ for measured outcomes against every gate.
 resamples the world: camera viewpoint, lighting, surface colours, clutter, link
 masses, joint friction, servo gain and control latency. Nothing here is a fixed
 scene — that is the point.</em></p>
+
+<p align="center">
+  <img src="docs/media/policy_m2.gif" alt="Trained behavior-cloning policy reaching held-out targets" width="640">
+</p>
+
+<p align="center"><em>The M2 behavior-cloning policy on held-out targets it never
+saw in training — 85.7% ± 2.6% success. Four earlier attempts failed at 24.7%,
+9.3%, 3.7% and 22.0%; <a href="docs/ledger.md">the ledger</a> records why.</em></p>
 
 ---
 
@@ -302,7 +311,7 @@ has been measured and recorded. Full criteria and the evaluation protocol are in
 |----|-----------|-----------|--------|
 | M0 | Environment | `scripts/check_env.py` exits 0 in-container | 3 days |
 | M1 | Teleoperation and dataset | 100+ demonstrations, replay verified, human success 95%+ | Week 1-2 |
-| M2 | Behavior cloning baseline | 70%+ success on held-out target positions | Week 2-3 |
+| M2 | Behavior cloning baseline | 70%+ success on held-out target positions | **PASSED — 85.7%** |
 | M3 | Frozen encoder and action head | 16-step open-loop latent rollout error below baseline | Week 3-5 |
 | M4 | Latent-imagination RL | Beats M2 by 10+ points absolute on identical evaluation | Week 5-8 |
 | M5 | Generalization | 50%+ on unseen distractors, lighting, and camera pose | Open-ended |
@@ -335,14 +344,15 @@ result should be reported as such rather than tuned around.
 - [ ] Human teleop demos (keyboard/gamepad implemented but need a display)
 - [ ] Freeze the evaluation set before any training begins
 
-### M2, behavior cloning baseline — IN PROGRESS
+### M2, behavior cloning baseline — COMPLETE (85.7% ± 2.6%)
 
 - [x] BC policy with an injectable visual encoder (so M3 swaps in V-JEPA cleanly)
 - [x] Training loop with an episode-level train/val split
 - [x] Frozen 100-seed evaluation set (`configs/eval_seeds.json`), leak-checked
 - [x] Evaluator reporting mean and standard deviation across three seeds
-- [ ] Train three seeds and record the result in `docs/results.md`
-- [ ] Decide whether reach clears the 70% gate, or the task needs to be harder
+- [x] Train three seeds and record the result in `docs/results.md`
+- [x] Clears the 70% gate at 85.7% ± 2.6% on the fixed-camera task
+- [ ] Re-measure under wide viewpoint randomization; expect materially lower
 
 ### M3, frozen encoder and action head
 

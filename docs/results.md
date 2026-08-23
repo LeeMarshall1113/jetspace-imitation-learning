@@ -154,53 +154,56 @@ identically-timed trajectories would hide the problem until training.
 
 ## M2 — Behavior cloning baseline
 
-**Status: FAILED THE GATE** (2026-08-22). Recorded rather than tuned around.
+**Status: PASSED** (2026-08-23), on the fourth attempt.
 
-Gate: >=70% success on held-out target positions.
+Gate: >=70% success on held-out target positions, mean over three training seeds.
 
-| Checkpoint | Success | Median closest approach |
-|---|---|---|
-| `bc_seed0.pt` | 7.0% | 15.2 cm |
-| `bc_seed1.pt` | 38.0% | 5.7 cm |
-| `bc_seed2.pt` | 29.0% | 7.6 cm |
-| **Mean** | **24.7% +- 13.0%** | — |
+| Checkpoint | Success | Median closest approach | Val loss |
+|---|---|---|---|
+| `bc_seed0.pt` | 87.0% | 3.9 cm | 0.0779 |
+| `bc_seed1.pt` | 88.0% | 3.9 cm | 0.1712 |
+| `bc_seed2.pt` | 82.0% | 3.9 cm | 0.0827 |
+| **Mean** | **85.7% ± 2.6%** | — | — |
 
-Leak check passed: 0 of 100 eval seeds appear in the training data.
+Dataset: 400 scripted episodes, 100% success, mean 25.8 frames, replay-verified
+to `0.000e+00`. Leak check passed: 0 of 100 eval seeds appear in training data.
+Task is `so101_reach` on the 6-DoF SO-101 at 25 Hz, success radius 4 cm.
 
-### Diagnosis
+### How it got here
 
-Validation loss was tiny (0.00062) while success was 24.7%. That gap is the whole
-story, and the rollout contact sheet makes it visible: **every episode executes the
-same motion regardless of where the target is.** The policy learned one average
-trajectory and ignores the image entirely. It also never terminates — roughly 118
-steps per episode against ~33 for the demonstrations.
+Four attempts, each failing for a different reason. The sequence matters more
+than the final number, because three of the four defects were invisible in the
+loss curve:
 
-Two causes, both defects in how the demonstrations were generated rather than in
-the policy:
+| Attempt | Success | Val loss | What was wrong |
+|---|---|---|---|
+| 1 (2D planar) | 24.7% | 0.00062 | Action depended on unobservable episode time |
+| 2 (3D, absolute actions) | 9.3% | 0.00031 | Absolute targets ~94% "where I already am" |
+| 3 (delta actions) | 3.7% | 0.798 | Encoder used global average pooling |
+| 4 (spatial softmax) | 22.0% | 0.715 | 41.6% of the target was injected noise |
+| **5 (clean labels, 400 demos)** | **85.7%** | **0.078** | — |
 
-1. **The demonstrated action depends on unobservable episode phase.** The scripted
-   expert eases from start pose to IK goal as a function of an internal timestep
-   counter. Early in an episode that action is near the *start* pose and nearly
-   identical across every target, so mean-squared error is minimised by ignoring
-   the target and predicting the average. The target only becomes predictive late
-   in the episode, by which point the policy is off-distribution.
+Two things worth carrying forward.
 
-2. **Exploration noise decays to zero.** The expert injects noise scaled by
-   `(1 - eased)`, so demonstrations cover the start of the trajectory and nothing
-   off the optimal path near the goal. There is no recovery behaviour to imitate,
-   so small errors compound with nothing to correct them.
+**Attempt 3 made the metric worse and was still correct.** Delta actions dropped
+success from 9.3% to 3.7% — but the loss went from a flattering 0.00031 to an
+honest 0.798, and *that* number is what exposed the encoder defect. Reverting on
+the success drop would have restored the bias concealing the real problem.
 
-### Fix
+**Loss and success were decoupled until the last attempt.** Attempts 1 and 2 had
+loss three orders of magnitude lower than the passing run while succeeding a
+quarter as often. Any decision made on validation loss alone would have been
+wrong.
 
-Command the IK goal directly as the action rather than an eased interpolation
-toward it. The position servo already smooths the motion, so the easing bought
-nothing visually and cost the policy its only learnable signal: with a constant
-per-episode goal, image -> action becomes a clean function of the target. Constant
-(not decaying) action noise during collection then supplies off-path coverage.
+### Caveat on what this demonstrates
 
-This is a fix to a genuine defect, not a loosening of the gate. The gate stays at
-70%.
+`reach` has a closed-form solution, and the scripted expert is optimal. 85.7%
+shows the pipeline works end to end — collection, storage, replay, training,
+evaluation, leak-checking. It is **not** evidence about the project's actual
+thesis. Per [`decisions.md`](decisions.md) D2, headline claims come from
+pick-and-place.
 
-**Caveat worth stating:** even once this passes, `reach` has a closed-form
-solution, so a high number here demonstrates that the pipeline works and nothing
-more. See D2 in `decisions.md` — headline claims come from pick-and-place.
+Also note this number is on the **fixed-camera** task. Wide viewpoint
+randomization landed after the run started and is expected to score materially
+lower; measuring that gap is worthwhile in its own right.
+

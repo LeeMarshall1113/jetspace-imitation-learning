@@ -9,7 +9,7 @@ analysis — the section reviewers reward and almost nobody writes.
 
 **The recurring theme:** nearly every entry below is a *silent* failure. The
 code ran, the loss went down, the numbers looked plausible, and the system was
-wrong. Only two of the sixteen threw an exception. The practical lesson is that
+wrong. Only three of the eighteen threw an exception. The practical lesson is that
 "it ran without error" carries almost no information, and the countermeasure is
 to assert on quantities you can independently predict.
 
@@ -220,6 +220,51 @@ hyperparameters. Global average pooling and spatial reasoning are mutually
 exclusive by construction.
 
 ---
+
+### L5 — Exploration noise was labelled as well as executed
+**Silent?** Yes. Success **22.0% ± 8.6%**, loss stuck at 0.715. **Cost:** ~20 min.
+Constant action noise was added to fix L2 (no off-path recovery states) — correct
+— but the *noisy* action was recorded as the training label.
+**Diagnosed by** computing the noise floor directly: injected noise accounted for
+**41.6% of the target's variance**, putting a hard floor of ~0.416 under a
+normalised loss that could otherwise reach 0. Per joint it was worse — joints 4
+and 5 measured **over 100%** noise-to-signal, because the gripper is not in the
+IK objective at all, so its entire demonstrated delta was noise.
+**Fix:** execute the noise, label the clean action. The perturbation still
+supplies off-path states; supervision is on what the expert meant.
+**Result:** 22.0% → **85.7% ± 2.6%**, loss 0.715 → 0.078. M2 gate passed.
+**Lesson:** when a loss plateaus, compute what the *irreducible* floor is before
+assuming the model is at fault. Half of that plateau was a number I put there.
+
+### L6 — Splitting label from executed action broke replay verification
+**Silent?** No — the gate caught it, at 4.0 rad on every episode. **Cost:** ~10 min.
+Fixing L5 meant the dataset stored the clean label while the trajectory came from
+executing the noisy action, so replaying labels could not reproduce it.
+**Fix:** record both — `action` to learn from, `action_executed` to replay.
+**Lesson:** the second time a verification gate caught something that would
+otherwise have shipped silently (see D2). Gates that check a property you can
+independently predict keep paying for themselves.
+
+---
+
+## What the M2 sequence showed
+
+Four failed attempts, each for a different reason, and the pattern is worth more
+than any individual fix:
+
+| Attempt | Success | Val loss | Defect |
+|---|---|---|---|
+| 1 | 24.7% | 0.00062 | Action depended on unobservable time |
+| 2 | 9.3% | 0.00031 | Absolute targets drowned the signal |
+| 3 | 3.7% | 0.798 | Encoder discarded position |
+| 4 | 22.0% | 0.715 | 41.6% of target was injected noise |
+| 5 | **85.7%** | **0.078** | — |
+
+**Validation loss and task success were anticorrelated for three of five
+attempts.** The two lowest losses in the whole table belong to the two *worst*
+policies. Any decision made on loss alone would have been wrong, and the fix that
+looked worst by both metrics at once (attempt 3) was the one that unblocked
+everything.
 
 ## Open
 
