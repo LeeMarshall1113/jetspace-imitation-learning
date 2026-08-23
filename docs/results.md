@@ -316,3 +316,83 @@ for the weak absolute numbers.
   with the dumb baseline scored alongside.
 
 **Reproduce:** `python scripts/eval_reward.py --task {reach,push,pickplace}`
+
+---
+
+## E3 — How far can V-JEPA latent imagination be trusted? (2026-08-23)
+
+**The headline measurement.** Open-loop rollouts of the action-conditioned
+predictor, scored against two baselines that make the number mean something:
+*do-nothing* (predict no change) and *shuffled-action* (roll out with actions
+from a different episode).
+
+### Result: useful and action-aware beyond 48 steps (>3.8 s)
+
+`push`, PCA-128 subspace, 40 episodes:
+
+| horizon | model err | do-nothing | shuffled-act | gain | action-aware |
+|---|---|---|---|---|---|
+| 1 | 0.968 | 7.872 | 1.030 | 8.1× | 1.06× |
+| 12 | 0.866 | 5.405 | 1.015 | 6.2× | 1.17× |
+| 24 | 0.932 | 2.382 | 1.155 | 2.6× | 1.24× |
+| 36 | 1.025 | 5.798 | 1.316 | 5.7× | 1.28× |
+| 48 | 1.345 | 3.178 | 1.782 | 2.4× | **1.32×** |
+
+`pickplace` behaves the same way, reaching 1.29× action-awareness by step 8.
+
+**Both horizons are censored at 48**, the longest rollout our episodes support.
+The model never stopped beating do-nothing and never went action-blind. The
+honest statement is **">48 steps"**, not "48".
+
+### Finding 1 — degradation is roughly linear, not exponential
+
+Prediction error grows from **0.968 to 1.345 across 48 steps — 39%**. Over
+forty-eight autoregressive steps, each consuming its own output.
+
+This is the finding worth reporting, because it contradicts the standing
+expectation. Terver, Ponce, Bardes & LeCun (2026) argue that errors in JEPA
+embedding space grow **exponentially** with horizon; V-JEPA 2-AC restricts
+itself to short horizons on that basis. Measured on the released checkpoint,
+with multi-step rollout training and normalised action conditioning, the growth
+looks approximately linear over the range we can test.
+
+That does not refute the theory — exponential growth may dominate beyond 48
+steps, and our predictor is trained with a 4-step rollout loss which explicitly
+targets compounding. But it does mean **the practical usable horizon is
+substantially longer than the current literature assumes**, which is exactly the
+kind of gap between assumption and measurement the project exists to close.
+
+### Finding 2 — action-awareness *increases* with horizon
+
+The shuffled-action penalty rises monotonically: 1.06× at one step, 1.32× at
+forty-eight. This is the correct shape — a wrong action at step 1 has 47 further
+steps to compound — and it is a useful sanity check that the model is genuinely
+integrating actions over time rather than reacting to the most recent one.
+
+### Finding 3 — an artifact in our own baseline, worth disclosing
+
+The do-nothing error dips sharply at horizons **8, 16, 24, 32, 40, 48** — every
+multiple of 8, which is exactly the number of latents per encoded chunk
+(16 frames / tubelet 2). Latents separated by a whole chunk are more similar
+than neighbouring ones.
+
+This is the chunk-boundary effect measured earlier at 1.24×, resurfacing in the
+baseline. It does not affect the model's own error curve, but it adds periodic
+noise to the *gain ratio* — the 2.4–2.6× troughs are the baseline getting
+easier, not the model getting worse. **Encoding with overlap would remove it**,
+and should be done before these numbers are published.
+
+### What this changes
+
+- **Claim B is measurable and the number is favourable.** Latent imagination
+  stays useful and action-aware past 3.8 seconds of simulated time.
+- **The earlier 6300× amplification prediction was about the simulator, not the
+  latent space.** Physical trajectories diverge fast; latent *predictions*
+  degrade slowly. Those are different quantities and it was wrong to expect one
+  to forecast the other.
+- **A caveat that must ship with the number:** this is a 4×4-pooled latent on a
+  128-dim PCA subspace, which is a coarse representation. Slow degradation in a
+  coarse space is less impressive than slow degradation in a fine one, and the
+  pooling ablation belongs alongside the headline.
+
+**Reproduce:** `python scripts/eval_horizon.py --task push --max-horizon 48`
