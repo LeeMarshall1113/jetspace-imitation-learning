@@ -21,23 +21,40 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from jetspace.data.episode import EpisodeDataset  # noqa: E402
-from jetspace.envs.so101_env import SO101ReachEnv  # noqa: E402
+from jetspace.envs.registry import get_task  # noqa: E402
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--data", default="data/episodes/so101_reach")
+    ap.add_argument("--task", default=None,
+                    help="defaults to the task recorded in the dataset's info.json")
+    ap.add_argument("--data", default=None)
     ap.add_argument("--limit", type=int, default=0, help="check only the first N episodes")
     ap.add_argument("--tol", type=float, default=1e-6,
                     help="max allowed proprio deviation; replay should be exact")
     args = ap.parse_args()
+    if args.data is None:
+        args.data = f"data/episodes/{args.task or 'pickplace'}"
 
     ds = EpisodeDataset(args.data)
     if len(ds) == 0:
         print(f"No episodes in {args.data}")
         return 1
 
-    env = SO101ReachEnv(image_size=ds.info["image_size"], max_steps=10_000)
+    # Rebuild the environment the episodes were RECORDED in, from the dataset's
+    # own metadata rather than from a default. Getting either of these wrong
+    # makes every episode look non-reproducible when the data is fine:
+    #   * task     - replaying push episodes in the reach env compares two
+    #                different robots and reports metres of deviation.
+    #   * randomize - domain randomization changes masses, friction, actuator
+    #                gain and control latency per episode. Replaying randomized
+    #                episodes in a nominal world is a different simulation.
+    task = args.task or ds.info.get("task", "pickplace")
+    randomized = bool(ds.info.get("randomized", False))
+    print(f"replaying as task={task!r}, randomize={randomized}")
+    env = get_task(task)["env"](
+        image_size=ds.info["image_size"], max_steps=10_000, randomize=randomized
+    )
     n = len(ds) if args.limit <= 0 else min(args.limit, len(ds))
 
     worst = 0.0
