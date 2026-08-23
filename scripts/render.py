@@ -94,15 +94,16 @@ def expert_frames(n: int, max_steps: int, task: str = "pickplace") -> list[np.nd
     """Scripted-expert rollouts in the randomized world, for visual inspection."""
     from jetspace.envs.registry import get_task
 
-    env = SO101ReachEnv(image_size=224, max_steps=max_steps, randomize=True)
-    rng = np.random.default_rng(0)
+    spec = get_task(task)
+    env = spec["env"](image_size=224, max_steps=max_steps, randomize=True)
+    expert = spec["expert"](env, np.random.default_rng(0))
     out = []
     for i in range(n):
         obs = env.reset(seed=900_000_000 + i)
-        frames, done = [obs.pixels["front"]], False
+        expert.reset(env)
+        frames, done = [obs.pixels[env.camera_names[0]]], False
         while not done:
-            action = env.ik_step(env.target_pos) + rng.normal(0, 0.015, size=env.action_dim)
-            result = env.step(action)
+            result = env.step(expert.act(obs))
             obs = result.obs
             frames.append(obs.pixels[env.camera_names[0]])
             done = result.terminated or result.truncated

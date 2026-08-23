@@ -427,4 +427,13 @@ class PickPlaceExpert:
         cmd = env.ik_step(target)
         cmd[-1] = gripper  # gripper is the last actuator, not driven by IK
         self.label = cmd
-        return cmd + self.rng.normal(0.0, self.noise, size=cmd.shape)
+
+        # Perturb the ARM only. The gripper is effectively a discrete
+        # open/closed decision, and jitter on it is not exploration -- at
+        # GRIPPER_CLOSED the jaws sit ~18 mm apart around a 22 mm cube, so a few
+        # hundredths of a radian of noise opens them enough to drop the payload.
+        # Measured: 0.015 rad of noise on all six channels took the expert from
+        # 15/20 to 1/6.
+        noisy = cmd + self.rng.normal(0.0, self.noise, size=cmd.shape)
+        noisy[-1] = cmd[-1]
+        return noisy
