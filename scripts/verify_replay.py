@@ -28,7 +28,8 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", default="data/episodes/so101_reach")
     ap.add_argument("--limit", type=int, default=0, help="check only the first N episodes")
-    ap.add_argument("--tol", type=float, default=1e-4, help="max allowed proprio deviation")
+    ap.add_argument("--tol", type=float, default=1e-6,
+                    help="max allowed proprio deviation; replay should be exact")
     args = ap.parse_args()
 
     ds = EpisodeDataset(args.data)

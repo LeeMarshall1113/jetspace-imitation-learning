@@ -57,7 +57,12 @@ class EpisodeBuffer:
         for cam, frame in pixels.items():
             self.pixels.setdefault(cam, []).append(np.asarray(frame, dtype=np.uint8))
         self.proprio.append(np.asarray(proprio, dtype=np.float32))
-        self.action.append(np.asarray(action, dtype=np.float32))
+        # Actions are stored float64, deliberately. Quantizing to float32 costs
+        # ~3e-08 rad, which the dynamics amplify ~6300x over a 17-step episode
+        # to ~2e-04 rad -- enough to break exact replay verification. Actions are
+        # a rounding error in the byte budget next to 224x224x3 images, so there
+        # is no reason to lose the precision.
+        self.action.append(np.asarray(action, dtype=np.float64))
         self.reward.append(float(reward))
         self.success.append(bool(success))
 
