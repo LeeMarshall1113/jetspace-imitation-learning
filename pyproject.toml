@@ -26,6 +26,9 @@ dependencies = [
     "opencv-python-headless>=4.10",
     "tqdm>=4.66",
     "pygame>=2.6",            # gamepad teleop
+    "pandas>=2.0",            # LeRobot parquet episodes
+    "pyarrow>=15.0",
+    "huggingface-hub[hf-transfer]>=0.24",
 ]
 
 [project.optional-dependencies]
