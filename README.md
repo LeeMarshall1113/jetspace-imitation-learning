@@ -382,6 +382,8 @@ result should be reported as such rather than tuned around.
 |----------|----------------|
 | [`REQUIREMENTS.md`](REQUIREMENTS.md) | Success gates, compute budget, milestones, non-goals |
 | [`docs/results.md`](docs/results.md) | Measured outcomes against each gate — numbers only |
+| [`docs/literature-review.md`](docs/literature-review.md) | Six adversarial novelty audits: what was searched, found, and what it changed |
+| [`docs/novelty-upgrade.md`](docs/novelty-upgrade.md) | The sim-to-real latent-gap measurements, and a confound to settle first |
 | [`docs/paper.md`](docs/paper.md) | Paper plan: candidate claims, required experiments, open decisions |
 | [`docs/task-hierarchy.md`](docs/task-hierarchy.md) | Task levels, what transfers between them, and the experiment that tests the thesis |
 | [`docs/ledger.md`](docs/ledger.md) | Every failure mode hit, how it was diagnosed, what fixed it |

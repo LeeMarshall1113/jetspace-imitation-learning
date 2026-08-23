@@ -396,3 +396,42 @@ and should be done before these numbers are published.
   pooling ablation belongs alongside the headline.
 
 **Reproduce:** `python scripts/eval_horizon.py --task push --max-horizon 48`
+
+---
+
+## E3b — Conservatism check: is the slow error growth real? (2026-08-23)
+
+**Verdict: PASSES. The headline survives.**
+
+E3's linear-not-exponential result invited an obvious objection: our predictor
+has a zero-initialised output projection and trains with a multi-step rollout
+loss, both biasing it toward small updates. A model that *under-predicts motion*
+stays near its starting latent — where the do-nothing baseline lives — so both
+errors grow together and the gain ratio stays flat. That would look like a stable
+world model and be a model that has learned to sit still.
+
+Measured: how far the model moves against how far reality moves, plus the cosine
+between predicted and true displacement.
+
+| Task | displacement ratio | direction cosine |
+|---|---|---|
+| push | **0.924** | 0.896 |
+| reach | **0.908** | 0.848 |
+
+The model moves ~91% as far as reality, in roughly the right direction. **Slow
+error growth reflects accuracy, not standing still.**
+
+### A sharper characterisation of how it degrades
+
+At the longest horizon tested the two measures come apart: displacement ratio
+holds (0.85–0.93) while **direction cosine collapses (0.699 push, 0.646 reach)**.
+
+The model does not stop predicting motion as the horizon grows — it starts
+predicting the *wrong* motion. **Degradation is directional, not magnitudinal.**
+
+That is a more precise and more useful statement than "error grows", and it
+suggests the right uncertainty signal for adaptive gating is directional
+disagreement between ensemble members rather than variance in magnitude — which
+directly shapes E4.
+
+**Reproduce:** `python scripts/check_conservatism.py --task push`
