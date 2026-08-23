@@ -175,7 +175,7 @@ class SO101PushEnv(RobotEnv):
     def goal_error(self) -> float:
         return float(np.linalg.norm(self.puck_pos[:2] - self.goal_pos[:2]))
 
-    def ik_step(self, target: np.ndarray, damping: float = 0.08, gain: float = 0.30) -> np.ndarray:
+    def ik_step(self, target: np.ndarray, damping: float = 0.08, gain: float = 0.10) -> np.ndarray:
         jacp = np.zeros((3, self.model.nv))
         self._mj.mj_jacSite(self.model, self.data, jacp, None, self.tip_id)
         J = jacp[:, self.arm_dofs]
@@ -284,7 +284,7 @@ class PushExpert:
     what behavior cloning needs (see docs/ledger.md L1).
     """
 
-    STANDOFF = 0.055    # how far behind the puck to line up
+    STANDOFF = 0.045    # how far behind the puck to line up
     LIFT = 0.055        # hover height while repositioning
 
     def __init__(self, env: SO101PushEnv, rng: np.random.Generator, noise: float = 0.012):
@@ -307,14 +307,19 @@ class PushExpert:
 
         behind = puck[:2] - direction * self.STANDOFF
         # Am I on the correct side of the puck to push it toward the goal?
-        lined_up = np.dot(tip[:2] - puck[:2], direction) < -0.02 and (
-            np.linalg.norm(tip[:2] - behind) < 0.035
+        lined_up = np.dot(tip[:2] - puck[:2], direction) < -0.015 and (
+            np.linalg.norm(tip[:2] - behind) < 0.025
         )
 
         if lined_up:
-            # Aim past the goal so contact is maintained through the push
-            # rather than stopping the instant the puck starts moving.
-            target = np.array([*(puck[:2] + direction * (dist + 0.04)), PUCK_HEIGHT])
+            # Nudge THROUGH the puck by a small fixed step, not toward the goal.
+            #
+            # Aiming at the goal commands a large IK error, the arm accelerates
+            # to cover it, and a 30 g puck on 0.6 friction simply skids: an
+            # earlier version sent it 75 cm off-target. A short step keeps
+            # contact speed low, and the controller re-plans every tick anyway,
+            # so many small pushes beat one big one.
+            target = np.array([*(puck[:2] + direction * 0.035), PUCK_HEIGHT])
         elif np.dot(tip[:2] - puck[:2], direction) > -0.02:
             # Wrong side: lift over the puck before circling, or the approach
             # knocks it further away.
