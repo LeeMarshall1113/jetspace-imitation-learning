@@ -8,9 +8,18 @@ demonstrations and improved by reinforcement learning inside the resulting laten
 world model. The objective is a single policy that transfers to held-out variations
 of a task without task-specific retraining.
 
-**Status:** M0 complete (environment verified on AMD/ROCm). M1 in progress —
-dataset pipeline built and replay-verified; human demos outstanding. No models
-are trained yet. See [`docs/results.md`](docs/results.md) for measured outcomes.
+**Status:** M0 complete (environment verified on AMD/ROCm). M1 complete. M2
+(behavior-cloning baseline) in progress. See [`docs/results.md`](docs/results.md)
+for measured outcomes against every gate.
+
+<p align="center">
+  <img src="docs/media/episodes.gif" alt="SO-101 arm reaching for a target under domain randomization" width="640">
+</p>
+
+<p align="center"><em>The SO-101 reaching for the green target. Every episode
+resamples the world: camera viewpoint, lighting, surface colours, clutter, link
+masses, joint friction, servo gain and control latency. Nothing here is a fixed
+scene — that is the point.</em></p>
 
 ---
 
@@ -207,8 +216,14 @@ Both write into `renders/`:
 The contact sheet is the more useful of the two. A video shows one run; the grid
 shows twenty at once, which is how you notice that the arm always drifts one way,
 or that a whole cluster of target positions never gets reached. It has already
-paid for itself once — it is what revealed the camera was mounted nearly edge-on
-to the arm's plane of motion, foreshortening the entire workspace into a bar.
+paid for itself twice — it revealed that the camera was mounted nearly edge-on to
+the arm's plane of motion, and later that a trained policy was executing the same
+motion regardless of where the target was.
+
+![Contact sheet: four episodes, time running left to right](docs/media/contact_sheet.png)
+
+One row per episode, time left to right. Note that no two rows share a lighting
+setup, a viewpoint, or the same clutter.
 
 ## Verifying the installation
 
