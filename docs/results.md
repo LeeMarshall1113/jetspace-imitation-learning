@@ -207,3 +207,38 @@ Also note this number is on the **fixed-camera** task. Wide viewpoint
 randomization landed after the run started and is expected to score materially
 lower; measuring that gap is worthwhile in its own right.
 
+---
+
+## Task environments (scripted expert baselines)
+
+Expert success is not a result — it bounds how much collection time a dataset
+costs, since only successful episodes are kept. Recorded so a later drop is
+visible as a regression rather than absorbed as noise.
+
+| Task | Level | Expert (clean) | Expert (randomized) | Notes |
+|---|---|---|---|---|
+| `reach` | 0 | ~100% | — | Closed-form; pipeline validation only |
+| `push` | 1 | 13/20 (65%) | — | Non-prehensile; was 3/20 before gentler contact |
+| `pickplace` | 2 | 15/20 (75%) | ~50% | Lifts 12.6 cm, places within 1.1 cm |
+
+---
+
+## M3 — Frozen encoder (in progress)
+
+Encoder loads and runs on the target machine. Two measurements worth recording
+before any training:
+
+| Quantity | Measured | Note |
+|---|---|---|
+| Model | `facebook/vjepa2-vitl-fpc64-256` | 326M params, hidden 1024, patch 16, tubelet 2 |
+| VRAM after load | **0.65 GB** | of 15.9 |
+| Peak VRAM (encode) | **0.79 GB** | of 15.9 |
+| Throughput | **~5.2 frames/s** | ~2 h to cache 400 episodes |
+| Latent shape | `(T/2, 4, 4, 1024)` | grid-pooled, not point-pooled |
+| Storage | 64 KB per frame-pair (float32) | 32 KB at float16 |
+
+**This corrects a load-bearing assumption.** Every planning document treated the
+16 GB budget as M3's main risk. Peak is 0.79 GB — off by an order of magnitude,
+because the estimate assumed the 1.2B ViT-g variant rather than the 326M ViT-L
+actually chosen. The binding constraint is encoder throughput, not memory. See
+ledger M1.
