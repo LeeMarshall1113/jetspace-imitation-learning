@@ -12,6 +12,16 @@ of a task without task-specific retraining.
 dataset pipeline built and replay-verified; human demos outstanding. No models
 are trained yet. See [`docs/results.md`](docs/results.md) for measured outcomes.
 
+<p align="center">
+  <img src="docs/media/episodes.gif" alt="SO-101 arm reaching for a target under domain randomization" width="640">
+</p>
+
+<p align="center"><em>The SO-101 reaching for the green target. Every episode
+resamples the world: camera viewpoint, lighting, surface colours, clutter, link
+masses, joint friction, servo gain and control latency. Nothing here is a fixed
+scene — that is the point.<br>
+Recorded on <code>feat/m2-behavior-cloning</code>, which is ahead of this branch.</em></p>
+
 ---
 
 ## Table of contents
