@@ -45,10 +45,27 @@ def load_pairs(task: str, data: Path, lat_dir: Path, horizon: int):
             continue
         z = np.load(f).astype(np.float32)               # (T', g, g, hidden)
         z = z.reshape(z.shape[0], -1, z.shape[-1])      # (T', tokens, hidden)
-        a = ds[i]["action"].astype(np.float32)          # (T, adim)
-        # Latents are at 1/frames_per_latent temporal resolution: pair latent k
-        # with the action that was executed to produce it.
-        a = a[:: fpl][: len(z)]
+        ep = ds[i]
+        raw_a = ep["action"].astype(np.float32)         # (T, adim) absolute targets
+        qpos = ep["proprio"].astype(np.float32)[:, : raw_a.shape[1]]
+
+        # Condition on the commanded DISPLACEMENT, not the absolute joint target.
+        #
+        # Measured, and this is the reason E3's first run produced an
+        # action-blind world model: absolute targets are ~94% "where the arm
+        # already is", and the arm's configuration is plainly visible in z_t. So
+        # the action carries almost no information the observation does not
+        # already have, and a shuffled action from another episode is still a
+        # plausible-looking joint configuration. The model correctly learned to
+        # ignore it -- shuffled actions scored within 1% of correct ones.
+        #
+        # This is ledger L3 for the third time, at a third level of the stack.
+        delta = raw_a - qpos
+
+        # One latent step spans `fpl` control steps, so sum the displacements
+        # commanded across that window rather than discarding half of them.
+        usable = (len(delta) // fpl) * fpl
+        a = delta[:usable].reshape(-1, fpl, delta.shape[1]).sum(axis=1)[: len(z)]
         if len(z) < horizon + 1 or len(a) < horizon + 1:
             continue
         for t in range(len(z) - horizon):

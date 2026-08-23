@@ -81,7 +81,15 @@ def main() -> int:
             continue
         z = np.load(f).astype(np.float32)
         z = z.reshape(z.shape[0], -1, z.shape[-1])
-        a = ds[i]["action"].astype(np.float32)[::fpl][: len(z)]
+        # Must match train_predictor.load_pairs exactly: commanded displacement,
+        # summed across the tubelet window. Any mismatch here silently evaluates
+        # the model on inputs it was never trained on.
+        ep = ds[i]
+        raw_a = ep["action"].astype(np.float32)
+        qpos = ep["proprio"].astype(np.float32)[:, : raw_a.shape[1]]
+        delta = raw_a - qpos
+        usable = (len(delta) // fpl) * fpl
+        a = delta[:usable].reshape(-1, fpl, delta.shape[1]).sum(axis=1)[: len(z)]
         if len(z) >= H + 1 and len(a) >= H + 1:
             loaded.append((z, a))
         if len(loaded) >= args.episodes:
