@@ -27,6 +27,71 @@ Write this first. If it cannot be written, the experiment is not designed yet.
 Every blank is a number the experiment must produce. If an experiment produces
 no blank in this paragraph, it is not on the critical path.
 
+## 1b. Strategy — DECIDED: a portfolio of independent advances (2026-08-23)
+
+**Go later and deeper, with two or three advances rather than one, so a single
+failure does not take the paper with it.**
+
+This overrides the earlier "ship fast and thin" recommendation, and the tradeoff
+is real in both directions:
+
+| | Ship fast, one claim | Ship later, three claims |
+|---|---|---|
+| Risk if the claim fails | **Total** | Contained |
+| Risk from competition | Low — beats the field | **Higher — every close competitor is dated Mar–Jun 2026** |
+| Reviewer read | Thin | Substantial |
+
+The competition risk is not hypothetical: AtomVLA (Mar), AHEAD (Jun), FF-JEPA
+(Jun), Dreamer-CDP (Mar), VT-WM (Feb). The gap narrows monthly. Accepting that
+in exchange for robustness is a legitimate call, but it should be made with the
+cost visible.
+
+### The portfolio only works if the advances are INDEPENDENT
+
+This is the part that decides whether the strategy pays off. Three claims that
+share a failure point are not diversification — they are one claim with three
+names. Assessed honestly:
+
+| # | Advance | Depends on | Fails if | Status |
+|---|---|---|---|---|
+| **1** | **Horizon characterisation + adaptive gating.** How far V-JEPA latent imagination stays accurate and action-aware, and using ensemble disagreement to set the horizon per state. | The world model working at all | Rollouts turn out uniformly reliable or uniformly useless | **E3 done (>48 steps, action-aware)**; E4 not started |
+| **2** | **Interface failure taxonomy.** Four measured defects in bolting a trained head onto a frozen model — absolute vs delta actions (twice), pooling that destroys position, unnormalised conditioning — each invisible to every standard metric. | **Nothing.** Already measured | Cannot fail; the defects are recorded and reproducible | **~80% done.** Costs writing, not compute |
+| **3** | **Data efficiency across tasks.** Demonstrations needed for a new task as a function of prior tasks, with the three-curve control. | Transfer existing at all | Curves come out flat | Not started |
+
+**1 and 3 are genuinely independent** — different experiments, different failure
+modes. **2 is independent of both**, because it is a finding about the
+engineering interface rather than about whether the world model is any good. If
+claims 1 and 3 both collapse, claim 2 still stands on its own.
+
+That makes this a real portfolio rather than a correlated bet.
+
+### Claim 2 is the underrated one
+
+It is the cheapest and the most certain, and it is nearly finished. Four defects,
+each measured, each reproducible, each of which **passed every conventional
+check**:
+
+- A world model beating its baseline 4x while completely ignoring its actions
+- A policy with 0.0003 validation loss that had learned to echo proprioception
+- An encoder returning bit-identical output for targets in different places
+- A 30x scale mismatch that three architectural fixes chased in the wrong place
+
+The unifying claim — *when a small trained head is attached to a large frozen
+model, failures cluster in the interface, and standard metrics do not reveal
+them* — is directly useful to everyone building on V-JEPA, AtomVLA, FF-JEPA or
+PiJEPA. It requires no further compute.
+
+### Consequence for sequencing
+
+Ordered by certainty per unit of remaining work:
+
+1. **Claim 2** — write it up now, while the diagnoses are fresh. Cheapest.
+2. **Claim 1** — finish E4, the ensemble and adaptive gating. E3 already landed.
+3. **Claim 3** — E5, the most expensive and most likely to come back flat.
+
+Doing them in this order means that at any point where time runs out, what
+exists is publishable.
+
 ## 2. Candidate claims
 
 Three, in descending novelty and ascending safety. **Exactly one should be the
