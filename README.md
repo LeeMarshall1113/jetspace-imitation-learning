@@ -261,12 +261,15 @@ result should be reported as such rather than tuned around.
 - [x] Record the result in [`docs/results.md`](docs/results.md)
 - [ ] Benchmark throughput (MuJoCo steps/sec, training step time) for a baseline
 
-### M1, teleoperation and dataset
+### M1, teleoperation and dataset — IN PROGRESS
 
-- [ ] Implement gamepad teleoperation for the MuJoCo reach task
-- [ ] Implement a LeRobot-compatible dataset writer
-- [ ] Collect 100 or more demonstrations and verify replay fidelity
-- [ ] Freeze the 100-episode evaluation set before any training begins
+- [x] Dataset writer and loader (`src/jetspace/data/episode.py`)
+- [x] Scripted expert, keyboard and gamepad teleop (`scripts/collect_demos.py`)
+- [x] Collect 100 demonstrations — 100% success, 23-42 frames each
+- [x] Verify replay fidelity (`scripts/verify_replay.py`) — 100/100, max
+      deviation 5.5e-06
+- [ ] Human teleop demos (keyboard/gamepad implemented but need a display)
+- [ ] Freeze the evaluation set before any training begins
 
 ### M2, behavior cloning baseline
 

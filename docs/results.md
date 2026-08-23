@@ -93,7 +93,64 @@ capturing before M2, so later performance claims have a baseline.
 
 ## M1 — Teleoperation and dataset
 
-Not started.
+**Status: PARTIAL** (2026-08-22). Pipeline complete and verified; the dataset is
+currently **scripted, not human**.
+
+Gate: >=100 demonstrations, replay verified, human success >=95%.
+
+| Gate component | Status |
+|---|---|
+| >=100 demonstrations | Met — 100 episodes |
+| Replay verified | Met — 100/100, worst deviation 5.48e-06 |
+| **Human** success >=95% | **Not met** — demos are from the scripted expert |
+
+```
+data/episodes/reach
+  task            reach @ 50 Hz
+  episodes        100
+  success rate    100.0%
+  length          min 23  max 42  mean 33.2 frames
+  duration        0.46-0.84 s
+  size on disk    36 MB
+
+Checked 100/100 episodes
+  worst proprio deviation: 5.484e-06  (tolerance 1e-04)
+  PASS: all replayed episodes match their recorded trajectories
+```
+
+Replay deviation is nonzero but ~5e-06 because proprio is stored as float32
+while the simulator integrates in float64. That is storage precision, not
+nondeterminism.
+
+Episode lengths vary by roughly 2x (23-42 frames) because the scripted expert
+randomises its pacing and IK branch. That variation is deliberate: it is the
+temporal incoherence Balaguer & Carpin treat explicitly, and a dataset of
+identically-timed trajectories would hide the problem until training.
+
+### Still required for M1
+
+- [ ] Human teleoperation demos. `--policy keyboard` and `--policy gamepad` are
+      implemented but need a display, so they have not been exercised headless.
+- [ ] Decide whether `reach` needs human demos at all. The scripted expert is
+      optimal here, so human data adds little; the honest options are to collect
+      human demos anyway as a pipeline rehearsal, or to defer them to the first
+      task where human strategy actually matters.
+
+### Two defects found by running it
+
+1. **The MJCF silently clamped the arm to a 6-degree sweep.** MuJoCo's MJCF
+   defaults to degrees, so `range="-3.14 3.14"` compiled to +/-3.14 degrees.
+   Every scripted demo failed while the IK was provably exact (FK error 0.00000).
+   No error, no warning: force decomposition showed `qfrc_constraint` exactly
+   cancelling `qfrc_actuator` with two `mjCNSTR_LIMIT_JOINT` constraints active.
+   A gain/damping sweep confirmed no tuning could have fixed it — steady-state
+   error scaled as 1/kp and damping had no effect at all, because the balance was
+   static rather than dynamic.
+
+2. **Containers ran as root**, making every written file root-owned and
+   undeletable by the host user. Now fixed via `user:` in compose, with HOME and
+   HF_HOME relocated into the repo since that UID has no home directory in the
+   image.
 
 ## M2 — Behavior cloning baseline
 
