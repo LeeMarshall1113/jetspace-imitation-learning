@@ -134,12 +134,20 @@ class SO101ReachEnv(RobotEnv):
         proprio = np.concatenate([self.data.qpos, self.data.qvel]).astype(np.float32)
         return Observation(pixels=pixels, proprio=proprio, extra={"dist": self._dist()})
 
-    def ik_step(self, target: np.ndarray, damping: float = 0.08) -> np.ndarray:
+    def ik_step(
+        self, target: np.ndarray, damping: float = 0.08, gain: float = 0.12
+    ) -> np.ndarray:
         """One damped-least-squares IK step toward `target`.
 
         Returns joint positions, not a delta. A 6-DoF arm has no closed-form
         solution worth hand-writing, and DLS degrades gracefully near
         singularities where a plain pseudoinverse blows up.
+
+        `gain` scales the correction. Taking the full DLS solution each control
+        step converges in 2-8 steps, which produces episodes too short to
+        contain a trajectory -- the arm simply snaps to the answer and there is
+        nothing for a policy to imitate. A partial step yields an approach over
+        roughly 30-50 steps, which is a demonstration.
         """
         jacp = np.zeros((3, self.model.nv))
         self._mj.mj_jacSite(self.model, self.data, jacp, None, self.tip_id)
@@ -148,7 +156,7 @@ class SO101ReachEnv(RobotEnv):
         dq = J.T @ np.linalg.solve(J @ J.T + damping**2 * np.eye(3), err)
 
         q = self.data.qpos.copy()
-        q[self.arm_dofs] += dq
+        q[self.arm_dofs] += gain * dq
         low, high = self.model.jnt_range[:, 0], self.model.jnt_range[:, 1]
         return np.clip(q, low, high)
 
