@@ -132,24 +132,39 @@ def main() -> int:
     # --- 2. Nearest-other-demo goal. This is the reward we actually propose:
     #        the goal comes from a DIFFERENT demonstration, which is what makes
     #        it usable on a new rollout that has no endpoint of its own yet.
-    print("\ndistance to the NEAREST OTHER demo's final latent (the proposed reward):")
-    per_ep = []
-    for i, z in enumerate(latents):
-        others = np.delete(goals_arr, i, axis=0)
-        # Nearest by the trajectory's own endpoint, as the reward would do.
-        j = int(np.argmin(np.linalg.norm(others - z[-1], axis=1)))
-        d = np.linalg.norm(z - others[j], axis=1)
-        per_ep.append(progress_stats(d))
-    results["nearest/V-JEPA latent"] = summarise("V-JEPA latent", per_ep)
+    #
+    #        ALL THREE representations run here, not just the latent. The first
+    #        version compared latents cross-episode against pixels only
+    #        within-episode, which is not a comparison: within an episode the
+    #        image trivially approaches its own final frame as the arm settles,
+    #        so pixel distance looks excellent for a reason that says nothing
+    #        about whether it would transfer to an unseen rollout.
+    print("\ndistance to the NEAREST OTHER demo's final state (the proposed reward):")
+    for label, seqs in (
+        ("V-JEPA latent", latents),
+        ("raw pixels", pixels),
+        ("proprioception", proprios),
+    ):
+        ends = np.stack([seq[-1] for seq in seqs])
+        per_ep = []
+        for i, seq in enumerate(seqs):
+            others = np.delete(ends, i, axis=0)
+            # Nearest by the trajectory's own endpoint, as the reward would do.
+            j = int(np.argmin(np.linalg.norm(others - seq[-1], axis=1)))
+            d = np.linalg.norm(seq - others[j], axis=1)
+            per_ep.append(progress_stats(d))
+        results[f"nearest/{label}"] = summarise(label, per_ep)
 
     # --- Verdict
     self_rho = results["self/V-JEPA latent"]["spearman_t_vs_dist"]
     px_rho = results["self/raw pixels"]["spearman_t_vs_dist"]
     near_rho = results["nearest/V-JEPA latent"]["spearman_t_vs_dist"]
+    near_px = results["nearest/raw pixels"]["spearman_t_vs_dist"]
 
     print("\n" + "=" * 66)
-    print(f"latent rho (self)    {self_rho:+.3f}   pixel rho {px_rho:+.3f}   "
-          f"latent rho (nearest) {near_rho:+.3f}")
+    print(f"WITHIN-episode : latent {self_rho:+.3f}   pixels {px_rho:+.3f}")
+    print(f"CROSS-episode  : latent {near_rho:+.3f}   pixels {near_px:+.3f}"
+          "   <- the comparison that matters")
     verdict = (
         "GO — latent distance tracks progress; the reward has signal"
         if near_rho < -0.5
@@ -158,10 +173,14 @@ def main() -> int:
         else "NO-GO — latent distance does not track progress. Claim A is dead"
     )
     print(f"VERDICT: {verdict}")
-    margin = px_rho - self_rho
+    # Judged CROSS-episode. Within an episode, pixel distance falls trivially as
+    # the arm settles into its own final frame — that measures visual similarity,
+    # not transferable progress, and it is the classic reason the field moved to
+    # learned embeddings rather than pixel distance in the first place.
+    margin = near_px - near_rho
     print(
         f"Encoder earns its place: {'YES' if margin > 0.05 else 'NOT CLEARLY'} "
-        f"(latent beats pixels by {margin:+.3f} rho)"
+        f"(cross-episode, latent beats pixels by {margin:+.3f} rho)"
     )
     print("=" * 66)
 
