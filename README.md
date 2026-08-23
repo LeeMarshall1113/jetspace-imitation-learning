@@ -20,6 +20,7 @@ are trained yet. See [`docs/results.md`](docs/results.md) for measured outcomes.
 - [Approach](#approach)
 - [Hardware and platform constraints](#hardware-and-platform-constraints)
 - [Setup](#setup)
+- [Seeing what it does](#seeing-what-it-does)
 - [Verifying the installation](#verifying-the-installation)
 - [Troubleshooting](#troubleshooting)
 - [Repository layout](#repository-layout)
@@ -183,6 +184,31 @@ pip install -e ".[dev]"
 
 Python 3.11 or 3.12 is required. Python 3.13 and newer are ahead of the ML stack.
 
+## Seeing what it does
+
+Numbers tell you whether a policy works; pictures tell you why it doesn't.
+
+```bash
+python scripts/render.py --data data/episodes/reach
+```
+
+```bash
+python scripts/render.py --checkpoint checkpoints/bc_seed0.pt
+```
+
+Both write into `renders/`:
+
+| File | What it shows |
+|------|---------------|
+| `contact_sheet.png` | One row per episode, time running left to right |
+| `episodes.mp4` | The same episodes as video, with a gap between attempts |
+
+The contact sheet is the more useful of the two. A video shows one run; the grid
+shows twenty at once, which is how you notice that the arm always drifts one way,
+or that a whole cluster of target positions never gets reached. It has already
+paid for itself once — it is what revealed the camera was mounted nearly edge-on
+to the arm's plane of motion, foreshortening the entire workspace into a bar.
+
 ## Verifying the installation
 
 Always run this first, inside the container:
@@ -220,7 +246,8 @@ The script exits non-zero on any required failure, making it suitable as a CI ga
 
 ```
 docker/            ROCm image and compose profiles (wsl2 / linux / cpu)
-scripts/           check_env.py and entry points
+scripts/           check_env.py, collect_demos.py, train_bc.py,
+                   eval_policy.py, verify_replay.py, render.py
 src/jetspace/
   envs/            RobotEnv abstraction and MuJoCo backend
   data/            teleoperation capture, dataset, latent caching
@@ -232,11 +259,15 @@ docs/              architecture, setup, references
 
 ## Branching model
 
-| Branch | Purpose |
-|--------|---------|
-| `main` | Environment setup. Must always build and pass `check_env.py`. |
-| `dev` | Integration branch. Feature work merges here first. |
-| `feat/*` | Feature branches, for example `feat/isaac-backend`. |
+| Branch | Purpose | State |
+|--------|---------|-------|
+| `main` | Must always build and pass `check_env.py`. | M0 + M1 |
+| `dev` | Integration branch. Feature work merges here first. | tracks `main` |
+| `feat/m2-behavior-cloning` | The M2 baseline, evaluator and render tooling. | active |
+| `feat/isaac-backend` | Isaac Sim backend, for contributors with RTX hardware. | stub |
+
+Feature branches merge into `dev`, and `dev` into `main` once its milestone gate
+is measured and recorded in `docs/results.md`.
 
 ## Roadmap
 
@@ -281,10 +312,14 @@ result should be reported as such rather than tuned around.
 - [ ] Human teleop demos (keyboard/gamepad implemented but need a display)
 - [ ] Freeze the evaluation set before any training begins
 
-### M2, behavior cloning baseline
+### M2, behavior cloning baseline — IN PROGRESS
 
-- [ ] Implement the BC training loop and the evaluation harness
-- [ ] Report mean and standard deviation across three seeds
+- [x] BC policy with an injectable visual encoder (so M3 swaps in V-JEPA cleanly)
+- [x] Training loop with an episode-level train/val split
+- [x] Frozen 100-seed evaluation set (`configs/eval_seeds.json`), leak-checked
+- [x] Evaluator reporting mean and standard deviation across three seeds
+- [ ] Train three seeds and record the result in `docs/results.md`
+- [ ] Decide whether reach clears the 70% gate, or the task needs to be harder
 
 ### M3, frozen encoder and action head
 
