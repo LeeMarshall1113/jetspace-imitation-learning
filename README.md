@@ -27,6 +27,7 @@ are trained yet. See [`docs/results.md`](docs/results.md) for measured outcomes.
 - [Branching model](#branching-model)
 - [Roadmap](#roadmap)
 - [To do](#to-do)
+- [Documentation](#documentation)
 - [References](#references)
 - [License](#license)
 - [Disclosure](#disclosure)
@@ -342,6 +343,24 @@ result should be reported as such rather than tuned around.
 - [ ] Choose a task family beyond `reach`. Pick-and-place is the natural next step.
 - [ ] Decide on physical hardware: an SO-101 leader and follower pair, or simulation only.
 - [ ] Create `feat/isaac-backend` once an RTX-equipped contributor is available.
+
+## Documentation
+
+| Document | What it covers |
+|----------|----------------|
+| [`REQUIREMENTS.md`](REQUIREMENTS.md) | Success gates, compute budget, milestones, non-goals |
+| [`docs/results.md`](docs/results.md) | Measured outcomes against each gate — numbers only |
+| [`docs/ledger.md`](docs/ledger.md) | Every failure mode hit, how it was diagnosed, what fixed it |
+| [`docs/decisions.md`](docs/decisions.md) | Settled decisions and the reasoning behind them |
+| [`docs/architecture.md`](docs/architecture.md) | Frozen encoder, latent RL, backend seam, sensing |
+| [`docs/hardware.md`](docs/hardware.md) | Costed physical-arm recommendation |
+| [`docs/setup.md`](docs/setup.md) | WSL2 / ROCm / Docker setup and failure modes |
+| [`docs/references.md`](docs/references.md) | Source audit, including corrections to the original brief |
+| [`docs/papers/balaguer-carpin-2011.md`](docs/papers/balaguer-carpin-2011.md) | Implementation notes on the paper this project builds on |
+
+The ledger is the unusual one. Thirteen of its fifteen entries produced **no
+error message** — the code ran, the loss fell, and the system was wrong. It
+records the diagnostic method for each, which is the reusable part.
 
 ## References
 
