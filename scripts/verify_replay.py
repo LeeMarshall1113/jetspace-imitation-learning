@@ -53,7 +53,11 @@ def main() -> int:
 
         env.reset(seed=int(seed))
         replayed = []
-        for action in ep["action"]:
+        # Replay what was SENT to the simulator. `action` holds the training
+        # label, which for scripted collection is the clean expert action and
+        # deliberately not what produced this trajectory.
+        executed = ep["action_executed"] if "action_executed" in ep else ep["action"]
+        for action in executed:
             result = env.step(action)
             replayed.append(result.obs.proprio)
 

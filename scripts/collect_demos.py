@@ -175,6 +175,7 @@ def collect(args: argparse.Namespace) -> int:
                 pixels=obs.pixels,
                 proprio=obs.proprio,
                 action=action if label is None else label,
+                action_executed=action,
                 reward=result.reward,
                 success=result.info["success"],
             )

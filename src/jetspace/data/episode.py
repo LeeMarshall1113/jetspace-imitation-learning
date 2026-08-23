@@ -39,6 +39,11 @@ class EpisodeBuffer:
     pixels: dict[str, list[np.ndarray]] = field(default_factory=dict)
     proprio: list[np.ndarray] = field(default_factory=list)
     action: list[np.ndarray] = field(default_factory=list)
+    # What was actually sent to the simulator. Differs from `action` whenever
+    # exploration noise is executed but not labelled, which is the normal case
+    # for scripted collection. Replay verification needs this one; learning
+    # needs `action`. Recording only one of them loses a property we want.
+    action_executed: list[np.ndarray] = field(default_factory=list)
     reward: list[float] = field(default_factory=list)
     success: list[bool] = field(default_factory=list)
 
@@ -53,6 +58,7 @@ class EpisodeBuffer:
         action: np.ndarray,
         reward: float,
         success: bool,
+        action_executed: np.ndarray | None = None,
     ) -> None:
         for cam, frame in pixels.items():
             self.pixels.setdefault(cam, []).append(np.asarray(frame, dtype=np.uint8))
@@ -63,6 +69,9 @@ class EpisodeBuffer:
         # a rounding error in the byte budget next to 224x224x3 images, so there
         # is no reason to lose the precision.
         self.action.append(np.asarray(action, dtype=np.float64))
+        self.action_executed.append(
+            np.asarray(action if action_executed is None else action_executed, dtype=np.float64)
+        )
         self.reward.append(float(reward))
         self.success.append(bool(success))
 
@@ -124,6 +133,7 @@ class EpisodeWriter:
         arrays: dict[str, np.ndarray] = {
             "proprio": np.stack(buffer.proprio),
             "action": np.stack(buffer.action),
+            "action_executed": np.stack(buffer.action_executed),
             "reward": np.asarray(buffer.reward, dtype=np.float32),
             "success": np.asarray(buffer.success, dtype=bool),
         }
