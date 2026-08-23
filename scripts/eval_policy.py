@@ -26,7 +26,7 @@ import torch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from jetspace.data.episode import EpisodeDataset  # noqa: E402
-from jetspace.envs.mujoco_env import MujocoReachEnv  # noqa: E402
+from jetspace.envs.so101_env import SO101ReachEnv  # noqa: E402
 from jetspace.policies.bc import BCPolicy, SimpleVisualEncoder  # noqa: E402
 from jetspace.utils.device import get_device  # noqa: E402
 
@@ -60,7 +60,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--checkpoints", nargs="+", default=["checkpoints/bc_seed*.pt"])
     ap.add_argument("--eval-seeds", default="configs/eval_seeds.json")
-    ap.add_argument("--train-data", default="data/episodes/reach")
+    ap.add_argument("--train-data", default="data/episodes/so101_reach")
     ap.add_argument("--max-steps", type=int, default=120)
     ap.add_argument("--device", default="auto")
     args = ap.parse_args()
@@ -86,7 +86,7 @@ def main() -> int:
         return 1
 
     device = get_device(args.device)
-    env = MujocoReachEnv(image_size=224, max_steps=args.max_steps)
+    env = SO101ReachEnv(image_size=224, max_steps=args.max_steps)
     rates = []
 
     for path in paths:

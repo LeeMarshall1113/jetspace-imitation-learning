@@ -52,7 +52,7 @@ def episode_split(dataset: BCFrameDataset, val_frac: float, rng: np.random.Gener
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--data", default="data/episodes/reach")
+    ap.add_argument("--data", default="data/episodes/so101_reach")
     ap.add_argument("--out", default="checkpoints")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--epochs", type=int, default=40)

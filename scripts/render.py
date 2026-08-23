@@ -2,7 +2,7 @@
 """Turn episodes or policy rollouts into things you can actually look at.
 
     # video + contact sheet from recorded demonstrations
-    python scripts/render.py --data data/episodes/reach
+    python scripts/render.py --data data/episodes/so101_reach
 
     # watch a trained policy instead of the demos
     python scripts/render.py --checkpoint checkpoints/bc_seed0.pt
@@ -54,7 +54,7 @@ def contact_sheet(episodes: list[np.ndarray], cols: int = 8, pad: int = 2) -> np
 def rollout_frames(checkpoint: Path, seeds: list[int], max_steps: int) -> list[np.ndarray]:
     import torch
 
-    from jetspace.envs.mujoco_env import MujocoReachEnv
+    from jetspace.envs.so101_env import SO101ReachEnv
     from jetspace.policies.bc import BCPolicy, SimpleVisualEncoder
     from jetspace.utils.device import get_device
 
@@ -67,7 +67,7 @@ def rollout_frames(checkpoint: Path, seeds: list[int], max_steps: int) -> list[n
     std = np.asarray(ckpt["norm"]["proprio_std"], dtype=np.float32)
     camera = ckpt.get("camera", "front")
 
-    env = MujocoReachEnv(image_size=224, max_steps=max_steps)
+    env = SO101ReachEnv(image_size=224, max_steps=max_steps)
     out = []
     for seed in seeds:
         obs = env.reset(seed=seed)
@@ -85,7 +85,7 @@ def rollout_frames(checkpoint: Path, seeds: list[int], max_steps: int) -> list[n
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--data", default="data/episodes/reach")
+    ap.add_argument("--data", default="data/episodes/so101_reach")
     ap.add_argument("--checkpoint", default=None, help="render policy rollouts instead of demos")
     ap.add_argument("--out", default="renders")
     ap.add_argument("--episodes", type=int, default=12)

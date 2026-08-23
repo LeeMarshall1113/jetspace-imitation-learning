@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Verify that recorded episodes replay deterministically.
 
-    python scripts/verify_replay.py --data data/episodes/reach
+    python scripts/verify_replay.py --data data/episodes/so101_reach
 
 Replays each episode's recorded action sequence from its recorded seed and
 compares the resulting proprioceptive trajectory against what was stored. This
@@ -21,12 +21,12 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from jetspace.data.episode import EpisodeDataset  # noqa: E402
-from jetspace.envs.mujoco_env import MujocoReachEnv  # noqa: E402
+from jetspace.envs.so101_env import SO101ReachEnv  # noqa: E402
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--data", default="data/episodes/reach")
+    ap.add_argument("--data", default="data/episodes/so101_reach")
     ap.add_argument("--limit", type=int, default=0, help="check only the first N episodes")
     ap.add_argument("--tol", type=float, default=1e-4, help="max allowed proprio deviation")
     args = ap.parse_args()
@@ -36,7 +36,7 @@ def main() -> int:
         print(f"No episodes in {args.data}")
         return 1
 
-    env = MujocoReachEnv(image_size=ds.info["image_size"], max_steps=10_000)
+    env = SO101ReachEnv(image_size=ds.info["image_size"], max_steps=10_000)
     n = len(ds) if args.limit <= 0 else min(args.limit, len(ds))
 
     worst = 0.0
