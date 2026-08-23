@@ -25,9 +25,18 @@ def _pickplace() -> TaskSpec:
     return {"env": SO101PickPlaceEnv, "expert": PickPlaceExpert, "default_steps": 400}
 
 
+def _push() -> TaskSpec:
+    from .so101_push import PushExpert, SO101PushEnv
+
+    return {"env": SO101PushEnv, "expert": PushExpert, "default_steps": 300}
+
+
+# Ordered by level in docs/task-hierarchy.md, not alphabetically: the order is
+# the curriculum.
 TASKS: dict[str, Callable[[], TaskSpec]] = {
-    "reach": _reach,
-    "pickplace": _pickplace,
+    "reach": _reach,          # L0 - arm dynamics
+    "push": _push,            # L1 - contact, non-prehensile
+    "pickplace": _pickplace,  # L2 - grasp, payload, regime change
 }
 
 

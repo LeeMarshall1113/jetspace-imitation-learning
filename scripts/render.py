@@ -119,7 +119,7 @@ def main() -> int:
     ap.add_argument("--out", default="renders")
     ap.add_argument("--episodes", type=int, default=12)
     ap.add_argument("--cols", type=int, default=8)
-    ap.add_argument("--task", default="pickplace", choices=["reach", "pickplace"])
+    ap.add_argument("--task", default="pickplace", choices=["reach", "push", "pickplace"])
     ap.add_argument("--max-steps", type=int, default=400)
     ap.add_argument("--gif", action="store_true",
                    help="also write episodes.gif, sized for embedding in a README")

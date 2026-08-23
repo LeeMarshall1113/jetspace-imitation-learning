@@ -185,7 +185,7 @@ def main() -> int:
     )
     p.add_argument("--policy", choices=["scripted", "keyboard", "gamepad"], default="scripted")
     p.add_argument("--episodes", type=int, default=400)
-    p.add_argument("--task", default="pickplace", choices=["reach", "pickplace"])
+    p.add_argument("--task", default="pickplace", choices=["reach", "push", "pickplace"])
     p.add_argument("--out", default=None)
     p.add_argument("--image-size", type=int, default=224)
     p.add_argument("--max-steps", type=int, default=None)
