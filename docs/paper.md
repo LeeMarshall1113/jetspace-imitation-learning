@@ -94,6 +94,62 @@ submission.
 **E2 is the cheapest and most decisive.** If latent distance is not monotone
 along demonstrations, claim A is dead and B becomes the headline. Run it first.
 
+## 2b. Novelty audit — the reward formulation (2026-08-23)
+
+**Verdict: PARTIALLY TAKEN, and the closest paper is very close indeed.**
+
+**[AtomVLA](https://arxiv.org/html/2603.08519)** (Mar 2026) publishes almost
+exactly our reward design:
+
+- **V-JEPA 2 as a frozen visual encoder** — the same checkpoint
+- Reward = **negative L1 distance in that frozen latent space** to a goal latent
+- Computed **entirely inside imagined rollouts** — "no real-robot execution
+  during reward evaluation"
+- Used to **train a policy by RL** (GRPO), reporting 97.0% on LIBERO
+
+The only difference is goal selection: AtomVLA uses a **fixed** boundary or final
+frame from one reference episode; ours retrieves the **nearest** among a
+demonstration library.
+
+That mechanism is separately owned:
+
+| Paper | Owns |
+|---|---|
+| **LaNE** (ICML 2025) | Nearest-demonstration reward in a frozen DINOv2 embedding — but on **real** rollouts, no world model |
+| **SEABO** (ICLR 2024) | Nearest-neighbour-to-demo reward, state-based, offline |
+| **CORE** ([2606.29517](https://arxiv.org/html/2606.29517v2), Aug 2026) | Aggregated terminal-embedding goal prototype — centroid, not per-instance retrieval |
+
+**What survives:** replacing AtomVLA's fixed goal frame with LaNE/SEABO-style
+nearest-neighbour retrieval, inside a frozen-V-JEPA imagined-rollout RL loop.
+Genuinely unpublished — and genuinely incremental. A reviewer who knows AtomVLA
+will call it a recombination.
+
+**Consequence: the reward is no longer a contribution.** It becomes an
+implementation detail we adopt, cite and benchmark. Keeping it as a claim would
+require a measured win over AtomVLA's fixed-goal baseline, for which
+multi-modal demonstration coverage is the plausible mechanism — a single fixed
+goal frame cannot represent several valid ways of finishing a task.
+
+### Does a frozen video representation retain control-relevant information?
+
+This is the assumption underneath E2, and the literature is **contested and
+active**. Worth knowing before we measure it ourselves.
+
+**Evidence it is a real risk:**
+
+- **Kim, "Latent State Design under Sufficiency Constraints"** ([2605.01694](https://arxiv.org/pdf/2605.01694), May 2026) — formal propositions that a frozen representation becomes **insufficient for reward-optimal control** exactly when its pretraining objective diverges from the downstream reward structure. That is precisely our setup.
+- **Fu, Feng, Hansen, Huang, UCSD** ([2605.25620](https://arxiv.org/html/2605.25620), May 2026) — frozen foundation embeddings encode texture, lighting and background nuisance irrelevant to control, **"most acute" in high-dimensional-action manipulation**. Proposes projecting to a task-centric subspace, implying raw frozen latents are not sufficient as-is.
+- **Babaeizadeh, Hafner, Finn, Levine et al., "Models, Pixels, and Rewards"** ([2012.04603](https://arxiv.org/abs/2012.04603)) — sharing representations between reward and dynamics heads does **not** reliably help and "can result in a large performance drop." A direct caution on this architecture's central bet, from a well-credentialed source.
+- **Pendharkar** ([2606.30068](https://arxiv.org/abs/2606.30068), Jun 2026) — mechanistic evidence that JEPA-style predictive objectives specifically discard exogenous control-relevant features. *Solo-authored, unclear review status; on-topic but lower confidence.*
+
+**Counter-evidence:** AtomVLA reaches **97.0% on LIBERO** using frozen V-JEPA 2
+as exactly this reward-and-dynamics substrate, and V-JEPA 2-AC gets 65–85%
+zero-shot on real hardware. So the failure mode looks **task- and
+horizon-dependent** — nuisance sensitivity, long-horizon drift, contact-rich
+fine manipulation — rather than an outright blocker.
+
+**Net: E2 is more likely to pass than not.**
+
 ## 3. Novelty audit — claim B, the headline (2026-08-23)
 
 **Verdict: PARTIALLY TAKEN, and narrower than assumed.** This is the most
@@ -135,16 +191,23 @@ cheapest one:
 Point 1 alone is defensible and cheap. Points 2 and 3 turn it from a measurement
 note into a paper.
 
-### Strategic reading across all three audits
+### Strategic reading across all four audits
 
 Every closest competitor is dated **March–June 2026**. The area is moving fast
 enough that the gap will narrow again before October. Two consequences:
 
 - **Speed matters more than scope.** Ship the preprint with point 1 measured
   rather than waiting to complete points 2 and 3.
-- **Nothing came back fully TAKEN.** Three adversarial audits found no paper
-  doing any of the three claims exactly. The claims need narrowing, not
-  abandoning — which is a good outcome for a day's checking.
+- **Nothing came back fully TAKEN.** Four adversarial audits found no paper
+  doing any claim exactly. The claims need narrowing, not abandoning.
+- **The papers that cost us novelty also raise our chance of success.** AtomVLA
+  reducing the reward to an implementation detail is the same finding that says
+  the substrate works at 97% on LIBERO. Every audit traded novelty for
+  feasibility, and for a first paper on a consumer GPU that is not a bad trade.
+- **Honest scale calibration:** after narrowing, this is a workshop paper plus a
+  strong engineering artifact — not a CoRL main-track paper, unless the horizon
+  curve turns up something surprising. Better to plan around that than to
+  discover it at submission.
 
 ## 3a. Novelty audit — claim A, RL inside a frozen JEPA (2026-08-23)
 
