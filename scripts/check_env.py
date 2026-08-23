@@ -58,10 +58,12 @@ def check_host() -> None:
             "librocdxg.so bind-mounted (ROCDXG bridge)",
             "run scripts/install_rocm_wsl.sh in the distro, not in this container",
         )
+        # Upstream lists dids.conf among the required mounts, but librocdxg 1.2.0
+        # does not ship it. Informational only - do not make this required.
         _report(
             os.path.exists("/usr/share/rocdxg/dids.conf"),
-            "rocdxg dids.conf bind-mounted",
-            "ships with the librocdxg package",
+            "rocdxg dids.conf (absent in librocdxg 1.2.0, not required)",
+            required=False,
         )
         # Mandatory below ROCm 7.13. Silently absent, it looks identical to a
         # driver problem: everything else passes and the GPU simply never appears.

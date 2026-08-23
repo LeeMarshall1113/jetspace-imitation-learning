@@ -57,8 +57,13 @@ services:
       - ..:/workspace
       - hf-cache:/root/.cache/huggingface
       - /usr/lib/wsl/lib/libdxcore.so:/usr/lib/libdxcore.so:ro
+      - /opt/rocm/lib/librocdxg.so.1:/usr/lib/librocdxg.so.1:ro
       - /opt/rocm/lib/librocdxg.so:/usr/lib/librocdxg.so:ro
-      - /opt/rocm/share/rocdxg/dids.conf:/usr/share/rocdxg/dids.conf:ro
+      # NOTE: upstream also lists /opt/rocm/share/rocdxg/dids.conf. That file is
+      # NOT shipped by librocdxg 1.2.0 -- `dpkg -L rocdxg-roct` lists only the
+      # librocdxg.so* symlinks and a LICENSE. Mounting it would make Docker
+      # create an empty DIRECTORY at the source path, so it is omitted. Revisit
+      # if moving to 1.2.1+ (which pairs with ROCm 7.14, not 7.2.x).
     environment:
       - MUJOCO_GL=egl
       # Mandatory below ROCm 7.13; we pin 7.2.4. Without it the runtime never
