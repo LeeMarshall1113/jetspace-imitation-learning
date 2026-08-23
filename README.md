@@ -28,8 +28,7 @@ scene — that is the point.</em></p>
 <p align="center"><em>The SO-101 reaching for the green target. Every episode
 resamples the world: camera viewpoint, lighting, surface colours, clutter, link
 masses, joint friction, servo gain and control latency. Nothing here is a fixed
-scene — that is the point.<br>
-Recorded on <code>feat/m2-behavior-cloning</code>, which is ahead of this branch.</em></p>
+scene — that is the point.</em></p>
 
 ---
 
