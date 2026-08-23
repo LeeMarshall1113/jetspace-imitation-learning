@@ -9,9 +9,15 @@ analysis — the section reviewers reward and almost nobody writes.
 
 **The recurring theme:** nearly every entry below is a *silent* failure. The
 code ran, the loss went down, the numbers looked plausible, and the system was
-wrong. Only two of the fifteen threw an exception. The practical lesson is that
+wrong. Only two of the sixteen threw an exception. The practical lesson is that
 "it ran without error" carries almost no information, and the countermeasure is
 to assert on quantities you can independently predict.
+
+**The second theme, visible only in hindsight:** defects stack. L3 concealed L4
+— the absolute action space made the loss look excellent, so there was no reason
+to suspect the encoder. Fixing L3 made the headline number *worse* while making
+it *true*, which is what exposed L4. Expect this: an honest metric that drops is
+often a fix, not a regression.
 
 ---
 
@@ -179,6 +185,39 @@ of the regression target was "where I already am"**.
 **Lesson — the most reusable one here:** always score the dumbest possible
 baseline on your own data. A loss number means nothing until you know what
 trivial behaviour scores. This single check would have caught L1 too.
+
+### L4 — The encoder threw away position; the task was position
+**Silent?** **Yes, and it hid behind L3.** Success **3.7% ± 0.5%**. **Cost:** ~30 min.
+Fixing L3 made the score *worse* — and that was the useful signal. With delta
+targets the validation loss became **0.798 on unit-variance targets**, i.e. the
+network explained only ~20% of the residual's variance. L3's flattering 0.00031
+had been an artefact; this was the first honest measurement of the real task,
+and it said the model could not do it.
+
+The encoder ended in `AdaptiveAvgPool2d(1)` — **explicitly translation
+invariant**. For a reaching task, where the target is *is* the entire signal.
+**Diagnosed by** feeding a single bright blob at known positions through both
+heads:
+
+```
+blob at ( 2, 2) -> spatial-softmax (-0.686,-0.686)   true (-0.692,-0.692)
+blob at (11, 3) -> spatial-softmax (+0.686,-0.534)   true (+0.692,-0.538)
+
+avg-pool(blob at  2,2)  = 0.051020
+avg-pool(blob at 11,3)  = 0.051020
+difference              = 0.00e+00     <- position is gone
+```
+
+Bit-identical output for targets in completely different places.
+**Fix:** spatial softmax (Levine et al., 2016), reporting the expected image
+coordinates of each channel; plus dropping the final stride-2 stage, since the
+target is ~7 px across and localising it on a 7×7 grid is hopeless.
+**Lessons:** (1) a fix that makes the metric *worse* can still be correct — it
+removed a bias that was concealing a second defect, and the honest number was
+the one worth having. (2) When a model underperforms, check whether its
+architecture is capable of representing the answer before touching
+hyperparameters. Global average pooling and spatial reasoning are mutually
+exclusive by construction.
 
 ---
 
