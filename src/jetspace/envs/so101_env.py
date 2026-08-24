@@ -67,6 +67,109 @@ _SWEEP_POSES = {
 }
 
 
+#: R1 camera ruler (docs/prereg-camera-ruler.md).
+#:
+#: A camera aimed at a fixed point has three parameters people actually adjust
+#: when mounting one: azimuth around the vertical, elevation above horizontal,
+#: and distance. The reference pose below reproduces the existing `front`
+#: camera to within a centimetre -- azimuth 0, elevation 30, distance 0.81 --
+#: so the sweep is anchored on the viewpoint every earlier result used.
+#:
+#: Grids are exactly those registered, fixed before any gap was measured.
+R1_REF = {"azim": 0.0, "elev": 30.0, "dist": 0.81}
+R1_AZIMUTHS = (0, 10, 20, 30, 45, 60, 90)
+R1_ELEVATIONS = (15, 25, 35, 45, 60, 75)
+R1_DISTANCES = (0.6, 0.8, 1.0, 1.3, 1.8)
+#: Off-axis combinations, to test whether displacement composes or the axes
+#: interact. If an off-axis gap exceeds the sum of its two one-axis gaps, the
+#: ruler is not a scalar and prediction 4 fails.
+R1_OFF_AXIS = ((10, 45), (20, 45), (30, 15), (30, 60), (45, 25), (60, 45))
+
+
+def _spherical(azim_deg: float, elev_deg: float, dist: float,
+               look_at: tuple[float, float, float] = _LOOK_AT
+               ) -> tuple[float, float, float]:
+    """Camera position from azimuth, elevation and distance about `look_at`.
+
+    Azimuth 0 points along -y, matching the existing `front` camera, and
+    increases toward +x. Elevation is measured up from the horizontal plane.
+    """
+    import math
+
+    a, e = math.radians(azim_deg), math.radians(elev_deg)
+    return (
+        look_at[0] + dist * math.cos(e) * math.sin(a),
+        look_at[1] - dist * math.cos(e) * math.cos(a),
+        look_at[2] + dist * math.sin(e),
+    )
+
+
+def _build_r1_poses() -> dict[str, tuple[float, float, float]]:
+    """Every R1 pose, keyed by a name that encodes its displacement.
+
+    Deduplicated: the reference appears in all three sweeps and is emitted once
+    as `r1_ref`. Rendering it several times under different names would put the
+    zero-displacement control into the curve repeatedly and flatten it.
+    """
+    poses: dict[str, tuple[float, float, float]] = {
+        "r1_ref": _spherical(R1_REF["azim"], R1_REF["elev"], R1_REF["dist"])
+    }
+    for a in R1_AZIMUTHS:
+        if a == R1_REF["azim"]:
+            continue
+        poses[f"r1_az{a:02d}"] = _spherical(a, R1_REF["elev"], R1_REF["dist"])
+    for e in R1_ELEVATIONS:
+        if e == R1_REF["elev"]:
+            continue
+        poses[f"r1_el{e:02d}"] = _spherical(R1_REF["azim"], e, R1_REF["dist"])
+    for d in R1_DISTANCES:
+        if abs(d - 1.0) < 1e-9:
+            continue
+        poses[f"r1_d{int(d * 100):03d}"] = _spherical(
+            R1_REF["azim"], R1_REF["elev"], R1_REF["dist"] * d
+        )
+    for a, e in R1_OFF_AXIS:
+        poses[f"r1_a{a:02d}e{e:02d}"] = _spherical(a, e, R1_REF["dist"])
+    return poses
+
+
+R1_POSES = _build_r1_poses()
+
+
+def r1_displacement(name: str) -> dict:
+    """Angular and radial displacement of an R1 pose from the reference.
+
+    Returns the components separately AND a combined angular magnitude, because
+    the registration predicts angle dominates distance and that cannot be
+    checked from a single scalar.
+    """
+    import math
+
+    if name == "r1_ref":
+        return {"azim": 0.0, "elev": 0.0, "dist_ratio": 1.0, "angle": 0.0}
+    if name.startswith("r1_az"):
+        a = float(name[5:])
+        return {"azim": a, "elev": 0.0, "dist_ratio": 1.0, "angle": a}
+    if name.startswith("r1_el"):
+        e = float(name[5:]) - R1_REF["elev"]
+        return {"azim": 0.0, "elev": e, "dist_ratio": 1.0, "angle": abs(e)}
+    if name.startswith("r1_d"):
+        return {"azim": 0.0, "elev": 0.0, "dist_ratio": float(name[4:]) / 100.0,
+                "angle": 0.0}
+    if name.startswith("r1_a"):
+        a = float(name[4:6])
+        e = float(name[7:9]) - R1_REF["elev"]
+        # Great-circle angle between the two viewing directions, not the sum of
+        # the components -- azimuth displacement shrinks with elevation.
+        ar, er0, er1 = (math.radians(a), math.radians(R1_REF["elev"]),
+                        math.radians(float(name[7:9])))
+        cos_g = (math.sin(er0) * math.sin(er1)
+                 + math.cos(er0) * math.cos(er1) * math.cos(ar))
+        return {"azim": a, "elev": e, "dist_ratio": 1.0,
+                "angle": math.degrees(math.acos(max(-1.0, min(1.0, cos_g))))}
+    return {"azim": 0.0, "elev": 0.0, "dist_ratio": 1.0, "angle": 0.0}
+
+
 def _camera_xml(name: str, pos: tuple[float, float, float],
                 look_at: tuple[float, float, float] = _LOOK_AT) -> str:
     """A MuJoCo camera at `pos` aimed at `look_at`.
@@ -92,8 +195,13 @@ def _camera_xml(name: str, pos: tuple[float, float, float],
     return f'<camera name="{name}" pos="{p[0]} {p[1]} {p[2]}" xyaxes="{ax}"/>'
 
 
+#: Everything the wrapper declares beyond `front`: the four N1b sweep poses and
+#: the R1 ruler grid. Declaring a camera costs nothing; only the ones named in
+#: `--cameras` are ever rendered.
+_ALL_EXTRA_POSES = {**_SWEEP_POSES, **R1_POSES}
+
 _SWEEP_XML = "\n".join(
-    f"    {_camera_xml(n, pos)}" for n, pos in _SWEEP_POSES.items()
+    f"    {_camera_xml(n, pos)}" for n, pos in _ALL_EXTRA_POSES.items()
 )
 
 WRAPPER_XML = f"""<mujoco model="so101_reach">
@@ -173,7 +281,7 @@ RENDER_PRETTY = (0, 1, 2, 3, 4)
 
 #: Every camera the wrapper declares. "front" first: it is the default and
 #: the one all earlier results used.
-ALL_CAMERAS = ("front",) + tuple(_SWEEP_POSES)
+ALL_CAMERAS = ("front",) + tuple(_SWEEP_POSES) + tuple(R1_POSES)
 
 
 class SO101ReachEnv(RobotEnv):

@@ -56,10 +56,11 @@ _DISTRACTORS = "\n".join(
 # look-at geometry are defined once in so101_env; only the existing
 # "front" camera is per-task, because each task framed its own
 # workspace and every earlier result depends on it staying put.
-from .so101_env import _SWEEP_POSES, _camera_xml  # noqa: E402
+from .so101_env import R1_POSES, _SWEEP_POSES, _camera_xml  # noqa: E402
 
 _SWEEP_XML = "\n".join(
-    f"    {_camera_xml(n, pos)}" for n, pos in _SWEEP_POSES.items()
+    f"    {_camera_xml(n, pos)}"
+    for n, pos in {**_SWEEP_POSES, **R1_POSES}.items()
 )
 
 WRAPPER_XML = f"""<mujoco model="so101_push">
