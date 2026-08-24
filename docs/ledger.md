@@ -359,6 +359,37 @@ committed next to the numbers they produced.
 
 ---
 
+## L9 — Two registered predictions, both wrong, both caught by registering them
+
+Not defects. Both are cases where writing a prediction down *before* measuring
+turned a wrong belief into a recorded result instead of an invisible one.
+
+**DR widens the sim-to-real gap.** N1 measured domain randomisation moving
+simulation *further* from real, 1170 → 1402, against a single reference
+dataset, and `prereg-n1b.md` recorded the prediction that this would repeat.
+Against eight real datasets it **reversed**: 1839 → 1677. The N1 result was an
+artifact of its one reference.
+
+**Cross-lab gaps sit inside the camera sweep.** `prereg-camera-ruler.md`
+predicted θ_X > 30° — that some camera rotation produces a gap the size of a
+cross-laboratory gap, which is what N1b's `Vreal ≈ X` implied. R1 measured pure
+viewpoint topping out near 800 at 90°, against cross-lab gaps of 1430.
+**Beyond the sweep entirely.** The registration had already stated the
+consequence: N1b's headline is withdrawn.
+
+**Why this belongs in an engineering ledger.** Neither error came from code.
+Both came from generalising a measurement made under one condition — one
+reference dataset, one camera pairing — to conditions it had never been tested
+in. That is the same failure as L7 and the horizon-coverage retraction: **a
+number measured on a narrow slice, read as though it described the whole.**
+
+The countermeasure that worked was not more care. It was writing the prediction
+down where it could be checked, and building the script to print the
+predictions that FAILED rather than only those that passed. Both of these were
+found by a script whose output began "PREDICTIONS THAT FAILED".
+
+---
+
 ## Simulation
 
 ### S1 — MuJoCo defaults to degrees; the arm was clamped to a 6° sweep

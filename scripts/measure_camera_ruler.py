@@ -100,19 +100,24 @@ def main() -> int:
     # ---- invalidation 1: the zero-displacement control -------------------
     files = have["r1_ref"]
     mid = len(files) // 2
-    null = gap(pool(files[:mid]), pool(files[mid:]), min(n, 10 ** 9),
-               args.dim, args.seed) if len(files) >= 4 else None
-    if null:
-        # Halves hold fewer latents than the full set; recompute n for them.
+    null = None
+    if len(files) >= 4:
+        # Each half holds roughly half the episodes, so it cannot supply the
+        # full-set sample count n. Sizing this from n crashed on the first run.
         a, b = pool(files[:mid]), pool(files[mid:])
         null = gap(a, b, min(len(a), len(b)), args.dim, args.seed)
+        null["n_per_side"] = int(min(len(a), len(b)))
 
     print("=" * 74)
     print("R1 CAMERA RULER")
     print("=" * 74)
     if null:
         print(f"0-displacement control (r1_ref split by episode): "
-              f"frechet {null['frechet']:.1f}")
+              f"frechet {null['frechet']:.1f}  [n={null['n_per_side']}]")
+        if null["n_per_side"] < n:
+            print(f"  NOTE: the null uses n={null['n_per_side']} against the poses'"
+                  f" n={n}. Frechet grows as n falls, so this is an UPPER bound on"
+                  " the true null and the curve's floor is if anything lower.")
         print(f"  N1b null for comparison: {N1B['null']:.1f}")
         if null["frechet"] > 3 * N1B["null"]:
             print("  INVALIDATED: the same pose does not reproduce the null. The")

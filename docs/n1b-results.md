@@ -44,7 +44,28 @@ failure either, which would have been `SIM > X_max`. The frozen encoder places
 simulation at the far edge of real-world variation rather than comfortably
 inside it.
 
-## 3. Camera placement is as large as laboratory identity
+## 3. Camera placement is as large as laboratory identity — **WITHDRAWN**
+
+> **This section's conclusion has been retracted by R1.** See
+> `docs/r1-results.md`. The measurements below stand; the interpretation drawn
+> from them does not.
+>
+> R1 swept the simulated camera through a calibrated grid and found that pure
+> viewpoint tops out near **800** Fréchet at a 90° rotation. Cross-lab gaps sit
+> at **1430** — beyond anything camera movement produces. So `Vreal ≈ X` was two
+> quantities of similar size arising from *different causes*, and this section
+> read a shared cause into them.
+>
+> What `Vreal = 1437.6` actually contains: two real cameras differ in sensor,
+> lens, exposure, white balance, focus and resolution as well as position, and
+> those differences dominate the position term.
+>
+> The corrected claim is the reverse and is more useful: **domain gaps are out
+> of reach of camera movement.** You cannot move a camera far enough to imitate
+> one, and you cannot fix one by moving the camera back.
+
+### The original text, retained
+
 
 **Vreal = 1437.6 ≈ X = 1429.8.**
 
@@ -131,9 +152,12 @@ result does not depend on it.
 1. The measurement instrument is sound, verified against a null.
 2. Simulation sits at the outer edge of real-world variation, not inside it.
    **Weak support** for the frozen-encoder alignment assumption.
-3. **Camera placement rivals laboratory identity** as a source of latent-space
-   distance, across 35 pairings.
-4. Viewpoint alone costs 812; the sim-real gap is 2.3× that.
+3. ~~Camera placement rivals laboratory identity.~~ **Withdrawn by R1** — the
+   two are similar in size but unrelated in cause. See §3 and
+   `docs/r1-results.md`.
+4. Viewpoint alone costs 812; the sim-real gap is 2.3× that. *This number
+   survives* — R1's independent sweep puts pure viewpoint at 756–807 for the
+   largest displacements, agreeing closely.
 5. Matching viewpoint buys ~15%, domain randomisation ~9%, and neither is
    enough.
 
