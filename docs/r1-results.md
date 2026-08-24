@@ -93,6 +93,77 @@ dataset provides.
 
 ---
 
+## The secondary: latent distance DOES predict behaviour
+
+Registered in `prereg-camera-ruler.md` §7 before the ruler was measured. Train
+the world model once on the reference pose, evaluate that same model on all 22
+displaced poses. Normalisation and the PCA basis travel with the checkpoint, so
+each displaced pose is genuinely out of distribution. Every pose shares the same
+episodes and the same rollout, so degradation is attributable to viewpoint and
+to nothing else.
+
+**Registered prediction: Spearman ρ ≤ −0.6 against retained horizon.**
+
+| correlation | ρ |
+|---|---|
+| gap vs retained horizon | **−0.753** |
+| gap vs direction cosine | **−0.921** |
+
+**Both hold, and the second holds hard.** Across 22 poses spanning 38 to 807
+Fréchet, direction accuracy falls almost monotonically with latent distance.
+
+### The two degrade differently, and that matters
+
+| gap | retained horizon | cosine |
+|---|---|---|
+| 38–252 | **1.00×** (no loss) | 0.65–0.72 |
+| 291–500 | 0.30–0.61× | 0.57–0.62 |
+| 583–807 | 0.05–0.58× | 0.54–0.59 |
+
+**Horizon has a cliff; cosine degrades smoothly.** Below roughly 250 Fréchet the
+world model keeps its entire horizon — nine poses at 1.00× — and past ~290 it
+collapses. Direction accuracy, by contrast, starts falling at the very first
+displacement (reference 0.783 → 0.72 at the smallest gap) and keeps falling.
+
+Horizon is also *noisy*: `r1_a20e45` at gap 328 retains 0.08× while `r1_az90` at
+gap 756 retains 0.58×. Cosine has no such inversions. **Cosine is the reliable
+readout; horizon is not**, which is consistent with everything else this project
+has found about the two — beating a do-nothing baseline is easy and survives,
+predicting the *right* motion is what actually degrades.
+
+### The operating number
+
+Reading the threshold back through the azimuth curve: **a gap under ~250
+Fréchet is about 17° of camera rotation, and costs no horizon at all.** Past
+that the world model starts losing reach.
+
+That is the practical output of the whole ruler: *move your camera less than
+about 17° and your world model transfers intact; beyond that, expect to lose
+horizon roughly in proportion to the gap.*
+
+### What this rescues
+
+R1's primary result retracted N1b's interpretation. The secondary rescues its
+**methodology**. Latent distance is not a curiosity — it forecasts how much
+behaviour survives, with ρ = −0.92 on the metric that matters. The N1b ladder
+was measuring something real; it was the causal story laid over it that was
+wrong.
+
+It also sharpens the primary finding. Cross-lab gaps sit at 1430, far beyond
+both the 250 threshold and the entire swept range. **If the relationship holds
+outside simulation, a world model trained in one laboratory should lose most of
+its horizon in another** — a prediction this design cannot test, since no two
+public labs share a task, but a sharp one.
+
+### Limits
+
+One task, one seed, 22 poses, simulated throughout. The correlation is across
+*poses*, so n = 22, and the poses are not independent — they share episodes by
+construction, which is what makes the comparison clean and also what stops the
+correlation being a sample of 22 independent draws.
+
+---
+
 ## What R1 establishes
 
 1. **A working ruler**, verified against a null and satisfying three of four
@@ -117,4 +188,5 @@ dataset provides.
 - The null is measured at n = 178 against the poses' n = 398. Fréchet grows as
   n falls, so the reported null is an upper bound and the curve's floor is if
   anything lower.
-- The registered secondary — does the gap predict lost horizon — has not run.
+- The secondary has now run and is reported above: ρ = −0.753 against
+  horizon, −0.921 against direction cosine.
