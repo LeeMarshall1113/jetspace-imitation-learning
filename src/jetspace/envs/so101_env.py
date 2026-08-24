@@ -43,12 +43,66 @@ _DISTRACTORS = "\n".join(
     for i in range(N_DISTRACTOR_SLOTS)
 )
 
+#: Where the extra sweep cameras aim. Roughly the middle of the reachable
+#: workspace, so every pose frames the same volume.
+_LOOK_AT = (0.30, 0.0, 0.10)
+
+#: Camera poses for the N1b viewpoint sweep (docs/prereg-n1b.md).
+#:
+#: Simulation is the only condition whose camera we control, which makes it the
+#: only place viewpoint can be varied with *everything else pinned* -- same
+#: seeds, same physics, same actions, same meshes, same episode. Public datasets
+#: cannot offer that: each lab's camera differs along with its room, lighting,
+#: table and operator.
+#:
+#: These span where a person would plausibly mount a camera over a tabletop arm.
+#: `front` is NOT in this list -- it is declared separately below and left
+#: byte-identical, because every result recorded before N1b was rendered from it
+#: and re-deriving its xyaxes here would silently perturb the baseline.
+_SWEEP_POSES = {
+    "front_high": (0.25, -0.55, 0.85),
+    "side": (0.90, -0.10, 0.45),
+    "side_high": (0.80, -0.35, 0.80),
+    "top": (0.30, -0.05, 1.05),
+}
+
+
+def _camera_xml(name: str, pos: tuple[float, float, float],
+                look_at: tuple[float, float, float] = _LOOK_AT) -> str:
+    """A MuJoCo camera at `pos` aimed at `look_at`.
+
+    MuJoCo's `xyaxes` is the camera frame's right and up vectors; the camera
+    looks along its own -z. Deriving them from a look-at point beats writing
+    them by hand, which is how a camera ends up edge-on to the plane of motion
+    -- a mistake already made once in this project and caught only by looking
+    at a contact sheet.
+    """
+    import numpy as np
+
+    p = np.asarray(pos, dtype=float)
+    f = np.asarray(look_at, dtype=float) - p
+    f /= np.linalg.norm(f)
+    world_up = np.array([0.0, 0.0, 1.0])
+    if abs(float(f @ world_up)) > 0.999:      # looking straight down
+        world_up = np.array([0.0, 1.0, 0.0])
+    right = np.cross(f, world_up)
+    right /= np.linalg.norm(right)
+    up = np.cross(right, f)
+    ax = " ".join(f"{v:.6f}" for v in [*right, *up])
+    return f'<camera name="{name}" pos="{p[0]} {p[1]} {p[2]}" xyaxes="{ax}"/>'
+
+
+_SWEEP_XML = "\n".join(
+    f"    {_camera_xml(n, pos)}" for n, pos in _SWEEP_POSES.items()
+)
+
 WRAPPER_XML = f"""<mujoco model="so101_reach">
   <include file="scene.xml"/>
   <worldbody>
     <!-- Third-person view of the workspace. The model ships only a wrist
          camera, which moves with the arm and so cannot show where the arm is. -->
     <camera name="front" pos="0.25 -0.70 0.50" xyaxes="1 0 0 0 0.394 0.919"/>
+{_SWEEP_XML}
     <body name="target" mocap="true" pos="0.30 0.0 0.25">
       <site name="target" size="0.018" rgba="0.20 0.85 0.35 0.85"/>
     </body>
@@ -117,6 +171,10 @@ TARGET_BOX_HIGH = np.array([0.36, 0.22, 0.34])
 RENDER_FAST = (0, 1, 3)      # primitives only
 RENDER_PRETTY = (0, 1, 2, 3, 4)
 
+#: Every camera the wrapper declares. "front" first: it is the default and
+#: the one all earlier results used.
+ALL_CAMERAS = ("front",) + tuple(_SWEEP_POSES)
+
 
 class SO101ReachEnv(RobotEnv):
     camera_names = ("front",)
@@ -132,8 +190,18 @@ class SO101ReachEnv(RobotEnv):
         randomize: bool | RandomizationConfig = False,
         pretty: bool = False,
         servo: str = DEFAULT_SERVO,
+        cameras: tuple[str, ...] | None = None,
     ) -> None:
         import mujoco
+
+        # Rendering N cameras costs N times as much, so the sweep is opt-in and
+        # the default stays a single view. Every pre-N1b result used ("front",)
+        # and must keep doing so.
+        if cameras:
+            unknown = [c for c in cameras if c not in ALL_CAMERAS]
+            if unknown:
+                raise ValueError(f"unknown camera(s) {unknown}; have {ALL_CAMERAS}")
+            self.camera_names = tuple(cameras)
 
         self._mj = mujoco
         asset_dir = Path(asset_dir)
@@ -183,7 +251,10 @@ class SO101ReachEnv(RobotEnv):
         cfg = randomize if isinstance(randomize, RandomizationConfig) else RandomizationConfig(
             enabled=bool(randomize)
         )
-        self.randomizer = DomainRandomizer(self.model, cfg, camera_name=self.camera_names[0])
+        # Always randomise the primary view, never whichever camera happens
+        # to be first in a sweep -- otherwise DR and viewpoint move together
+        # and the N1b sweep measures both at once.
+        self.randomizer = DomainRandomizer(self.model, cfg, camera_name="front")
         self._action_queue: list[np.ndarray] = []
         self.n_distractors = 0
 
