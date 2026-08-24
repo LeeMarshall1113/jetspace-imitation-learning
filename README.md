@@ -8,10 +8,27 @@ demonstrations and improved by reinforcement learning inside the resulting laten
 world model. The objective is a single policy that transfers to held-out variations
 of a task without task-specific retraining.
 
-**Status:** M0–M2 complete. The behavior-cloning baseline passes its gate at
-**85.7% ± 2.6%** (gate: 70%). M3 — the frozen V-JEPA 2 encoder — is next.
-See [`docs/results.md`](docs/results.md) for measured outcomes against every gate,
-and [`docs/ledger.md`](docs/ledger.md) for the four attempts it took to get there.
+**Status:** M0–M3 complete; the project's centre of gravity has moved.
+
+The behaviour-cloning baseline passed at **85.7% ± 2.6%** and the frozen V-JEPA 2
+world model works — useful and action-aware for **as long as our episodes permit
+testing**, on real robot video as well as simulation. But building the
+measurements needed to say that turned up something more interesting than the
+capability itself: **most of what these evaluations report is decided by choices
+nobody writes down.**
+
+Encoder window tiling leaks a periodic artifact into simulated latents and not
+real ones. Whether that artifact matters at all is decided by a PCA step. Raising
+an evaluation horizon silently narrows it to the longest, least typical
+episodes. Public SO-101 datasets do not share an action space, or even agree with
+each other on joint zero-offsets. Two of our own pre-registered predictions came
+out backwards.
+
+So the work now is **measurement validity for frozen-encoder robot world
+models** — what these numbers mean, when they lie, and a protocol for getting
+them right. See [Findings](#findings) below,
+[`docs/ledger.md`](docs/ledger.md) for every failure and its diagnostic, and
+[`CONTRIBUTING.md`](CONTRIBUTING.md) if you want to pick something up.
 
 <p align="center">
   <img src="docs/media/episodes.gif" alt="SO-101 arm reaching for a target under domain randomization" width="640">
@@ -34,6 +51,7 @@ saw in training — 85.7% ± 2.6% success. Four earlier attempts failed at 24.7%
 
 ## Table of contents
 
+- [Findings](#findings)
 - [Overview](#overview)
 - [Approach](#approach)
 - [Hardware and platform constraints](#hardware-and-platform-constraints)
@@ -49,6 +67,80 @@ saw in training — 85.7% ± 2.6% success. Four earlier attempts failed at 24.7%
 - [References](#references)
 - [License](#license)
 - [Disclosure](#disclosure)
+
+---
+
+## Findings
+
+Everything below is measured, committed, and reproducible from a script in
+`scripts/`. Where a claim was later retracted, the retraction is recorded next to
+it rather than the claim being deleted.
+
+### The world model works
+
+| | result |
+|---|---|
+| Behaviour cloning (M2) | **85.7% ± 2.6%** on held-out targets |
+| World model, real robot video | useful + action-aware to **≥193 steps (25.7 s)**, 3 seeds |
+| World model, simulation | **≥64 steps** (push), **≥52** (pickplace), 3 seeds |
+| Conservatism | ratio **0.886 ± 0.002** (push), **0.848 ± 0.002** (pickplace) |
+
+Every horizon is **censored**: the model stayed useful for as long as the
+episodes allowed testing, so these are lower bounds with a stated cause, not
+measurements. Longer episodes are the only fix
+([issue](../../issues)).
+
+### Six ways these measurements go wrong
+
+| defect | magnitude | diagnostic |
+|---|---|---|
+| **Encoder window tiling** leaks a periodic comb into latents | 1.44–1.67× in sim, **1.014× in real** | `check_chunk_phase.py` |
+| **PCA decides whether the comb matters** | 0.003 at full width, **0.055 under PCA-128** | `diff_checkpoints.py` |
+| **Raising the horizon narrows the episode sample** | h=145 keeps **2 of 60** episodes | coverage guard in `eval_horizon.py` |
+| **Action spaces are not interchangeable** across labs | **70–238×**, zero-offsets differ by ~140 units | `check_action_spaces.py` |
+| **Trained encoders collapse** and win on raw loss | val loss **1000× lower**, gain 0.74× | `train_joint_cnn.py` |
+| **Camera viewpoint** rivals what people call a domain gap | see the ruler below | `measure_camera_ruler.py` |
+
+Each was found by a check, not by inspection, and each check is in the
+repository.
+
+### A calibrated ruler for domain gap
+
+Simulation is the only place a camera can be moved on a known scale with seeds,
+physics, actions and meshes pinned. Sweeping 23 poses from one rollout gives a
+curve that converts a latent-space distance into degrees of camera rotation.
+
+- **Session noise = 21.8° of camera rotation.** Two recordings from one lab on
+  different days differ as much as turning the camera 22°.
+- **A camera moved under ~17° costs no world-model horizon at all.** Past that,
+  reach is lost roughly in proportion to the gap.
+- **Domain gaps are out of reach of camera movement.** Cross-lab gaps sit at
+  1430; a full 90° rotation produces 756. You cannot move a camera far enough to
+  imitate a domain gap, or fix one by moving it back.
+
+**Latent distance predicts behaviour**: ρ = **−0.75** against retained horizon,
+**−0.92** against direction accuracy, across 22 poses
+([`docs/r1-results.md`](docs/r1-results.md)).
+
+### Things that turned out not to be true
+
+Kept because they cost real time and the diagnostics generalise.
+
+- **"Random CNN beats frozen V-JEPA."** Held on push with non-overlapping
+  intervals across 3 seeds; **reversed on pickplace.** Task-dependent, small
+  either way.
+- **"Camera placement rivals laboratory identity."** N1b's headline, **retracted
+  by R1** — two similar-sized quantities with different causes.
+- **"Domain randomisation widens the sim-to-real gap."** Measured against one
+  reference dataset; **reversed against eight.**
+- **"Byte-identical action space."** Asserted for weeks, **false when measured.**
+- **"The world model is action-blind on push."** Computed on 2 of 60 episodes.
+  **Retracted.**
+
+Two of these were pre-registered predictions
+([`docs/prereg-n1b.md`](docs/prereg-n1b.md),
+[`docs/prereg-camera-ruler.md`](docs/prereg-camera-ruler.md)) and were wrong in
+writing before the data arrived. That is what the registrations are for.
 
 ---
 
@@ -312,13 +404,20 @@ has been measured and recorded. Full criteria and the evaluation protocol are in
 | M0 | Environment | `scripts/check_env.py` exits 0 in-container | 3 days |
 | M1 | Teleoperation and dataset | 100+ demonstrations, replay verified, human success 95%+ | Week 1-2 |
 | M2 | Behavior cloning baseline | 70%+ success on held-out target positions | **PASSED — 85.7%** |
-| M3 | Frozen encoder and action head | 16-step open-loop latent rollout error below baseline | Week 3-5 |
+| M3 | Frozen encoder and action head | 16-step open-loop latent rollout error below baseline | **PASSED — censored at ≥52–193 steps** |
 | M4 | Latent-imagination RL | Beats M2 by 10+ points absolute on identical evaluation | Week 5-8 |
 | M5 | Generalization | 50%+ on unseen distractors, lighting, and camera pose | Open-ended |
 | M6 | Sim-to-real | 30%+ on a physical arm with no real-world fine-tuning | Stretch |
 
 M2 is the floor. If the full stack cannot outperform plain behavior cloning, that
 result should be reported as such rather than tuned around.
+
+**The roadmap above is no longer the whole project.** M3 passed by a wide enough
+margin that the horizon could not be measured at all — the model outlasts our
+episodes. What the work turned into is documented in [Findings](#findings), and
+the open threads are filed as [issues](../../issues) rather than milestones,
+because most of them are independent and several need hardware or data this
+repository does not have.
 
 ## To do
 
