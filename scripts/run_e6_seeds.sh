@@ -21,11 +21,12 @@ TASK=${1:-push}
 EPS=${2:-30}
 SEEDS=${3:-"0 1 2"}
 HMAX=${4:-96}
+DATA=${5:-"data/episodes/${TASK}"}
 
 for s in $SEEDS; do
     echo
     echo "###################### SEED $s ######################"
-    bash scripts/run_e6.sh "$TASK" "$EPS" "$s" "$HMAX" 2>&1 \
+    bash scripts/run_e6.sh "$TASK" "$EPS" "$s" "$HMAX" "$DATA" 2>&1 \
         | grep -vE "UserWarning|self.blocks|it/s\]"
 done
 

@@ -37,8 +37,11 @@ TASK=${1:-push}
 EPS=${2:-30}
 SEED=${3:-0}
 HMAX=${4:-96}
-
-DATA="data/episodes/${TASK}"
+# Optional 5th argument: the episode directory, for when it is not named
+# after the task. real_cubes lives in data/episodes/real_so101_teleop_cubes,
+# so without this the real-data arm silently finds nothing and every arm
+# reports "no latents" instead of failing loudly.
+DATA=${5:-"data/episodes/${TASK}"}
 VJEPA="cache/latents/${TASK}_s1n60"          # comb-free V-JEPA, already cached
 [ -d "$VJEPA" ] || VJEPA="cache/latents/${TASK}_decombed"
 [ -d "$VJEPA" ] || VJEPA="cache/latents/${TASK}"
