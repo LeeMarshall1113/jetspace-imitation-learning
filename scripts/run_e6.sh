@@ -43,14 +43,17 @@ VJEPA="cache/latents/${TASK}_s1n60"          # comb-free V-JEPA, already cached
 [ -d "$VJEPA" ] || VJEPA="cache/latents/${TASK}_decombed"
 [ -d "$VJEPA" ] || VJEPA="cache/latents/${TASK}"
 
-RAND="cache/latents/e6_${TASK}_rand"
-JOINT="cache/latents/e6_${TASK}_joint"
-JOINTREG="cache/latents/e6_${TASK}_jointreg"
+RAND="cache/latents/e6_${TASK}_rand_s${SEED}"
+JOINT="cache/latents/e6_${TASK}_joint_s${SEED}"
+JOINTREG="cache/latents/e6_${TASK}_jointreg_s${SEED}"
 CK="checkpoints/e6"
 
 echo "=============================================================="
 echo "  E6   task=$TASK  episodes=$EPS  seed=$SEED"
 echo "  arm 1 V-JEPA latents: $VJEPA"
+echo "  NOTE: seeding changes the predictor init for every arm, and the"
+echo "  ENCODER too for arms 2 and 3. V-JEPA is frozen, so its across-seed"
+echo "  spread is predictor-only and will legitimately be the smallest."
 echo "=============================================================="
 
 # ---------------------------------------------------------------- arm 2 ----
@@ -129,10 +132,10 @@ run_arm() {
         2>&1 | grep -E "CROSS-episode|Encoder earns" | head -2
 }
 
-run_arm "e6_${TASK}_vjepa" "$VJEPA"
-run_arm "e6_${TASK}_rand"  "$RAND"
-run_arm "e6_${TASK}_joint"    "$JOINT"
-run_arm "e6_${TASK}_jointreg" "$JOINTREG"
+run_arm "e6_${TASK}_vjepa_s${SEED}"    "$VJEPA"
+run_arm "e6_${TASK}_rand_s${SEED}"     "$RAND"
+run_arm "e6_${TASK}_joint_s${SEED}"    "$JOINT"
+run_arm "e6_${TASK}_jointreg_s${SEED}" "$JOINTREG"
 
 # ---------------------------------------------------------------- summary --
 echo
