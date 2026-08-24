@@ -12,10 +12,14 @@ nobody else can."
 nominally identical action space.** Same six joints, same names, same order.
 
 Earlier drafts of this document — and several things I told Lee — called that
-action space *byte-identical*. That was an assumption stated as a measurement.
-Matching names and dimensions is not matching semantics: zero-offsets, gripper
-parametrisation and position-vs-torque control can all differ. See B1 below;
-the claim is downgraded to *nominally identical* until the check runs.
+action space *byte-identical*. **That has now been measured and it is false:**
+real spans exceed simulated ones by 70–238×, partly radians-versus-degrees and
+partly a genuinely wider range of human motion, and the real datasets disagree
+with each other on zero-offsets by ~140 units. See B1 below and ledger L8.
+
+The asset is real but narrower than claimed: a **shared visual domain and a
+shared frozen encoder**, which is what N1 needs. The action-space half of the
+claim requires conversion work before N2 can use it.
 
 That was not luck, but it was not planning either: the arm was chosen because it
 cost $122, and the cheapest open arm happens to be the one with the largest
@@ -124,18 +128,30 @@ finding it ourselves is considerably better than a reviewer finding it.
 From the adversarial audit. Each could turn the measurement into an artifact,
 and two are self-inflicted.
 
-### B1 — We claimed an identical action space. We never verified it.
+### B1 — RESOLVED. The action spaces are NOT interchangeable.
 
-SO-101 sim configs and real hardware commonly diverge in **joint zero-offsets,
-gripper parametrisation, and position-vs-torque control**. Matching *names and
-dimensions* is not matching *semantics*.
+Measured by `check_action_spaces.py`; full detail in ledger L8.
 
-**Four of our defects have been action-encoding problems. Asserting this instead
-of testing it would be the same mistake a fifth time.**
+Real joint spans exceed simulated ones by **70× to 238×** across the arm
+joints. Roughly 57.3× of that is radians versus degrees, which is mechanical to
+convert. The remainder is real: human teleoperation sweeps **1.7–4.5× more of
+each joint** than our scripted experts, which no conversion removes.
 
-**Test:** replay an identical action sequence in sim and against recorded real
-proprioception, and diff the resulting joint trajectories. Cheap, decisive, and
-it runs before any sim/real transfer number is believed.
+Worse, the real datasets disagree with *each other*. Lab B's `shoulder_lift`
+zero sits ~140 units from lab A's and lab C's. There is no single "SO-101 action
+space", even among real recordings.
+
+**Consequences.** Nothing measured so far is invalidated — E2, E3, the horizon
+curves and the conservatism checks all live inside a single domain, where a
+global scale cancels. What needs conversion before it means anything:
+
+  * **N2**, a sim-trained world model evaluated on real video.
+  * Any cross-lab transfer using real data alone, which needs offset alignment
+    rather than only unit conversion.
+  * Deploying a policy trained on public data onto our own arm — it will fail
+    on calibration, and the failure will look exactly like a bad policy.
+
+**N1 is unaffected.** It measures pixels; no action ever enters it.
 
 ### B2 — Our own fast rendering makes the gap look worse
 

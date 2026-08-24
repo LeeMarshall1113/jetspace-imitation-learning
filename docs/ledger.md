@@ -9,7 +9,7 @@ analysis — the section reviewers reward and almost nobody writes.
 
 **The recurring theme:** nearly every entry below is a *silent* failure. The
 code ran, the loss went down, the numbers looked plausible, and the system was
-wrong. Only three of the twenty-three threw an exception. The practical lesson is that
+wrong. Only three of the twenty-four threw an exception. The practical lesson is that
 "it ran without error" carries almost no information, and the countermeasure is
 to assert on quantities you can independently predict.
 
@@ -218,6 +218,79 @@ Three consequences, established by controlled runs rather than inferred:
 displacement ratio was 0.934 and looked healthy; the artifact was only visible
 once the values were laid out by horizon. Aggregates hide periodic structure by
 construction — that is what averaging is for.
+
+---
+
+## L8 — "Byte-identical action space" was false, and it was mine
+
+**Blocking check B1, resolved. The answer is no.**
+
+For weeks I described our simulated SO-101 and the public SO-101 datasets as
+sharing a byte-identical action space, because both are six joints, same names,
+same order. The adversarial audit called that an assumption stated as a
+measurement, and it was downgraded to "nominally identical" pending a test.
+`check_action_spaces.py` is that test. It needs no hardware: two datasets
+encoding the same joint in different units cannot agree on its recorded range.
+
+| | shoulder_pan | shoulder_lift | elbow_flex | wrist_flex | wrist_roll | gripper |
+|---|---|---|---|---|---|---|
+| real span | 69.5 | 161.0 | 159.5 | 107.9 | 101.3 | 65.3 |
+| sim span | 0.71 | 0.99 | 1.10 | 0.67 | 0.39 | 0.00 |
+| **ratio** | **70×** | **125×** | **144×** | **73×** | **238×** | **400×** |
+
+**Two separate problems, and only one of them is a bug.**
+
+*Units.* MuJoCo joints are radians; LeRobot records servo positions in degrees
+or a normalised scale. That is the 57.3× baseline and it is mechanical to fix.
+
+*Range of motion.* The ratios are not uniform, so units are not the whole
+story. Dividing out 57.3 leaves real demonstrations sweeping **1.7× to 4.5×
+more of each joint** than our scripted experts do. Human teleoperation is
+simply more expansive than a hand-written phase machine. That is a real
+distributional difference, not an encoding error, and no conversion removes it.
+
+The gripper's 400× is an artifact of the comparison: sim `push` never actuates
+the gripper at all, so its span is 0.00 and the ratio is a division by nothing.
+
+**The part I did not expect: the real datasets disagree with each other.**
+
+Per-joint midpoints, which reveal zero-offset calibration:
+
+| dataset | shoulder_lift midpoint |
+|---|---|
+| R1 (lab A, cubes) | −19.3 |
+| R2 / R3 (lab B, pen+mug) | **+121.3 / +123.4** |
+| R4 (lab C, blocks) | −21.9 |
+
+Lab B's shoulder_lift zero sits about 140 units away from lab A's and lab C's.
+**"The SO-101 action space" is not one thing even across real laboratories.**
+That is the concrete form of the audit's warning about zero-offsets, and it was
+sitting in public data the whole time.
+
+**What this does and does not invalidate.**
+
+Nothing measured so far. E2, E3, the horizon curves and the conservatism checks
+each train and evaluate entirely inside one domain, and a global scale factor
+cancels within a domain. The results stand.
+
+What it breaks is everything that *crosses*:
+
+  * **N2** — a sim-trained world model evaluated on real video — needs unit
+    conversion before the number means anything.
+  * **Cross-lab transfer on real data alone** needs calibration alignment, not
+    just unit conversion, because of the offsets above.
+  * **Deploying a policy trained on public data onto our own arm**, which is the
+    entire reason for buying hardware, will fail on calibration unless it is
+    matched first — and it will fail in a way that looks exactly like a bad
+    policy.
+
+N1 is unaffected: it measures *pixels*, and nothing in it touches actions.
+
+**Reusable lesson, and it is the same one as L7.** The claim was checkable at
+any point in the last several weeks with about forty lines of numpy over data
+already on disk. It went unchecked because it was *convenient* — it made the
+sim/real story simpler, so it never attracted suspicion. **The assumptions worth
+testing first are the ones that make the project easier if true.**
 
 ---
 

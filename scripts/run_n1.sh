@@ -22,31 +22,39 @@ STAGE=${1:-all}
 EPS=${2:-30}
 
 # ---------------------------------------------------------------- 1. collect
-if [ "$STAGE" = "all" ] || [ "$STAGE" = "collect" ]; then
-    for task in push pickplace; do
-        out="data/episodes/n1_sim_${task}_pretty"
-        if [ -d "$out" ]; then
-            echo "### $out exists, skipping"
-            continue
-        fi
-        echo "### collecting $task with MESH rendering (11x slower, required)"
-        python scripts/collect_demos.py --task "$task" --episodes "$EPS" \
-            --pretty --out "$out" --seed 0 2>&1 | tail -5
-        echo
-    done
+#
+# "Directory exists" is NOT the same as "collection finished". An earlier run
+# was killed partway through and left 18, 17 and 7 episodes of a requested 30.
+# Skipping on existence would have accepted all three silently -- and because
+# the measurement stage equalises n across rungs using the SMALLEST dataset, a
+# 7-episode leftover would have quietly capped every rung in the ladder at a
+# third of the data it should have had.
+#
+# So the check is on episode count, and a short directory is rebuilt rather
+# than reused. A partial result that looks complete is worse than no result.
+collect_one() {
+    out="$1"; task="$2"; seed="$3"; shift 3
+    have=$(ls "$out"/episode_*.npz 2>/dev/null | wc -l)
+    if [ "$have" -ge "$EPS" ]; then
+        echo "### $(basename "$out"): $have episodes, complete"
+        return
+    fi
+    if [ "$have" -gt 0 ]; then
+        echo "### $(basename "$out"): only $have/$EPS episodes from a killed run"
+        echo "    rebuilding rather than reusing a partial set"
+        rm -rf "$out"
+    fi
+    echo "### collecting $(basename "$out") with MESH rendering (11x slower, required)"
+    python scripts/collect_demos.py --task "$task" --episodes "$EPS" \
+        --pretty --out "$out" --seed "$seed" "$@" 2>&1 | tail -4
+    echo
+}
 
+if [ "$STAGE" = "all" ] || [ "$STAGE" = "collect" ]; then
+    collect_one data/episodes/n1_sim_push_pretty      push      0
+    collect_one data/episodes/n1_sim_pickplace_pretty pickplace 0
     # The domain-randomisation arm of N1: same task, same renderer, DR on.
-    for task in push; do
-        out="data/episodes/n1_sim_${task}_pretty_dr"
-        if [ -d "$out" ]; then
-            echo "### $out exists, skipping"
-            continue
-        fi
-        echo "### collecting $task with MESHES + domain randomisation"
-        python scripts/collect_demos.py --task "$task" --episodes "$EPS" \
-            --pretty --randomize --out "$out" --seed 1 2>&1 | tail -5
-        echo
-    done
+    collect_one data/episodes/n1_sim_push_pretty_dr   push      1 --randomize
 fi
 
 # ----------------------------------------------------------------- 2. encode
@@ -55,9 +63,15 @@ if [ "$STAGE" = "all" ] || [ "$STAGE" = "encode" ]; then
         [ -d "$d" ] || continue
         name=$(basename "$d")
         out="cache/latents/${name}"
-        if [ -d "$out" ] && [ -f "$out/info.json" ]; then
-            echo "### $name latents exist, skipping"
+        eps=$(ls "$d"/episode_*.npz 2>/dev/null | wc -l)
+        lat=$(ls "$out"/episode_*.npy 2>/dev/null | wc -l)
+        if [ -f "$out/info.json" ] && [ "$lat" -ge "$eps" ] && [ "$eps" -gt 0 ]; then
+            echo "### $name latents complete ($lat/$eps), skipping"
             continue
+        fi
+        if [ "$lat" -gt 0 ]; then
+            echo "### $name partially encoded ($lat/$eps), redoing"
+            rm -rf "$out"
         fi
         echo "### encoding $name  (chunk 32, margin 15 = one-latent stride)"
         python scripts/cache_latents.py --task "$name" --data "$d" --out "$out" \
