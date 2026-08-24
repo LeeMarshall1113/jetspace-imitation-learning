@@ -45,6 +45,7 @@ VJEPA="cache/latents/${TASK}_s1n60"          # comb-free V-JEPA, already cached
 
 RAND="cache/latents/e6_${TASK}_rand"
 JOINT="cache/latents/e6_${TASK}_joint"
+JOINTREG="cache/latents/e6_${TASK}_jointreg"
 CK="checkpoints/e6"
 
 echo "=============================================================="
@@ -61,19 +62,37 @@ if [ ! -f "$RAND/info.json" ]; then
 fi
 
 # ---------------------------------------------------------------- arm 3 ----
-if [ ! -f "$CK/joint_${TASK}_seed${SEED}.pt" ]; then
+# Arm 3a, unregularised. Kept because it demonstrates the trap is real and not
+# a hypothetical: the first smoke run collapsed inside one epoch to a validation
+# loss a thousand times below V-JEPA's, while being worse than predicting no
+# change at all.
+if [ ! -f "$CK/joint_${TASK}_naive_seed${SEED}.pt" ]; then
     echo
-    echo "### arm 3: training CNN encoder + predictor jointly"
+    echo "### arm 3a: joint CNN, NO regularisation (expected to collapse)"
     python scripts/train_joint_cnn.py --task "$TASK" --data "$DATA" --out "$CK" \
-        --limit "$EPS" --seed "$SEED" --epochs 20 \
-        2>&1 | grep -vE "UserWarning|self.blocks" | tail -14
+        --limit "$EPS" --seed "$SEED" --epochs 20 --var-reg 0.0 \
+        2>&1 | grep -vE "UserWarning|self.blocks" | tail -12
 fi
 if [ ! -f "$JOINT/info.json" ]; then
-    echo
-    echo "### arm 3: caching latents from the TRAINED encoder"
     python scripts/cache_latents_cnn.py --task "$TASK" --data "$DATA" --out "$JOINT" \
-        --encoder "$CK/joint_${TASK}_seed${SEED}.pt" --limit "$EPS" --seed "$SEED" \
-        2>&1 | tail -3
+        --encoder "$CK/joint_${TASK}_naive_seed${SEED}.pt" --limit "$EPS" --seed "$SEED" \
+        2>&1 | tail -2
+fi
+
+# Arm 3b, VICReg variance hinge. This is the arm V-JEPA actually has to beat --
+# nobody would ship a collapsed encoder, so the unregularised arm alone would be
+# a strawman comparison.
+if [ ! -f "$CK/joint_${TASK}_reg_seed${SEED}.pt" ]; then
+    echo
+    echo "### arm 3b: joint CNN + variance regularisation (the fair competitor)"
+    python scripts/train_joint_cnn.py --task "$TASK" --data "$DATA" --out "$CK" \
+        --limit "$EPS" --seed "$SEED" --epochs 20 --var-reg 1.0 \
+        2>&1 | grep -vE "UserWarning|self.blocks" | tail -12
+fi
+if [ ! -f "$JOINTREG/info.json" ]; then
+    python scripts/cache_latents_cnn.py --task "$TASK" --data "$DATA" --out "$JOINTREG" \
+        --encoder "$CK/joint_${TASK}_reg_seed${SEED}.pt" --limit "$EPS" --seed "$SEED" \
+        2>&1 | tail -2
 fi
 
 # ------------------------------------------- identical pipeline, all arms --
@@ -112,7 +131,8 @@ run_arm() {
 
 run_arm "e6_${TASK}_vjepa" "$VJEPA"
 run_arm "e6_${TASK}_rand"  "$RAND"
-run_arm "e6_${TASK}_joint" "$JOINT"
+run_arm "e6_${TASK}_joint"    "$JOINT"
+run_arm "e6_${TASK}_jointreg" "$JOINTREG"
 
 # ---------------------------------------------------------------- summary --
 echo
@@ -165,4 +185,8 @@ else:
     print("  The decisive comparison is arm 1 vs arm 2. Both are frozen, so")
     print("  neither can cheat, and the difference between them is exactly what")
     print("  22M videos of pretraining bought over random convolutional features.")
+    print()
+    print("  Arm 3a (naive) is expected to collapse and is kept to show the trap")
+    print("  is real. Arm 3b (variance-regularised) is the arm V-JEPA has to")
+    print("  beat; comparing against 3a alone would be a strawman.")
 PY

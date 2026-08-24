@@ -20,9 +20,27 @@ number does not. Two further checks live downstream and both run on the cached
 latents afterwards: the inverse-dynamics probe (a collapsed space cannot
 recover which action was taken) and the shuffled-action test.
 
-`collapse_ratio` — the standard deviation across latents divided by the
-standard deviation within a latent — is logged every epoch. Watching it fall
-during training is what a collapse looks like from the inside.
+`collapse_ratio` — the mean per-dimension standard deviation across the
+batch, which is exactly the quantity VICReg regularises — is logged every
+epoch. Near 1.0 is healthy against a target of 1.0; near 0 means the dimensions
+carry no variation and the space has collapsed.
+
+**It is not hypothetical.** The first smoke run collapsed inside one epoch:
+
+    epoch 0  val 0.00053  gain 0.52x  collapse_ratio 0.0004
+    epoch 1  val 0.00011  gain 0.70x  collapse_ratio 0.0004
+
+A validation loss of 1e-4 is roughly a thousand times below V-JEPA's, so a raw
+loss comparison would have declared the CNN the winner by three orders of
+magnitude. The gain ratio said 0.70x — worse than predicting no change at all,
+because in a collapsed space predicting no change is already almost perfect.
+
+**Which makes the unregularised arm a strawman.** Nobody deploying a jointly
+trained encoder would ship one that collapsed; they would add a variance term
+and move on. So `--var-reg` supplies the standard VICReg hinge, penalising any
+latent dimension whose spread across the batch falls under a target. Both
+settings are run: the unregularised arm shows the trap is real, the regularised
+arm is the honest competitor V-JEPA has to beat.
 """
 
 from __future__ import annotations
@@ -80,12 +98,44 @@ def build_windows(ds: EpisodeDataset, camera: str, fpl: int, horizon: int,
     return frames, acts, idx
 
 
+def variance_hinge(z: torch.Tensor, target: float = 1.0) -> torch.Tensor:
+    """VICReg's variance term: penalise dimensions whose batch spread collapses.
+
+    Hinged rather than maximised, so it stops pushing once a dimension is
+    healthy and never fights the prediction objective for its own sake.
+    Bardes, Ponce & LeCun, ICLR 2022.
+    """
+    f = z.reshape(-1, z.shape[-1])
+    std = torch.sqrt(f.var(dim=0) + 1e-6)
+    return torch.relu(target - std).mean()
+
+
 def collapse_ratio(z: torch.Tensor) -> float:
-    """Between-latent spread over within-latent spread. Falls toward 0 on collapse."""
-    f = z.reshape(z.shape[0], -1)
-    between = f.mean(dim=1).std().item()
-    within = f.std(dim=1).mean().item()
-    return between / max(within, 1e-9)
+    """Mean per-dimension spread across the batch. Falls to 0 on collapse.
+
+    The first version of this measured between-latent spread over within-latent
+    spread, and it was wrong in a way worth recording rather than quietly
+    fixing.
+
+    Its numerator was the standard deviation, across latents, of each latent's
+    mean over 16384 dimensions. Averaging that many values makes the per-latent
+    mean nearly constant whatever the encoder is doing, so the numerator stayed
+    tiny for healthy and collapsed encoders alike. Worse, the window it saw
+    spans five latents -- 0.4 seconds -- during which a real arm barely moves,
+    so genuinely distinct latents SHOULD look similar there. It reported
+    "COLLAPSING" for both the naive and the regularised arm, which is exactly
+    the uninformative behaviour of a metric that is measuring the wrong thing.
+
+    This measures what collapse actually is: whether individual dimensions vary
+    at all across the sample. It is also the quantity VICReg regularises, so
+    with `--var-reg` and a target of 1.0 a healthy encoder should sit near 1.0
+    and a collapsed one near 0 -- directly comparable rather than needing
+    interpretation.
+    """
+    f = z.reshape(-1, z.shape[-1])
+    if len(f) < 2:
+        return float("nan")
+    return float(f.std(dim=0).mean().item())
 
 
 def main() -> int:
@@ -104,6 +154,10 @@ def main() -> int:
     ap.add_argument("--frames-per-latent", type=int, default=2)
     ap.add_argument("--limit", type=int, default=30)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--var-reg", type=float, default=0.0,
+                    help="VICReg variance-hinge weight. 0 reproduces the naive "
+                         "arm, which collapses inside one epoch; ~1.0 gives the "
+                         "regularised arm that is a fair competitor.")
     args = ap.parse_args()
 
     torch.manual_seed(args.seed)
@@ -121,8 +175,9 @@ def main() -> int:
 
     enc = ScratchCNNEncoder(hidden=args.hidden, grid=args.pool_grid,
                             frames_per_latent=fpl, width=args.width).to(device)
+    # grid is the SIDE length; the predictor squares it into n_tokens.
     pred = ActionConditionedPredictor(
-        hidden=args.hidden, grid=args.pool_grid * args.pool_grid, action_dim=adim
+        hidden=args.hidden, grid=args.pool_grid, action_dim=adim
     ).to(device)
     n_enc = sum(p.numel() for p in enc.parameters())
     n_pred = sum(p.numel() for p in pred.parameters())
@@ -162,14 +217,21 @@ def main() -> int:
             for h in range(args.horizon):
                 cur = pred(cur, a[h : h + 1])
                 l = l + loss_fn(cur, z[h + 1 : h + 2])
-            total = total + l / args.horizon
+            l = l / args.horizon
+            # Applied to the ENCODER's output, not the prediction: the thing
+            # being prevented is the representation collapsing, not the
+            # predictor's output distribution narrowing.
+            if args.var_reg > 0:
+                l = l + args.var_reg * variance_hinge(z)
+            total = total + l
             cr += collapse_ratio(z.detach())
         return total / len(sel), cr / len(sel)
 
     best, t0 = float("inf"), time.time()
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
-    ckpt_path = out_dir / f"joint_{args.task}_seed{args.seed}.pt"
+    tag = "reg" if args.var_reg > 0 else "naive"
+    ckpt_path = out_dir / f"joint_{args.task}_{tag}_seed{args.seed}.pt"
 
     for epoch in range(args.epochs):
         enc.train()
@@ -214,7 +276,7 @@ def main() -> int:
                 "state_dict": pred.state_dict(),
                 "encoder_config": {"hidden": args.hidden, "grid": args.pool_grid,
                                    "frames_per_latent": fpl, "width": args.width},
-                "hidden": args.hidden, "grid": args.pool_grid * args.pool_grid,
+                "hidden": args.hidden, "grid": args.pool_grid,
                 "action_dim": adim,
                 "norm": {"mu": [0.0], "sd": [1.0],
                          "a_mu": a_mu.cpu().numpy().tolist(),
@@ -226,7 +288,9 @@ def main() -> int:
 
         if epoch % 2 == 0 or epoch == args.epochs - 1:
             gain = static / max(vloss, 1e-9)
-            warn = "  <-- COLLAPSING" if cr < 0.05 else ""
+            # Against the VICReg target of 1.0; below ~0.1 the dimensions
+            # carry essentially no variation and the space has collapsed.
+            warn = "  <-- COLLAPSING" if cr < 0.1 else ""
             print(f"  epoch {epoch:3d}  train {run/len(tr):.5f}  val {vloss:.5f}  "
                   f"gain {gain:.2f}x  collapse_ratio {cr:.4f}{warn}")
 
@@ -237,11 +301,12 @@ def main() -> int:
     print("collapsed encoder drives BOTH toward zero. Confirm with the")
     print("inverse-dynamics probe on the cached latents before believing it.")
 
-    (out_dir / f"joint_{args.task}_seed{args.seed}.json").write_text(json.dumps({
+    (out_dir / f"joint_{args.task}_{tag}_seed{args.seed}.json").write_text(json.dumps({
         "task": args.task, "val_loss": best, "static_baseline": static,
         "gain": static / max(best, 1e-9), "collapse_ratio": cr,
         "encoder_params": int(n_enc), "predictor_params": int(n_pred),
-        "epochs": args.epochs, "seed": args.seed,
+        "epochs": args.epochs, "seed": args.seed, "var_reg": args.var_reg,
+        "collapsed": bool(cr < 0.1),
     }, indent=2))
     return 0
 
