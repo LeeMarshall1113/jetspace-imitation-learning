@@ -97,3 +97,41 @@ verdict.
 If E7a holds, the online version is worth GPU time: task success across poses
 for both arms, which is the behavioural claim. If E7c fires, no online run is
 justified and the paper's framing does not rest on pretraining.
+
+---
+
+## 6. Amendment, before any E7 result was computed
+
+Written after checking sample counts and **before running the experiment**. No
+E7 number of any kind has been produced at the time of this amendment.
+
+**What was wrong.** §1 specified a head taking raw flattened features. The
+features are `4 x 4 x 1024 = 16384`-dimensional, and the reference pose has
+**86 latents** on reach and **398** on push. A 16384-dimensional input fitted on
+86 samples is degenerate: both arms would memorise their training pose, and the
+retention difference would measure which encoder's noise happens to memorise
+better. That is not a test of viewpoint robustness.
+
+**Two changes.**
+
+1. **PCA to 128 dimensions, matched across arms**, fitted on the REFERENCE pose
+   only and carried unchanged to every displaced pose. This mirrors
+   `train_predictor.py --pca-dim 128`, already used throughout the project. The
+   basis must not be refitted per pose — refitting would absorb the shift the
+   experiment is measuring. Both arms get the same `--pca-dim`; a mismatch is
+   invalidation 3.
+
+2. **The registered test runs on an expanded R1 collection**, not on the
+   current 5-episode push sweep. 398 latents against 128 dimensions is
+   workable but thin; the expanded sweep targets ≥ 1200.
+
+**Disclosed prior look.** A pilot will run on the existing 5-episode push data
+to check the pipeline end to end. Its numbers are explicitly **not** the
+registered test and will not be reported as a result — if the pilot and the
+final run disagree, the final run stands and the pilot is reported as having
+disagreed. Recording this here rather than after the fact is the whole point of
+the file.
+
+**Unchanged:** every registered threshold. E7a still requires a retention gap
+≥ 0.05 with separated intervals, E7b still requires growth ≥ 0.03, and E7c is
+still the registered headline if random features win.
