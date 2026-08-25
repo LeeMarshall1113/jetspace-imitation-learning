@@ -100,6 +100,7 @@ measurements. Longer episodes are the only fix
 | **Action spaces are not interchangeable** across labs | **70–238×**, zero-offsets differ by ~140 units | `check_action_spaces.py` |
 | **Trained encoders collapse** and win on raw loss | val loss **1000× lower**, gain 0.74× | `train_joint_cnn.py` |
 | **Camera viewpoint** rivals what people call a domain gap | see the ruler below | `measure_camera_ruler.py` |
+| **Frozen pretraining buys nothing consistent** vs random features | 3 tasks, 3 seeds, winner flips by task and metric | `run_e6_seeds.sh` |
 
 Each was found by a check, not by inspection, and each check is in the
 repository.
@@ -127,8 +128,11 @@ curve that converts a latent-space distance into degrees of camera rotation.
 Kept because they cost real time and the diagnostics generalise.
 
 - **"Random CNN beats frozen V-JEPA."** Held on push with non-overlapping
-  intervals across 3 seeds; **reversed on pickplace.** Task-dependent, small
-  either way.
+  intervals across 3 seeds; **reversed on pickplace.** Replicated across three
+  tasks the supported claim is narrower — *a frozen 326M video model buys
+  nothing consistent over random convolutional features at this data scale*
+  ([`docs/e6-results.md`](docs/e6-results.md)). Push has now been the atypical
+  task twice.
 - **"Camera placement rivals laboratory identity."** N1b's headline, **retracted
   by R1** — two similar-sized quantities with different causes.
 - **"Domain randomisation widens the sim-to-real gap."** Measured against one

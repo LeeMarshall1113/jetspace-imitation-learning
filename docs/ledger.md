@@ -390,6 +390,43 @@ found by a script whose output began "PREDICTIONS THAT FAILED".
 
 ---
 
+## L10 — The control that told two identical-looking failures apart
+
+E6 trains a CNN encoder jointly with the world model, which can cheat: nothing
+in a prediction loss forbids collapsing the representation until prediction is
+trivial. Three controls were built for that — the gain ratio against a
+do-nothing baseline, the inverse-dynamics probe, and the shuffled-action test.
+
+Two arms then failed in ways that looked identical:
+
+| | cosine | ratio | **probe R²** |
+|---|---|---|---|
+| pickplace, VICReg arm | 0.195 | 1.818 | **0.033** |
+| real_cubes, VICReg arm | 0.208 | 0.450 | **0.696** |
+
+On the headline metric they are the same number. They are not the same failure.
+The pickplace arm **collapsed** — probe R² of 0.033 means the latents carry no
+recoverable action information at all. The real_cubes arm's encoder is **fine**
+at 0.696; its *predictor* under-moves by half, which is a conservatism failure
+and a different fix entirely.
+
+Without the probe both would have been recorded as "the CNN collapsed", and one
+of those records would have been wrong.
+
+**The reusable part.** The controls were built to answer a yes/no question — did
+this arm cheat? What they actually bought was the ability to **localise** a
+failure to the encoder or to the predictor. A control that only confirms your
+suspicion is worth less than one that can also contradict it, and the difference
+only shows up when two failures look alike.
+
+**The other half of this entry is less flattering.** The VICReg variance hinge
+was added specifically so the trained arm would be a fair competitor rather than
+a strawman that collapses trivially. It is the worst arm on every task except
+push, and on pickplace it collapses *harder* than the unregularised arm it was
+meant to rescue. The fix made things worse and is recorded as measured.
+
+---
+
 ## Simulation
 
 ### S1 — MuJoCo defaults to degrees; the arm was clamped to a 6° sweep
