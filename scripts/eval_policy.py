@@ -33,7 +33,11 @@ from jetspace.utils.device import get_device  # noqa: E402
 
 def load_policy(path: Path, device: str):
     ckpt = torch.load(path, map_location=device, weights_only=False)
-    policy = BCPolicy(SimpleVisualEncoder(), ckpt["proprio_dim"], ckpt["action_dim"]).to(device)
+    # Rebuild the architecture the checkpoint recorded. Defaults match the
+    # original so older checkpoints still load.
+    enc = SimpleVisualEncoder(in_size=ckpt.get("in_size", 112),
+                              stages=ckpt.get("stages", 3))
+    policy = BCPolicy(enc, ckpt["proprio_dim"], ckpt["action_dim"]).to(device)
     policy.load_state_dict(ckpt["state_dict"])
     policy.eval()
     mean = np.asarray(ckpt["norm"]["proprio_mean"], dtype=np.float32)

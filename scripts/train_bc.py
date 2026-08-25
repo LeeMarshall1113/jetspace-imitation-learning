@@ -60,6 +60,12 @@ def main() -> int:
     ap.add_argument("--lr", type=float, default=3e-4)
     ap.add_argument("--val-frac", type=float, default=0.1)
     ap.add_argument("--device", default="auto")
+    ap.add_argument("--in-size", type=int, default=112,
+                    help="encoder input resolution; 224 doubles the feature grid")
+    ap.add_argument("--stages", type=int, default=3,
+                    help="stride-2 stages; 2 doubles the feature grid")
+    ap.add_argument("--tag", default=None,
+                    help="suffix for the checkpoint name, for ablation arms")
     args = ap.parse_args()
 
     torch.manual_seed(args.seed)
@@ -76,7 +82,10 @@ def main() -> int:
     tr = DataLoader(Subset(ds, tr_idx), batch_size=args.batch_size, shuffle=True, num_workers=2)
     va = DataLoader(Subset(ds, va_idx), batch_size=args.batch_size, num_workers=2)
 
-    policy = BCPolicy(SimpleVisualEncoder(), ds.proprio_dim, ds.action_dim).to(device)
+    enc = SimpleVisualEncoder(in_size=args.in_size, stages=args.stages)
+    policy = BCPolicy(enc, ds.proprio_dim, ds.action_dim).to(device)
+    print(f"encoder: in_size {args.in_size}, {args.stages} stages -> "
+          f"{enc.feat_size}x{enc.feat_size} feature grid")
     n_params = sum(p.numel() for p in policy.parameters())
     print(f"policy: {n_params/1e6:.2f}M parameters")
 
@@ -119,7 +128,7 @@ def main() -> int:
     torch.save(
         {
             "state_dict": best_state,
-            "proprio_dim": ds.proprio_dim,
+            "in_size": args.in_size, "stages": args.stages, "proprio_dim": ds.proprio_dim,
             "action_dim": ds.action_dim,
             "norm": ds.norm_stats(),
             "config": vars(args),
