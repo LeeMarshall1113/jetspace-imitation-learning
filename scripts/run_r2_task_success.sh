@@ -163,6 +163,40 @@ lo, hi = np.percentile(boot, [2.5, 97.5])
 print()
 print(f"Spearman rho, gap vs success : {rho:+.3f}   95% CI [{lo:+.3f}, {hi:+.3f}]")
 print("  (CI by bootstrap over poses, 2000 resamples)")
+# ---- PRECONDITION, checked before any verdict is printed ----------------
+# The first run of this script reported "REGISTERED PREDICTION FAILS -- latent
+# distance predicts world-model internals and NOT behaviour" off a reference
+# success rate of 3.3%. Every pose scored 2-8%. The policy never worked at ANY
+# viewpoint, so there was no dynamic range for a correlation to live in and rho
+# was measuring noise.
+#
+# That is the same defect this project has catalogued repeatedly -- a confident
+# verdict computed on data that cannot support it -- committed by the script
+# built to test it. A correlation against a floored outcome is not evidence
+# either way, and saying so is not optional.
+FLOOR = 0.25
+if ref["success"] < FLOOR:
+    print()
+    print("=" * 72)
+    print("INCONCLUSIVE -- the experiment has no dynamic range.")
+    print("=" * 72)
+    print(f"  Reference success is {ref['success']:.1%}, below the {FLOOR:.0%} floor this")
+    print("  test requires. Degradation cannot be measured from a policy that")
+    print("  does not work at its own training viewpoint.")
+    print()
+    print(f"  rho = {rho:+.3f} here is noise, NOT a refutation. The registered")
+    print("  prediction is untested, not failed.")
+    print()
+    print("  Fix the policy first: more data, frame stacking, or capacity. Then")
+    print("  re-run. Do not read the number below as a result.")
+    print("=" * 72)
+    outf = f"cache/r2_task_success_{task}.json"
+    json.dump({"task": task, "inconclusive": True, "reason": "reference below floor",
+               "reference": ref, "poses": rows, "rho": rho,
+               "ci95": [float(lo), float(hi)]}, open(outf, "w"), indent=2, default=float)
+    print(f"\nwrote {outf} (marked inconclusive)")
+    raise SystemExit
+
 print()
 print("=" * 72)
 if hi <= -0.6:
