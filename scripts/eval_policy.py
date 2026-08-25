@@ -64,9 +64,15 @@ def main() -> int:
     ap.add_argument("--eval-seeds", default="configs/eval_seeds.json")
     ap.add_argument("--task", default="pickplace", choices=["reach", "push", "pickplace"])
     ap.add_argument("--train-data", default=None)
-    ap.add_argument("--task", default="pickplace", choices=["reach", "push", "pickplace"])
     ap.add_argument("--max-steps", type=int, default=400)
     ap.add_argument("--device", default="auto")
+    # Render the policy's observation from a DIFFERENT camera than the one it
+    # trained on, feeding it through unchanged. The policy is not told; it just
+    # receives a displaced view where it expects its own. That is the whole
+    # test -- it turns "the latent gap is N" into "the policy succeeds X% of
+    # the time at that gap".
+    ap.add_argument("--camera-override", default=None,
+                    help="evaluate under this camera instead of the training one")
     args = ap.parse_args()
     if args.train_data is None:
         args.train_data = f"data/episodes/{args.task}"
@@ -92,14 +98,18 @@ def main() -> int:
         return 1
 
     device = get_device(args.device)
-    env = get_task(args.task)["env"](image_size=224, max_steps=args.max_steps)
+    cams = ("front",) if args.camera_override is None else ("front", args.camera_override)
+    env = get_task(args.task)["env"](
+        image_size=224, max_steps=args.max_steps, cameras=cams
+    )
     rates = []
 
     for path in paths:
         policy, mean, std, norm, camera, adim = load_policy(Path(path), device)
         successes, dists = 0, []
         for seed in eval_seeds:
-            ok, best = rollout(env, policy, mean, std, norm, camera, adim, seed, device)
+            view = args.camera_override or camera
+            ok, best = rollout(env, policy, mean, std, norm, view, adim, seed, device)
             successes += ok
             dists.append(best)
         rate = successes / len(eval_seeds)
@@ -109,7 +119,9 @@ def main() -> int:
 
     env.close()
     arr = np.array(rates)
-    print(f"\n{len(arr)} checkpoint(s): success {arr.mean():.1%} +- {arr.std():.1%}")
+    view = args.camera_override or "front (training view)"
+    print(f"\n{len(arr)} checkpoint(s): success {arr.mean():.1%} +- {arr.std():.1%}"
+          f"   [camera: {view}]")
     gate = 0.70
     verdict = "PASS" if arr.mean() >= gate else "BELOW GATE"
     print(f"M2 gate is {gate:.0%} on held-out targets -> {verdict}")
