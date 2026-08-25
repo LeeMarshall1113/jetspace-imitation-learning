@@ -82,19 +82,25 @@ Moving the camera inside one laboratory produces **82% of the latent shift of
 changing laboratory, robot and task entirely**, with 38% range overlap. R1's
 "cannot produce" is not supported.
 
-**But N1b's original claim is not reinstated.** The bootstrap 95% CI on the
-difference is [+68.4, +392.5] — it excludes zero, so cross-lab is reliably
-larger. Mann-Whitney gives p = 0.0523, which fails to reject at 0.05; with
-n = 8 that is *not* evidence of equivalence, and the automatic verdict printed
-by `e2_followup.py` — "NOT separable … that is N1b's retracted headline" —
-**overstates what these numbers support and should be disregarded.** The script
-tested ranks and ignored the interval on the means.
+**But N1b's original claim is not reinstated either.** The bootstrap 95% CI on
+the difference is [+68.4, +392.5], excluding zero. Mann-Whitney gives
+p = 0.0523, which fails to reject at 0.05 — and with n = 8 that is *not*
+evidence of equivalence. The automatic verdict printed by `e2_followup.py`
+("NOT separable … that is N1b's retracted headline") **overstates what these
+numbers support and should be disregarded**: it tested ranks and ignored the
+interval on the means.
 
-The supported statement is narrower than either previous claim:
+§5 then removes the other half of the certainty. The difference being claimed
+here is 222.7, while this estimator's directional asymmetry on these two
+families is 272.5 and 320.5. **The difference is smaller than the estimator's
+own noise on exactly these pairs**, and the bootstrap interval does not include
+that directional term. So the answer is neither claim:
 
-> Viewpoint accounts for most, but not all, of the latent distance between
-> laboratories. A camera move within one lab reaches ~82% of a full cross-lab
-> shift; cross-lab remains reliably larger.
+> Within-lab camera change and cross-lab shift are of comparable magnitude —
+> camera reaches ~82% of cross-lab — with cross-lab probably but not reliably
+> larger. This estimator cannot resolve the difference. N1b's "camera rivals
+> lab identity" is unproven; R1's "camera cannot produce cross-lab gaps" is
+> refuted.
 
 ## 4. Domain randomisation works, and it breaks the ladder
 
@@ -107,18 +113,47 @@ This is why the ladder is not monotone. Reported as a result rather than
 patched: it is the strongest evidence in this project that domain
 randomisation does what it claims.
 
-## 5. Limitation: estimator asymmetry
+## 5. Limitation: estimator asymmetry, measured per family
 
 `gap_between` fits its whitening statistics and PCA basis on the first
-argument, so it is directional. Median |A→B − B→A| across all pairs is **216.3**
-— larger than the entire session rung (122% of it), 22% of the camera rung, 18%
-of cross-lab.
+argument, so it is directional. E2 symmetrises every value, which removes the
+direction dependence but not the uncertainty it implies.
 
-E2 symmetrises every value, which removes the direction dependence but not the
-uncertainty it implies. **Differences smaller than roughly 216 Fréchet should
-not be claimed from this estimator.** That does not threaten §1 (disjoint
-ranges against a matched control) or §2 (difference 474, CI excluding zero),
-but it is the reason §3 is stated as a bound rather than an equivalence.
+The **pooled** median |A→B − B→A| is 216.3. An earlier draft of this document
+used that pooled figure against individual rungs, concluding that asymmetry was
+"122% of the session rung" and that "differences smaller than roughly 216
+Fréchet should not be claimed." **Both statements were wrong**, because the
+pooled median is dominated by large cross-lab pairs and does not describe the
+session family at all. Measured per family:
 
-A per-family breakdown of asymmetry is running; the pooled median is dominated
-by large cross-lab pairs and likely overstates the cost for the session rung.
+| family | n | median asymmetry | mean gap | asymmetry / gap |
+|---|---|---|---|---|
+| session | 6 | **39.0** | 177.8 | 21.9% |
+| camera | 8 | 320.5 | 1005.8 | 31.9% |
+| cross-lab | 10 | 272.5 | 1216.7 | 22.4% |
+
+Asymmetry is **proportional to the magnitude being measured** — roughly 20–32%
+of it across all three families — not an absolute floor of 216. The correct
+rule is relative, not absolute:
+
+> Differences smaller than about 30% of the gaps being compared should not be
+> claimed from this estimator.
+
+**Consequences, in both directions.**
+
+*§1 is safe.* Session asymmetry is 39.0 against a session gap of 177.8, and the
+session range [104, 301] is disjoint from lab H's null [34.5, 44.8]. The
+finding survives its own error bar comfortably.
+
+*§3 is weaker than stated above.* The camera-to-cross-lab difference is 222.7,
+while the directional asymmetry on those two families is 272.5 and 320.5 — the
+difference being claimed is **smaller than the estimator's own directional
+noise on exactly those pairs**. The bootstrap CI [+68.4, +392.5] excludes zero,
+but that interval is computed over pair-to-pair variation and does not include
+the directional term. §3 should therefore be read as: *camera change and
+cross-lab shift are of comparable magnitude, with cross-lab probably larger,
+and this estimator cannot resolve the difference reliably.* Neither N1b's claim
+nor R1's refutation is supported.
+
+*§2 is safe.* The sim-versus-real camera difference is 473.9, above the
+asymmetry on either family, with p = 0.0019.
