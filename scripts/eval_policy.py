@@ -41,6 +41,11 @@ def load_policy(path: Path, device: str):
     return policy, mean, std, ckpt["norm"], ckpt.get("camera", "front"), ckpt["action_dim"]
 
 
+#: Per-task error terms, in preference order. A task whose info carries none
+#: of these still reports success; only the auxiliary distance is lost.
+ERROR_KEYS = ("dist", "goal_error", "place_error", "grasp_error")
+
+
 def rollout(env, policy, mean, std, norm, camera, adim, seed, device) -> tuple[bool, float]:  # noqa: ANN001
     obs = env.reset(seed=seed)
     terminated = truncated = False
@@ -50,7 +55,14 @@ def rollout(env, policy, mean, std, norm, camera, adim, seed, device) -> tuple[b
             obs.pixels[camera], (obs.proprio - mean) / std, obs.proprio[:adim], norm, device=device
         )
         result = env.step(action)
-        best = min(best, result.info["dist"])
+        # Each env reports its own error term: reach "dist", push
+        # "goal_error", pickplace its own. Hardcoding "dist" made this
+        # script reach-only and it raised KeyError the first time it was
+        # pointed at another task -- which had never happened, because
+        # nothing had called it since M2.
+        err = next((result.info[k] for k in ERROR_KEYS if k in result.info), None)
+        if err is not None:
+            best = min(best, float(err))
         obs = result.obs
         terminated, truncated = result.terminated, result.truncated
         if terminated:
@@ -66,6 +78,11 @@ def main() -> int:
     ap.add_argument("--train-data", default=None)
     ap.add_argument("--max-steps", type=int, default=400)
     ap.add_argument("--device", default="auto")
+    ap.add_argument("--eval-limit", type=int, default=None,
+                    help="use only the first N eval seeds. The full set is "
+                         "100; a 23-pose sweep at 100 seeds x 3 checkpoints "
+                         "is ~2M env steps. 30 keeps the standard error "
+                         "near 9%% at p=0.5, which is enough to rank poses.")
     # Render the policy's observation from a DIFFERENT camera than the one it
     # trained on, feeding it through unchanged. The policy is not told; it just
     # receives a displaced view where it expects its own. That is the whole
@@ -79,6 +96,8 @@ def main() -> int:
 
     spec = json.loads(Path(args.eval_seeds).read_text())
     eval_seeds = spec["seeds"]
+    if args.eval_limit:
+        eval_seeds = eval_seeds[: args.eval_limit]
 
     # Leak check: a contaminated eval set reports an inflated number silently.
     try:
@@ -98,7 +117,10 @@ def main() -> int:
         return 1
 
     device = get_device(args.device)
-    cams = ("front",) if args.camera_override is None else ("front", args.camera_override)
+    # Render ONLY the view the policy will be given. Rendering the training
+    # camera alongside the override doubles the per-step cost and nothing reads
+    # it; across 23 poses that is hours.
+    cams = (args.camera_override,) if args.camera_override else ("front",)
     env = get_task(args.task)["env"](
         image_size=224, max_steps=args.max_steps, cameras=cams
     )
@@ -115,7 +137,8 @@ def main() -> int:
         rate = successes / len(eval_seeds)
         rates.append(rate)
         print(f"{Path(path).name:24s} success {rate:6.1%}   "
-              f"median closest approach {np.median(dists) * 100:.1f} cm")
+              f"median closest approach {np.median(dists) * 100:.1f} cm"
+              if np.isfinite(np.median(dists)) else "")
 
     env.close()
     arr = np.array(rates)

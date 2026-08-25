@@ -28,6 +28,7 @@ cd "$(dirname "$0")/.."
 TASK=${1:-push}
 SEEDS=${2:-"0 1 2"}
 STEPS=${3:-300}
+NSEEDS=${4:-30}
 mkdir -p logs checkpoints/r2
 
 # ---- a policy on the same task R1 swept -----------------------------------
@@ -59,18 +60,28 @@ for p in $POSES; do
     out="cache/r2_success_${TASK}__${p}.json"
     [ -f "$out" ] && { echo "  $p: cached"; continue; }
     printf "  %-14s " "$p"
+    # Capture the whole run to a file. Piping straight into grep swallowed
+    # every error the first time this ran: 23 poses reported nothing at all,
+    # and the only symptom was "not enough results to correlate" after an hour
+    # of BC training. The cause was a KeyError two frames down.
     python scripts/eval_policy.py --task "$TASK" \
         --checkpoints "checkpoints/r2/bc_${TASK}_seed*.pt" \
-        --camera-override "$p" --max-steps "$STEPS" \
-        2>&1 | grep -E "checkpoint\(s\): success" | tail -1 \
-        | tee /dev/stderr \
-        | python3 -c "
-import json, re, sys
-line = sys.stdin.read()
-m = re.search(r'success\s+([\d.]+)%\s*\+-\s*([\d.]+)%', line)
+        --camera-override "$p" --max-steps "$STEPS" --eval-limit "$NSEEDS" \
+        > "logs/r2_${p}.log" 2>&1
+    line=$(grep -aE "checkpoint\(s\): success" "logs/r2_${p}.log" | tail -1)
+    if [ -z "$line" ]; then
+        echo "FAILED -- logs/r2_${p}.log"
+        grep -aE "Error|error:" "logs/r2_${p}.log" \
+            | grep -avE "EGL|OpenGL|glCheckError" | head -2 | sed 's/^/      /'
+        continue
+    fi
+    echo "$line" | sed 's/^.*success/success/'
+    POSE="$p" OUTF="$out" LINE="$line" python3 -c "
+import json, os, re
+m = re.search(r'success\s+([\d.]+)%\s*\+-\s*([\d.]+)%', os.environ['LINE'])
 if m:
-    json.dump({'pose': '$p', 'success': float(m.group(1)) / 100,
-               'sd': float(m.group(2)) / 100}, open('$out', 'w'))
+    json.dump({'pose': os.environ['POSE'], 'success': float(m.group(1)) / 100,
+               'sd': float(m.group(2)) / 100}, open(os.environ['OUTF'], 'w'))
 "
 done
 
