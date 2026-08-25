@@ -471,6 +471,41 @@ be cited.
 
 ---
 
+## L12 — A fix landed mid-sweep and the arm it fixed was never retried
+
+**Silent?** Half. The failure was loud; the fact that it stayed failed was not.
+**Cost:** the finest rung of the G1 ladder missing from a completed-looking run.
+
+The G1 resolution sweep trains five arms from a 7x7 feature grid to 112x112.
+The 7x7 arm (`g007`, `in_size 112`, 4 stages) died on all five seeds with a
+shape mismatch in the spatial-softmax head: 196 activations against 49
+positions. Twelve minutes later `bc.py` was fixed -- the `stages=4` width list
+had ended at the wrong channel count -- and every subsequent arm trained fine.
+
+The sweep loop guards each arm with `[ -f "$ck" ] && continue`, which skips
+arms that already have checkpoints. `g007` had none, so it *would* have been
+retried -- but the loop had already walked past it and never came back. The run
+then printed `### g014 ... 5 checkpoints`, `### g028 ... 5 checkpoints` and so
+on, and finished looking complete. Only the count line for `g007` -- `0
+checkpoints` -- recorded that a fifth of the experiment was missing, one line
+among many in a log tail.
+
+**What made this hard to see:** I diagnosed it as a live bug in `bc.py` and
+started reading the shape arithmetic. Constructing all five arms in the
+container showed every one matching -- declared grid equal to actual grid. The
+code was already correct. The evidence that settled it was neither the code nor
+the traceback but **the timestamps**: the failure logs are 14:20-14:21 and
+`bc.py` is 14:32. The traceback was a photograph of a bug that no longer
+existed.
+
+**Lesson:** when a long sweep is running and you fix something it depends on,
+the sweep does not know. Either restart it, or record which arms ran before the
+fix. And when a traceback and the current source disagree, check `mtime` before
+re-deriving the logic -- four rounds of reasoning on shape arithmetic went into
+something a single `ls -la` closed.
+
+---
+
 ## Simulation
 
 ### S1 — MuJoCo defaults to degrees; the arm was clamped to a 6° sweep

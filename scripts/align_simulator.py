@@ -71,6 +71,7 @@ class Objective:
     def __post_init__(self):
         self._cache = {}
         self._reported = False
+        self._env = None
         import torch
 
         from jetspace.envs.registry import get_task
@@ -103,7 +104,14 @@ class Objective:
             material_hue_jitter=0.0,
             n_distractors=(0, 0),
         )
-        env = self._spec["env"](image_size=224, pretty=True, randomize=cfg)
+        if self._env is None:
+            self._env = self._spec["env"](image_size=224, pretty=True, randomize=cfg)
+        else:
+            # Swap the config rather than rebuilding: model compilation and EGL
+            # context creation dominated the 66 s per evaluation, and neither
+            # depends on the parameters being optimised.
+            self._env.randomizer.cfg = cfg
+        env = self._env
         expert = self._spec["expert"](env, _np.random.default_rng(self.seed))
 
         frames = []
@@ -193,6 +201,13 @@ def cem(obj, budget: int, seed: int, pop: int = 20, elite: float = 0.25):
     hi = np.array([h for _, _, h in PARAMS])
     mu = (lo + hi) / 2
     sd = (hi - lo) / 4
+    # With budget < pop the loop below never ran and CEM returned inf while
+    # random search returned a real number -- which would have read as "random
+    # search wins", the registered falsifier, for a reason that has nothing to
+    # do with the objective.
+    if budget < pop * 2:
+        pop = max(4, budget // 3)
+        print(f"    (budget {budget} is small; population reduced to {pop})")
     n_elite = max(2, int(pop * elite))
     best_x, best_v, hist = None, float("inf"), []
     used = 0
@@ -256,7 +271,10 @@ def main() -> int:
     default = (lo + hi) / 2
     t0 = time.time()
     base = obj(default)
-    print(f"    gap {base:.1f}   ({time.time() - t0:.0f}s per evaluation)\n")
+    per = time.time() - t0
+    total = per * args.budget * 2 / 60.0
+    print(f"    gap {base:.1f}   ({per:.0f}s per evaluation)")
+    print(f"    {args.budget} evaluations x 2 optimisers ~ {total:.0f} min\n")
 
     print("  CEM")
     cem_x, cem_v, cem_hist = cem(obj, args.budget, args.seed)
