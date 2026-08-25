@@ -299,7 +299,14 @@ class SO101ReachEnv(RobotEnv):
         pretty: bool = False,
         servo: str = DEFAULT_SERVO,
         cameras: tuple[str, ...] | None = None,
+        success_radius: float | None = None,
     ) -> None:
+        # Overridable so the G1 falsification test can score the SAME
+        # rollouts at 4, 6 and 8 cm. Re-running per radius would confound
+        # tolerance with rollout noise.
+        self.success_radius = (
+            SUCCESS_RADIUS if success_radius is None else float(success_radius)
+        )
         import mujoco
 
         # Rendering N cameras costs N times as much, so the sweep is opt-in and
@@ -491,7 +498,7 @@ class SO101ReachEnv(RobotEnv):
 
         self._steps += 1
         dist = self._dist()
-        success = dist < SUCCESS_RADIUS
+        success = dist < self.success_radius
         return StepResult(
             obs=self._observe(),
             reward=-dist + (1.0 if success else 0.0),
