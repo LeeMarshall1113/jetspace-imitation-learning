@@ -82,9 +82,18 @@ class SimpleVisualEncoder(nn.Module):
         super().__init__()
         self.in_size = in_size
         self.stages = stages
-        chans = [3, 32, 64, channels][: stages + 1]
-        if stages == 2:
-            chans = [3, 64, channels]
+        # Widths must always END at `channels`, because the spatial-softmax
+        # head projects from 2*channels. The previous slice-based version
+        # produced [3, 32, 64] for stages=4 -- three layers ending at 64, a
+        # feature map the head could not consume -- and every stages=4 run died
+        # before printing a number.
+        widths = {1: [3, channels],
+                  2: [3, 64, channels],
+                  3: [3, 32, 64, channels],
+                  4: [3, 32, 64, 96, channels]}
+        if stages not in widths:
+            raise ValueError(f"stages must be one of {sorted(widths)}, got {stages}")
+        chans = widths[stages]
         layers = []
         for i, (a, b) in enumerate(zip(chans[:-1], chans[1:])):
             k, pad = (5, 2) if i == 0 else (3, 1)
