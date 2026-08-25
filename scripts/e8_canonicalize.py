@@ -217,13 +217,15 @@ def main() -> int:
     # ---- invalidation 3: held-out purity ---------------------------------
     assert not (set(train_poses) & set(held)), "held-out pose leaked into training"
     if args.n_train_poses:
-        # Deterministic subset: sorted by displacement so a small budget
-        # spans the range rather than clustering at whichever poses happen
-        # to sort first alphabetically.
-        train_poses = sorted(train_poses,
-                             key=lambda q: r1_displacement(q)["angle"]
-                             )[::max(1, len(train_poses) // args.n_train_poses)]
-        train_poses = train_poses[:args.n_train_poses]
+        # Even spread over the displacement range at EVERY n. A stride-then-
+        # truncate subset does not do this: with 14 poses it gave n=10 the ten
+        # SMALLEST angles, spanning less of the range than n=7's every-other
+        # selection, so the curve confounded viewpoint count with angular
+        # coverage and produced a non-monotone artefact.
+        ordered = sorted(train_poses, key=lambda q: r1_displacement(q)["angle"])
+        pick = np.unique(np.linspace(0, len(ordered) - 1,
+                                     args.n_train_poses).round().astype(int))
+        train_poses = [ordered[i] for i in pick]
     print(f"  train poses {len(train_poses)}, held-out {len(held)}: {held}")
 
     # PCA fitted on the reference pose only, shared by every arm and by g.

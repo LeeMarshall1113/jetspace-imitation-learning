@@ -19,6 +19,21 @@ mkdir -p logs "$CK"
 REF="cache/latents/r1_${TASK}__r1_ref"
 [ -d "$REF" ] || { echo "no reference latents at $REF -- run run_r1.sh $TASK"; exit 1; }
 
+# ---- horizon coverage, checked BEFORE anything trains ---------------------
+# Four silent zero-score runs came from horizons longer than the episodes.
+# check_horizon.py refuses rather than warns; pass HMAX=auto to let it pick.
+COVER=$(python3 scripts/check_horizon.py "$REF" "$HMAX")
+case "$COVER" in
+    "OK "*)   HMAX=${COVER#OK } ;;
+    "AUTO "*) HMAX=${COVER#AUTO }; echo "horizon auto-selected: $HMAX" ;;
+    "LOW "*)  echo "REFUSING: ${COVER#LOW }"
+              echo "  Scoring here would return 0 poses without erroring."
+              echo "  Re-run with HMAX=auto, or collect longer episodes."
+              exit 1 ;;
+    *)        echo "coverage check failed: $COVER"; exit 1 ;;
+esac
+echo "horizon $HMAX covers all $(ls "$REF"/episode_*.npy | wc -l) episodes
+
 POSES=$(python3 -c "
 import sys; sys.path.insert(0,'src')
 from jetspace.envs.so101_env import R1_POSES
