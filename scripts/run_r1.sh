@@ -53,5 +53,6 @@ fi
 
 if [ "$STAGE" = "all" ] || [ "$STAGE" = "measure" ]; then
     python scripts/measure_camera_ruler.py --prefix "r1_${TASK}" \
+        --out "cache/r1_ruler_${TASK}.json" \
         2>&1 | grep -vE "UserWarning|self.blocks"
 fi

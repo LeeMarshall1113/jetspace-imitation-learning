@@ -87,7 +87,7 @@ done
 
 # ---- correlate against the R1 gap -----------------------------------------
 echo
-python3 - <<'PY'
+R2_TASK="$TASK" python3 - <<'PY'
 import glob
 import json
 import os
@@ -98,14 +98,19 @@ import numpy as np
 sys.path.insert(0, "src")
 from jetspace.envs.so101_env import r1_displacement  # noqa: E402
 
-if not os.path.exists("cache/r1_ruler.json"):
-    print("cache/r1_ruler.json missing -- run scripts/run_r1.sh first")
+task = os.environ.get("R2_TASK", "push")
+ruler = f"cache/r1_ruler_{task}.json"
+if not os.path.exists(ruler):
+    ruler = "cache/r1_ruler.json"          # the original push-only path
+if not os.path.exists(ruler):
+    print(f"no ruler for {task} -- run scripts/run_r1.sh {task} first")
     raise SystemExit
+print(f"gap curve: {ruler}\n")
 
-gaps = {r["pose"]: r["frechet"] for r in json.load(open("cache/r1_ruler.json"))["poses"]}
+gaps = {r["pose"]: r["frechet"] for r in json.load(open(ruler))["poses"]}
 
 rows = []
-for f in glob.glob("cache/r2_success_*__*.json"):
+for f in glob.glob(f"cache/r2_success_{task}__*.json"):
     d = json.load(open(f))
     pose = d["pose"]
     if pose == "r1_ref":
@@ -115,7 +120,8 @@ for f in glob.glob("cache/r2_success_*__*.json"):
         rows.append({**d, "gap": gaps[pose],
                      "angle": r1_displacement(pose)["angle"]})
 
-ref = next((json.load(open(f)) for f in glob.glob("cache/r2_success_*__r1_ref.json")), None)
+ref = next((json.load(open(f))
+            for f in glob.glob(f"cache/r2_success_{task}__r1_ref.json")), None)
 if not rows or ref is None:
     print("not enough results to correlate")
     raise SystemExit
@@ -177,8 +183,8 @@ else:
     print("  Registered in advance as the more consequential outcome.")
 print("=" * 72)
 
-json.dump({"reference": ref, "poses": rows, "rho": rho,
-           "ci95": [float(lo), float(hi)]},
-          open("cache/r2_task_success.json", "w"), indent=2, default=float)
-print("\nwrote cache/r2_task_success.json")
+outf = f"cache/r2_task_success_{task}.json"
+json.dump({"task": task, "reference": ref, "poses": rows, "rho": rho,
+           "ci95": [float(lo), float(hi)]}, open(outf, "w"), indent=2, default=float)
+print(f"\nwrote {outf}")
 PY
