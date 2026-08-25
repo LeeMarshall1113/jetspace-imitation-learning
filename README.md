@@ -10,7 +10,9 @@ of a task without task-specific retraining.
 
 **Status:** M0–M3 complete; the project's centre of gravity has moved.
 
-The behaviour-cloning baseline passed at **85.7% ± 2.6%** and the frozen V-JEPA 2
+The behaviour-cloning baseline was reported at 85.7% ± 2.6% — **that number no
+longer reproduces and is withdrawn pending re-measurement** (see below). The
+frozen V-JEPA 2
 world model works — useful and action-aware for **as long as our episodes permit
 testing**, on real robot video as well as simulation. But building the
 measurements needed to say that turned up something more interesting than the
@@ -80,7 +82,7 @@ it rather than the claim being deleted.
 
 | | result |
 |---|---|
-| Behaviour cloning (M2) | **85.7% ± 2.6%** on held-out targets |
+| Behaviour cloning (M2) | **UNVERIFIED** — see below |
 | World model, real robot video | useful + action-aware to **≥193 steps (25.7 s)**, 3 seeds |
 | World model, simulation | **≥64 steps** (push), **≥52** (pickplace), 3 seeds |
 | Conservatism | ratio **0.886 ± 0.002** (push), **0.848 ± 0.002** (pickplace) |
@@ -89,6 +91,39 @@ Every horizon is **censored**: the model stayed useful for as long as the
 episodes allowed testing, so these are lower bounds with a stated cause, not
 measurements. Longer episodes are the only fix
 ([issue](../../issues)).
+
+### The M2 baseline is withdrawn
+
+**85.7% ± 2.6% does not reproduce.** The same three checkpoints, re-evaluated,
+give **34.7% ± 17.9%** across all 100 eval seeds.
+
+Five candidate explanations were tested and all are ruled out:
+
+| candidate | result |
+|---|---|
+| servo torque clamp landed after M2 | 31% at both torque settings |
+| evaluated on a seed subset | 30.3% on all 100 seeds |
+| success radius changed | unchanged at 0.04 m |
+| render mode switched to collision primitives | 30.3% vs 32.7% on meshes |
+| shorter episode budget | 30.3% at 150 steps, 34.7% at 400 |
+
+The checkpoints are the originals, trained on `data/episodes/so101_reach`.
+
+**The leading remaining hypothesis cannot be tested.** The leak check reports
+`SKIPPED (training data not found)` — `so101_reach` no longer exists, and data
+is gitignored. If M2 was evaluated on seeds that appeared in its training set,
+that would explain the gap and there is now no way to check.
+
+One piece of circumstantial support: M2 reported **±2.6%** across three
+independently seeded policies. Re-measured, the spread is **±18%**. Three
+separate behaviour-cloning runs agreeing to within 2.6 points is unusually
+tight; 18 is ordinary.
+
+**Status:** the number is withdrawn, not corrected. Reach is being re-collected
+on the current environment and re-measured with the leak check active and every
+setting recorded. Until then this repository has no verified policy baseline.
+
+---
 
 ### Six ways these measurements go wrong
 

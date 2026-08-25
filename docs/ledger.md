@@ -427,6 +427,50 @@ meant to rescue. The fix made things worse and is recorded as measured.
 
 ---
 
+## L11 — The flagship number does not reproduce, and the data to explain it is gone
+
+**M2's 85.7% ± 2.6% re-measures at 34.7% ± 17.9%.** Same three checkpoints, same
+task, all 100 eval seeds.
+
+Five mechanisms were proposed and each was tested and killed:
+
+| candidate | measured |
+|---|---|
+| the servo torque clamp that landed after M2 | 31% at BOTH torque settings |
+| an unlucky seed subset | 30.3% across all 100 |
+| the success radius | unchanged at 0.04 m |
+| collision-primitive rendering replacing meshes | 30.3% vs 32.7% |
+| a shorter episode budget than M2 used | 30.3% at 150, 34.7% at 400 |
+
+**The leading hypothesis is now untestable.** `leak check: SKIPPED (training
+data not found)` — `data/episodes/so101_reach` is gone and data is gitignored,
+so whether M2 evaluated on seeds present in its training set cannot be
+determined. The variance is the circumstantial evidence: ±2.6% across three
+independent behaviour-cloning runs is unusually tight, and ±18% is ordinary.
+
+**Two things this cost, both mine.**
+
+I proposed the torque change as "the cause" and reported it before testing it.
+Then I proposed my own `--max-steps 150` as the cause and reported that before
+testing it. Both fit the evidence, both were wrong, and both were refuted in
+under five minutes by the check I should have run first. This is the same
+pattern as the de-comb accusation earlier in the project: a coherent mechanism,
+stated with more confidence than the evidence carried.
+
+**The reusable lesson is about what gets kept, not about the bug.** Every
+result in this repository is reproducible from a committed script — except this
+one, because its *input data* was never reproducible. Checkpoints were kept,
+configs were kept, the eval seed list was kept. The dataset was gitignored and
+regenerable in principle, which is not the same as regenerated. A number whose
+inputs are gone is not a result; it is an anecdote, and it sat in the README as
+the project's headline for days.
+
+Datasets now need either a committed manifest (collection seed, episode count,
+env commit) sufficient to regenerate them byte-identically, or they need to not
+be cited.
+
+---
+
 ## Simulation
 
 ### S1 — MuJoCo defaults to degrees; the arm was clamped to a 6° sweep
