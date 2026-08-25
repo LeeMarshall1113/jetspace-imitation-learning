@@ -135,3 +135,42 @@ the file.
 **Unchanged:** every registered threshold. E7a still requires a retention gap
 ≥ 0.05 with separated intervals, E7b still requires growth ≥ 0.03, and E7c is
 still the registered headline if random features win.
+
+---
+
+## 7. Second amendment — the registered metric is confounded
+
+From the disclosed pilot (§6). Written before the registered test runs.
+
+**`retention = ref_mse / pose_mse` divides by how well an arm fitted its own
+training viewpoint.** An arm that memorises the reference harder receives a
+*smaller* retention for identical displaced error. In the pilot the random CNN
+fitted the reference better (0.0151 vs 0.0213), which mechanically shrank its
+retention independently of any robustness difference. The metric penalises the
+behaviour it was meant to detect.
+
+**The registered threshold was also unreachable.** E7a asked for a retention
+gap ≥ 0.05 when observed retention values span 0.01–0.06. A gap of 0.05 between
+two quantities whose maximum is 0.06 is close to arithmetically impossible, so
+E7a could fail for reasons unrelated to the encoders. That is a badly
+constructed registration and saying so is the point of writing them down.
+
+**Replacement, registered now:**
+
+- **E7a′ (primary).** Mean **absolute normalised MSE at displaced poses**, where
+  1.0 = no better than predicting the mean action. **Registered: V-JEPA lower
+  than random CNN by ≥ 0.10, with non-overlapping ±1.96 sd intervals across
+  three seeds.**
+- **E7b′.** The advantage must be **monotone across three displacement bands**
+  (near / mid / far), not merely larger at the far end than the near end. The
+  pilot's endpoint-only test reported "the advantage WIDENS" from
+  +0.441 → +0.480 while the middle band sat at +0.107 — non-monotone, and the
+  endpoint comparison concealed it.
+- **E7c′ (unchanged).** If random features match or beat V-JEPA, that is the
+  headline.
+- **New invalidation 4.** If either arm's displaced MSE exceeds 1.0, that arm is
+  worse than predicting the mean and comparisons in that band are between two
+  non-functional models. Such bands are reported separately and excluded from
+  the primary measure.
+
+**Retention is retained as a secondary descriptive number**, not a criterion.
