@@ -177,11 +177,17 @@ def main() -> int:
     ap.add_argument("--epochs", type=int, default=40)
     ap.add_argument("--g-epochs", type=int, default=60)
     ap.add_argument("--out", default=None)
+    ap.add_argument("--prefix", default=None,
+                    help="latent prefix; r1cnn_<task> selects the "
+                         "random-CNN arm for the encoder ablation")
+    ap.add_argument("--n-train-poses", type=int, default=0,
+                    help="use only the first N training poses, "
+                         "for the how-few-viewpoints curve")
     args = ap.parse_args()
 
     out = args.out or f"cache/e8_{args.task}.json"
     device = get_device("auto")
-    prefix = f"r1_{args.task}"
+    prefix = args.prefix or f"r1_{args.task}"
     acts = load_actions(args.task)
 
     print("=" * 74)
@@ -210,6 +216,14 @@ def main() -> int:
     held = [p for p in HELD_OUT if p in raw]
     # ---- invalidation 3: held-out purity ---------------------------------
     assert not (set(train_poses) & set(held)), "held-out pose leaked into training"
+    if args.n_train_poses:
+        # Deterministic subset: sorted by displacement so a small budget
+        # spans the range rather than clustering at whichever poses happen
+        # to sort first alphabetically.
+        train_poses = sorted(train_poses,
+                             key=lambda q: r1_displacement(q)["angle"]
+                             )[::max(1, len(train_poses) // args.n_train_poses)]
+        train_poses = train_poses[:args.n_train_poses]
     print(f"  train poses {len(train_poses)}, held-out {len(held)}: {held}")
 
     # PCA fitted on the reference pose only, shared by every arm and by g.
