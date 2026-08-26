@@ -23,9 +23,11 @@ attached:
 > simulated camera viewpoints, beats the same head on random convolutional
 > features trained on fourteen. Random features plateau and never close the gap.
 
-That is measured on **viewpoint**. The harder and more important axis —
-transfer to **unseen tasks** — is running now across eight real laboratories
-doing eight different tasks.
+That is measured on **viewpoint**. The harder axis — transfer to **unseen
+tasks** — has since been measured across eight real laboratories and the answer
+is negative: pretraining on seven tasks makes an eighth *worse*, 1 win in 53
+folds, p = 1.2e-14. What survives is narrower and sharper: pretrained features
+help along the **nuisance** axis, not the **semantic** one.
 
 Getting there cost a long run of negative results, and they are reported rather
 than buried. A pre-registered instrument for predicting degradation from latent
@@ -65,6 +67,7 @@ not reproduce and was withdrawn. Four earlier attempts failed at 24.7%, 9.3%,
 ## Table of contents
 
 - [Findings](#findings)
+- [Novelty](#novelty-what-is-actually-unclaimed)
 - [Overview](#overview)
 - [Approach](#approach)
 - [Hardware and platform constraints](#hardware-and-platform-constraints)
@@ -91,14 +94,15 @@ to it rather than the claim being deleted. Most predictions here were
 pre-registered before the data existed, and **most of them failed** — that list
 is longer than the list of successes, and it is kept in full.
 
-### What transfers, and what carries it
+Claims are additionally annotated against an adversarial literature check
+(§ [Novelty](#novelty-what-is-actually-unclaimed)), because "we measured it" and
+"nobody had measured it" are different statements and only one of them needs
+citations.
 
-The project asks whether a small dataset transfers to a large variety of areas.
-Measured on **camera viewpoint**, the answer is yes, and pretraining is what
-carries it.
+### What transfers across viewpoint, and what carries it
 
-A policy head trained on simulated viewpoints and evaluated on 8 viewpoints held
-out of every training batch ([`docs/prereg-e8.md`](docs/prereg-e8.md)):
+A policy head trained on simulated camera viewpoints, evaluated on 8 viewpoints
+held out of every training batch ([`docs/prereg-e8.md`](docs/prereg-e8.md)):
 
 | viewpoints trained on | V-JEPA 2 | random CNN |
 |---|---|---|
@@ -109,31 +113,54 @@ out of every training batch ([`docs/prereg-e8.md`](docs/prereg-e8.md)):
 | 10 | 0.295 | 0.716 |
 | 14 | **0.215 ± 0.003** | **0.685 ± 0.037** |
 
-Normalised action MSE; **1.0 means no better than predicting the mean action**.
+Normalised action MSE; **1.0 = no better than predicting the mean action**.
 Three seeds, intervals separated at full coverage.
 
 - **V-JEPA with 2 viewpoints beats random features with 14** — seven times fewer
   viewpoints, for a better result.
-- **Random features plateau near 0.69** and never approach V-JEPA's 0.215, no
-  matter how much multi-view data they are given.
+- **Random features plateau near 0.69** and never approach V-JEPA's 0.215.
 - At 45° elevation the single-viewpoint policy scores **1.610**, worse than
   predicting the mean; the 14-viewpoint one scores **0.182**.
 
-This reconciles with E6's negative rather than contradicting it. Pretraining
-buys nothing from single-view data — still true. What it buys is the **ability
-to exploit multi-view supervision**, which simulation provides for free because
-one rollout renders from any camera.
+This reconciles with E6's negative rather than contradicting it: pretraining
+buys nothing from single-view data, and what it buys is the **ability to exploit
+multi-view supervision**, which simulation provides for free.
 
-**Transfer across TASKS is the experiment that matters, and it is still
-running** (`scripts/e9_task_transfer.py`): eight real laboratories, eight
-different tasks, leave-one-out, few-shot. Viewpoint is a narrower axis than the
-project's aim and is not a substitute for it.
+**Caveat that a wider comparison is still running.** One baseline cannot
+separate "video pretraining specifically buys this" from "any strong pretraining
+beats noise". E11 (`scripts/run_e11.sh`) adds DINOv2, DINOv3, SigLIP 2, AIMv2,
+CLIP and supervised ViT at matched pooling. Until DINOv3 — the direct image-SSL
+contemporary of V-JEPA 2 — reports, the encoder claim is provisional.
+
+### What does not transfer across tasks
+
+Eight real laboratories, eight different tasks, leave-one-out, K demonstrations
+of the held-out task ([`docs/e9-results.md`](docs/e9-results.md)):
+
+| K | scratch | transfer | transfer wins |
+|---|---|---|---|
+| 1 | 1.334 | 1.416 | 2 / 24 |
+| 2 | 0.680 | 0.740 | **0 / 24** |
+| 4 | 0.416 | 0.475 | 1 / 24 |
+
+Restricted to the 53 folds where both baselines clear the mean-action floor,
+**transfer wins 1 of 53, p = 1.2e−14**. Pretraining on seven other tasks makes
+the eighth *worse*.
+
+The same experiment contains the one positive that survives. Comparing only the
+**scratch** arms — no transfer, just which frozen encoder the head sits on —
+V-JEPA beats random features in **39 of 53 folds, p = 8.0e−04**. A frozen video
+encoder makes an unseen task learnable from fewer demonstrations; it does not
+make knowledge of other tasks transfer.
+
+> **Pretrained video features help along the nuisance axis, not the semantic
+> one.**
 
 ### The distribution-shift ladder
 
 Every rung recomputed in **one space** — one estimator, one `pca_dim`, one
-pooling — because Fréchet has no absolute scale, so rows assembled from separate
-runs are not a table ([`docs/e2-results.md`](docs/e2-results.md)).
+pooling — because Fréchet has no absolute scale
+([`docs/e2-results.md`](docs/e2-results.md)).
 
 | rung | n | mean | × null |
 |---|---|---|---|
@@ -145,24 +172,23 @@ runs are not a table ([`docs/e2-results.md`](docs/e2-results.md)).
 | **cross-lab** (different lab, robot, task) | 28 | **1228.5** | 14.9 |
 | sim→real, no randomisation | 8 | 1271.8 | 15.4 |
 
-- **Session drift is real and appears to be unmeasured elsewhere.** Lab H's four
-  sessions on one camera sit at **177.8 against that lab's own null of 39.6** —
-  4.5×, disjoint ranges, p = 0.0105. Against the *pooled* null it looks like
-  2.2×; using the wrong control halves a real effect.
+- **Session drift is real.** Lab H's four sessions on one camera sit at 177.8
+  against that lab's own null of 39.6 — 4.5×, disjoint ranges, p = 0.0105.
+  Against the *pooled* null it looks like 2.2×; the wrong control halves it.
 - **Domain randomisation works.** A randomised simulator sits closer to a real
   lab (1037.6) than two real labs sit to each other (1228.5).
-- **Viewpoint is most of the domain gap.** Moving the camera within one lab
-  reaches ~82% of a full cross-laboratory shift.
+- **Viewpoint is most of the domain gap** — camera change within one lab reaches
+  ~82% of a full cross-laboratory shift.
 
 Estimator caveat: `gap_between` fits its basis on its first argument, so it is
-directional. Asymmetry is **proportional** to the magnitude being measured — 22%
-of the session rung, 32% of camera, 22% of cross-lab — not an absolute floor.
-Differences below ~30% of the gaps compared are not claimable.
+directional. Asymmetry is **proportional** to the magnitude measured (22–32%
+across families), not an absolute floor. Differences below ~30% of the gaps
+compared are not claimable.
 
 ### The instrument works in simulation and does not survive real data
 
-Latent gap predicting world-model degradation, pre-registered in
-[`docs/prereg-h1.md`](docs/prereg-h1.md), three seeds per task:
+Latent gap predicting world-model degradation
+([`docs/prereg-h1.md`](docs/prereg-h1.md), [`docs/h1-results.md`](docs/h1-results.md)):
 
 | | push | pickplace | reach |
 |---|---|---|---|
@@ -171,22 +197,38 @@ Latent gap predicting world-model degradation, pre-registered in
 | **H1b** every seed ρ ≤ −0.6 | ✅ | ✅ | ✅ |
 | **H1e** family CI excludes −0.6 | ✅ | ✅ | ❌ |
 
-**H1c holds** — ρ ≤ −0.6 on all three tasks. **H1f holds** — Fréchet, MMD² and
-centroid distance agree to within 0.04 everywhere, so the finding concerns
-distributional distance, not Fréchet specifically. Reach is the failing case and
-also the weakest: 86 latents at the reference pose against push's 398, and the
-narrowest degradation range. Its prediction *error* is the best of the three
-(MAE 0.011) — there is simply too little variance for R² to explain.
+**H1c holds** across all three tasks; **H1f holds** — Fréchet, MMD² and centroid
+agree to within 0.04. **H1d, the registered differentiator, failed**: trained on
+one real lab and evaluated on seven others, ρ = **+0.116**, 95% CI
+**[−0.193, +0.501]**. Controlling for action mismatch *raises* ρ to +0.220, so
+the weakness is real, not masked
+([`docs/h1d-results.md`](docs/h1d-results.md)).
 
-**H1d, the registered differentiator, failed.** Trained on one real laboratory
-and evaluated on seven others, 168 cells: **ρ = +0.116**, lab-cluster 95% CI
-**[−0.193, +0.501]**, including zero. The action-space control did not rescue
-it — visual and action gaps are anti-correlated (−0.284), so holding action
-mismatch fixed *raises* ρ to +0.220. The relationship is genuinely weak on real
-data, not merely masked ([`docs/h1d-results.md`](docs/h1d-results.md)).
+### Novelty: what is actually unclaimed
 
-> The instrument is a simulation result. Its task-generality holds; its
-> real-data extension does not.
+Four independent adversarial literature searches, each instructed to find the
+paper that scoops the claim rather than to confirm it. Recorded because a
+result nobody else has published and a result everybody has are worth different
+amounts, and the difference is not visible from the number alone.
+
+| claim | status |
+|---|---|
+| DR sits closer to a real lab than two real labs do | **no prior art found** |
+| Session drift, 4.5× its own noise floor | **no prior art found** |
+| 2 views pretrained beats 14 views random | **no prior art found**, counter-evidence exists |
+| Few-shot transfer hurts across unharmonised labs | **no prior art found**, contrarian |
+| Viewpoint dominates the domain gap | scooped — Factor World, ICRA 2024 (arXiv:2307.03659) |
+| Multi-view training → viewpoint generalization | scooped — Tobin 2017, Sadeghi & Levine 2016 |
+| Frozen pretrained > frozen random features | scooped — arXiv:2203.03580 (ICML 2022), arXiv:2107.03380 |
+| Pretraining improves sample efficiency | scooped — R3M, MVP, CortexBench |
+| Action normalisation needed for cross-dataset transfer | scooped — RT-X, Octo, CrossFormer |
+
+Known counter-evidence that any write-up must address rather than omit:
+**arXiv:2510.02268** finds pretraining has minimal effect on view-invariant
+policy learning; **arXiv:2212.05749** (ICML 2023) finds learning-from-scratch
+competitive with R3M/MVP; and **arXiv:2507.05331** (*Science Robotics* 2026)
+finds multi-task pretraining *helps* few-shot learning — the opposite of E9,
+on same-lab data with harmonised action conventions.
 
 ### Things that turned out not to be true
 
@@ -194,52 +236,43 @@ Kept because they cost real time and the diagnostics generalise. Every item was
 believed, written down, and measured false.
 
 - **"Session noise equals a 21.8° camera rotation."** **Withdrawn.** The ruler
-  was built in simulation and read against real rungs, and real camera change
-  produces **1.89×** the latent shift of simulated camera change (p = 0.0019),
-  so every "equals N degrees" conversion was confounded.
+  was built in simulation and read against real rungs; real camera change
+  produces **1.89×** the latent shift of simulated (p = 0.0019).
 - **"Camera rotation cannot produce a cross-lab-sized gap."** R1's refutation of
-  N1b, itself **refuted** — it rested on the simulated ruler above. N1b's
-  original claim is not reinstated either: the camera/cross-lab difference is
-  smaller than the estimator's directional noise on those pairs. **Neither claim
+  N1b, itself **refuted** — and N1b is not reinstated either, since the
+  difference is smaller than the estimator's directional noise. **Neither claim
   is supported.**
 - **"Feature resolution bounds achievable precision."** **Falsified.** Five arms
-  spanning a 4× range of feature grids all produce median closest approach of
-  7.68–7.78 cm. No spread to shrink at any tolerance.
+  spanning a 4× range of feature grids all land at 7.68–7.78 cm.
 - **"CEM alignment tunes a simulator toward a real lab."** **Falsified by its own
-  primary falsifier.** At the full 200-evaluation budget: 1.0% gap reduction
-  against a registered 25%, random search matched it (−0.1%), and held-out
-  performance got *worse*. That condition was registered in advance as the one
-  that kills the claim.
+  registered primary falsifier** — random search matched it, and held-out
+  performance got *worse* ([`docs/a1-results.md`](docs/a1-results.md)).
 - **"A learned canonicalizer corrects viewpoint in latent space."** Proposed and
-  **falsified in one run.** Multi-view training beat it (0.212 vs 0.266), and it
-  raised reference-pose error 5.5×, so part of its gain was flattening latents
-  toward a mean rather than correcting anything.
-- **"Random CNN beats frozen V-JEPA."** Held on push, **reversed on pickplace**;
-  the supported claim is narrower — *pretraining buys nothing consistent from
-  single-view data* ([`docs/e6-results.md`](docs/e6-results.md)).
-- **"Domain randomisation widens the sim-to-real gap."** Measured against one
-  reference dataset; **reversed against eight.**
+  **falsified in one run** by the baseline it was built to beat.
+- **"Random CNN beats frozen V-JEPA."** Held on push, **reversed on pickplace**.
+- **"Domain randomisation widens the sim-to-real gap."** One reference dataset;
+  **reversed against eight.**
 - **"Byte-identical action space."** Asserted for weeks, **false when measured.**
 - **"The world model is action-blind on push."** Computed on 2 of 60 episodes.
-  **Retracted.**
 
 ### Ways these measurements go wrong
 
 | defect | magnitude | diagnostic |
 |---|---|---|
+| **A treatment run before its ceiling was measured** | 36/36 unanimous sweep between two non-functional arms | `check_action_ceiling.py` |
 | **Horizon exceeds episode length**, silently scoring zero | fired **4×**; pickplace kept 1 of 4 episodes at h=48 | `check_horizon.py` — refuses, does not warn |
 | **Encoder window tiling** leaks a periodic comb into latents | 1.44–1.67× in sim, **1.014× in real** | `check_chunk_phase.py` |
 | **PCA decides whether the comb matters** | 0.003 at full width, **0.055 under PCA-128** | `diff_checkpoints.py` |
 | **Action spaces are not interchangeable** across labs | **70–238×**, zero-offsets differ by ~140 units | `check_action_spaces.py` |
 | **Trained encoders collapse** and win on raw loss | val loss **1000× lower**, gain 0.74× | `train_joint_cnn.py` |
-| **Verdicts printed off data with no dynamic range** | R2 declared a failure from a 3.3%-success policy | `FLOOR` guard in `run_r2_task_success.sh` |
+| **Verdicts printed off data with no dynamic range** | R2 declared failure from a 3.3%-success policy | `FLOOR` guard in `run_r2_task_success.sh` |
 | **Ratio metrics dividing by training-set fit** | penalise the arm that memorises harder | `e7_absolute.py` |
-| **Encoder arms silently unmatched** | `zip()` truncates without complaining | `check_arm_parity.py` |
+| **Encoder arms silently unmatched** | `zip()` truncates without complaining | `check_arm_parity.py`, `check_encoder_parity.py` |
 | **Subset selection confounded with coverage** | n=10 spanned less range than n=7 | `linspace` subset in `e8_canonicalize.py` |
 
 Each was found by a check, not by inspection, and each check is in the
-repository. [`docs/ledger.md`](docs/ledger.md) records all twelve failures with
-their diagnostics.
+repository. [`docs/ledger.md`](docs/ledger.md) records thirteen failures with
+the diagnostic that caught each one.
 
 ---
 
