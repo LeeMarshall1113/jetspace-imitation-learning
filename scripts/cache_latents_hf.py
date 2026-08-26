@@ -88,19 +88,24 @@ def encode(frames: np.ndarray, proc, model, device: str, grid: int,
     for i in range(0, usable, batch):
         chunk = frames[i:i + batch]
         inputs = proc(images=list(chunk), return_tensors="pt").to(device)
-        out = model(**inputs).last_hidden_state          # (B, 1 + P, D)
-        n_patch = out.shape[1]
-        side = int(round((n_patch - 1) ** 0.5))
-        if side * side == n_patch - 1:
-            tokens = out[:, 1:]                          # drop CLS
-        else:
-            # SigLIP and some others emit no CLS token at all.
-            side = int(round(n_patch ** 0.5))
-            tokens = out
-            if side * side != n_patch:
-                raise ValueError(
-                    f"{n_patch} tokens is not a square grid (+/- CLS); this "
-                    f"backbone's output layout is not handled")
+        out = model(**inputs).last_hidden_state          # (B, prefix + P, D)
+        n_tok = out.shape[1]
+        # Backbones differ in what they put BEFORE the patch grid: SigLIP has
+        # nothing, CLIP and DINOv2 have a CLS token, and DINOv3 has CLS plus
+        # four register tokens (201 = 196 + 1 + 4), which an earlier
+        # CLS-or-nothing check rejected outright. In every case the patch
+        # tokens are the trailing square block, so find the largest square that
+        # fits and take the tail.
+        side = int(n_tok ** 0.5)
+        while side > 0 and side * side > n_tok:
+            side -= 1
+        prefix = n_tok - side * side
+        if side == 0 or prefix > 8:
+            raise ValueError(
+                f"{n_tok} tokens leaves no plausible square patch grid "
+                f"(largest square {side}x{side} implies {prefix} prefix "
+                f"tokens); this backbone's layout is not handled")
+        tokens = out[:, prefix:] if prefix else out
         b, _, d = tokens.shape
         t = tokens.reshape(b, side, side, d).permute(0, 3, 1, 2)
         t = F.adaptive_avg_pool2d(t, (grid, grid))       # (B, D, g, g)
