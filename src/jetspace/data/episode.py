@@ -33,22 +33,23 @@ EPISODE_GLOB = "episode_*.npz"
 
 
 @dataclass
-class EpisodeBuffer:
-    """Accumulates one episode in memory before it is flushed to disk."""
-
+class Episode:
     pixels: dict[str, list[np.ndarray]] = field(default_factory=dict)
     proprio: list[np.ndarray] = field(default_factory=list)
     action: list[np.ndarray] = field(default_factory=list)
-    # What was actually sent to the simulator. Differs from `action` whenever
-    # exploration noise is executed but not labelled, which is the normal case
-    # for scripted collection. Replay verification needs this one; learning
-    # needs `action`. Recording only one of them loses a property we want.
     action_executed: list[np.ndarray] = field(default_factory=list)
     reward: list[float] = field(default_factory=list)
     success: list[bool] = field(default_factory=list)
 
-    def __len__(self) -> int:
-        return len(self.action)
+
+class EpisodeBuffer:
+    """Accumulates one episode in memory before it is flushed to disk."""
+
+    def __init__(self) -> None:
+        self.Episode: Episode = Episode()
+
+    def buffer_size(self) -> int:
+        return len(self.Episode.action)
 
     def add(
         self,
@@ -60,20 +61,25 @@ class EpisodeBuffer:
         success: bool,
         action_executed: np.ndarray | None = None,
     ) -> None:
+        
         for cam, frame in pixels.items():
-            self.pixels.setdefault(cam, []).append(np.asarray(frame, dtype=np.uint8))
-        self.proprio.append(np.asarray(proprio, dtype=np.float32))
+            self.Episode.pixels.setdefault(cam, []).append(np.asarray(frame, dtype=np.uint8))
+
+        self.Episode.proprio.append(np.asarray(proprio, dtype=np.float32))
+        
         # Actions are stored float64, deliberately. Quantizing to float32 costs
         # ~3e-08 rad, which the dynamics amplify ~6300x over a 17-step episode
         # to ~2e-04 rad -- enough to break exact replay verification. Actions are
         # a rounding error in the byte budget next to 224x224x3 images, so there
         # is no reason to lose the precision.
-        self.action.append(np.asarray(action, dtype=np.float64))
-        self.action_executed.append(
+        
+        self.Episode.action.append(np.asarray(action, dtype=np.float64))
+        self.Episode.action_executed.append(
             np.asarray(action if action_executed is None else action_executed, dtype=np.float64)
         )
-        self.reward.append(float(reward))
-        self.success.append(bool(success))
+
+        self.Episode.reward.append(float(reward))
+        self.Episode.success.append(bool(success))
 
 
 class EpisodeWriter:

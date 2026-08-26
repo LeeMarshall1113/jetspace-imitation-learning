@@ -130,6 +130,7 @@ def collect(args: argparse.Namespace) -> int:
     for ep in range(args.episodes):
         # Record the reset seed: without it the target cannot be reproduced, and
         # an episode that cannot be replayed cannot be verified.
+        
         ep_seed = int(rng.integers(2**31))
         obs = env.reset(seed=ep_seed)
         if not policy.reset(env):
@@ -138,11 +139,15 @@ def collect(args: argparse.Namespace) -> int:
 
         buffer = EpisodeBuffer()
         terminated = truncated = False
+
         while not (terminated or truncated):
+
             action = policy.act(obs)
             result = env.step(action)
+
             # Record what the expert MEANT, not what exploration executed.
             label = getattr(policy, "label", None)
+
             buffer.add(
                 pixels=obs.pixels,
                 proprio=obs.proprio,
@@ -151,8 +156,10 @@ def collect(args: argparse.Namespace) -> int:
                 reward=result.reward,
                 success=result.info["success"],
             )
+
             obs = result.obs
             terminated, truncated = result.terminated, result.truncated
+
             if getattr(policy, "restart", False) or getattr(policy, "quit", False):
                 break
 
@@ -162,16 +169,19 @@ def collect(args: argparse.Namespace) -> int:
         if getattr(policy, "restart", False):
             print(f"  episode {ep}: discarded (restart)")
             continue
+
         # Only successful demos are kept: the space of failures is far larger
         # and less structured than the space of successes.
-        if not buffer.success[-1] and not args.keep_failures:
+
+        if not buffer.Episode.success[-1] and not args.keep_failures:
             skipped += 1
             continue
 
-        writer.write(buffer, metadata={"policy": args.policy, "seed": ep_seed})
+        writer.write(buffer.Episode, metadata={"policy": args.policy, "seed": ep_seed})
         written += 1
+        
         if ep % 20 == 0 or ep == args.episodes - 1:
-            print(f"  episode {ep}: {len(buffer)} frames, success={buffer.success[-1]}")
+            print(f"  episode {ep}: {buffer.buffer_size()} frames, success={buffer.Episode.success[-1]}")
 
     env.close()
     if hasattr(policy, "close"):
