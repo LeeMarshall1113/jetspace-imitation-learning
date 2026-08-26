@@ -137,23 +137,23 @@ class EpisodeWriter:
         index = self._next_index
         path = self.root / f"episode_{index:06d}.npz"
         arrays: dict[str, np.ndarray] = {
-            "proprio": np.stack(buffer.proprio),
-            "action": np.stack(buffer.action),
-            "action_executed": np.stack(buffer.action_executed),
-            "reward": np.asarray(buffer.reward, dtype=np.float32),
-            "success": np.asarray(buffer.success, dtype=bool),
+            "proprio": np.stack(buffer.Episode.proprio),
+            "action": np.stack(buffer.Episode.action),
+            "action_executed": np.stack(buffer.Episode.action_executed),
+            "reward": np.asarray(buffer.Episode.reward, dtype=np.float32),
+            "success": np.asarray(buffer.Episode.success, dtype=bool),
         }
-        for cam, frames in buffer.pixels.items():
+        for cam, frames in buffer.Episode.pixels.items():
             arrays[f"pixels_{cam}"] = np.stack(frames)
         np.savez_compressed(path, **arrays)
 
         record = {
             "index": index,
             "file": path.name,
-            "length": len(buffer),
-            "duration_s": round(len(buffer) / self.info["fps"], 3),
-            "success": bool(buffer.success[-1]),
-            "return": round(float(np.sum(buffer.reward)), 4),
+            "length": len(buffer.buffer_size()),
+            "duration_s": round(len(buffer.buffer_size()) / self.info["fps"], 3),
+            "success": bool(buffer.Episode.success[-1]),
+            "return": round(float(np.sum(buffer.Episode.reward)), 4),
             **(metadata or {}),
         }
         with (self.root / INDEX_FILE).open("a") as fh:

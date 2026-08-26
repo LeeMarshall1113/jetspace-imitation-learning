@@ -177,7 +177,7 @@ def collect(args: argparse.Namespace) -> int:
             skipped += 1
             continue
 
-        writer.write(buffer.Episode, metadata={"policy": args.policy, "seed": ep_seed})
+        writer.write(buffer, metadata={"policy": args.policy, "seed": ep_seed})
         written += 1
         
         if ep % 20 == 0 or ep == args.episodes - 1:
