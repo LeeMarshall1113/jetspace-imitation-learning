@@ -173,7 +173,7 @@ def collect(args: argparse.Namespace) -> int:
         # Only successful demos are kept: the space of failures is far larger
         # and less structured than the space of successes.
 
-        if not buffer.Episode.success[-1] and not args.keep_failures:
+        if not buffer.episode.success[-1] and not args.keep_failures:
             skipped += 1
             continue
 
