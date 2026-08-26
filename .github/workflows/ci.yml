@@ -14,6 +14,9 @@ on:
   pull_request:
   push:
     branches: [main]
+  # Lets the suite be run on demand from the Actions tab, which also gives a
+  # way to re-check main without pushing a commit to do it.
+  workflow_dispatch:
 
 jobs:
   syntax:
