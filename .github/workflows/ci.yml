@@ -1,0 +1,56 @@
+name: ci
+
+# PR #9 merged with a syntax error in src/jetspace/data/episode.py, which made
+# the module unimportable and took every script that reads a dataset with it.
+# Nothing ran at merge time because there was no CI. A `python -m compileall`
+# would have caught it in under a second.
+#
+# Deliberately CPU-only and dependency-light: the real test suite needs torch
+# and a GPU, and gating every PR on a ROCm image nobody else can pull would
+# make this unusable for outside contributors. What runs here is the subset
+# that needs neither.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  syntax:
+    # The cheapest possible guard against the exact failure that got merged.
+    # Runs first and independently, so a parse error is reported as a parse
+    # error rather than as a confusing import failure inside pytest.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Every file must parse
+        run: python -m compileall -q src scripts tests
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ruff==0.16.4
+      - name: Ruff
+        # E,W,F only, matching what the repository already holds itself to.
+        # Not --fix: CI reports, humans decide.
+        run: ruff check src scripts tests --select E,W,F --line-length 100
+
+  tests:
+    # The data round-trip suite needs numpy and pytest but not torch, so it can
+    # run on a plain runner. These are the tests that would have caught PR #9.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install numpy pytest
+      - name: Episode round-trip
+        run: python -m pytest tests/test_episode_roundtrip.py -v
