@@ -32,7 +32,7 @@ case "$COVER" in
               exit 1 ;;
     *)        echo "coverage check failed: $COVER"; exit 1 ;;
 esac
-echo "horizon $HMAX covers all $(ls "$REF"/episode_*.npy | wc -l) episodes
+echo "horizon $HMAX covers all $(ls "$REF"/episode_*.npy | wc -l) episodes"
 
 POSES=$(python3 -c "
 import sys; sys.path.insert(0,'src')
