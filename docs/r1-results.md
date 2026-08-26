@@ -1,5 +1,40 @@
 # R1 — the camera ruler
 
+> ## RETRACTED BY E2
+>
+> **Every conversion from Frechet distance into degrees of camera rotation on
+> this page is withdrawn.** The ruler below was built by moving a camera in
+> *simulation*, and was then used to read rungs measured on *real* data.
+> [`e2-results.md`](e2-results.md) measured both in one space: a real camera
+> change produces **1.89x** the latent shift of a simulated one
+> (1005.8 vs 531.9, Mann-Whitney p = 0.0019). The two scales are not
+> interchangeable, so the conversion was confounded from the start.
+>
+> Specifically withdrawn:
+>
+> * **"Session noise equals a 21.8 degree camera rotation."** The equivalence
+>   is unsupported. E2 measures session drift directly at 177.8 against lab H's
+>   own null of 39.6 -- 4.5x, disjoint ranges, p = 0.0105 -- with no conversion
+>   into degrees required or justified.
+> * **"Cross-lab gaps are beyond the sweep (>90 degrees)."** Withdrawn.
+> * **"Camera rotation cannot produce a gap the size of a cross-laboratory
+>   gap."** This was Prediction 3's conclusion and the basis for retracting
+>   N1b's headline. It is **refuted**: measured in real data, within-lab camera
+>   change reaches 82% of a cross-lab shift (1005.8 vs 1228.5).
+>
+> N1b's original claim is **not** reinstated by this. The camera/cross-lab
+> difference is smaller than the estimator's own directional asymmetry on those
+> families, so neither "camera rivals lab identity" nor "camera cannot reach it"
+> is supported. See [`e2-results.md`](e2-results.md) section 3.
+>
+> **What survives on this page:** the shape of the sim-side curve (rotation
+> costs more than translation), and the secondary result that latent distance
+> tracks world-model degradation, which was hardened separately as H1
+> ([`h1-results.md`](h1-results.md)) and holds on all three simulated tasks.
+> The original text is kept below unedited.
+
+---
+
 Measured against `docs/prereg-camera-ruler.md`, committed before the sweep ran.
 23 simulated poses, all rendered from **one rollout**, so seeds, physics,
 actions and meshes are identical across viewpoints by construction.
