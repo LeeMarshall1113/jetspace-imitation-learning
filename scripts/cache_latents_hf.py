@@ -50,11 +50,18 @@ from jetspace.utils.device import get_device  # noqa: E402
 
 #: Short names so cache directories stay readable.
 ALIASES = {
-    "dinov2": "facebook/dinov2-base",
+    # Contemporaries of V-JEPA 2 (2025-06). These are the comparison that
+    # matters -- beating 2021-2023 encoders would only show V-JEPA is newer.
+    "dinov3": "facebook/dinov3-vitb16-pretrain-lvd1689m",      # 2025-08, gated
+    "dinov3-large": "facebook/dinov3-vitl16-pretrain-lvd1689m",
+    "siglip2": "google/siglip2-base-patch16-224",              # 2025-02
+    "aimv2": "apple/aimv2-large-patch14-224",                  # 2024-11
+    # Older, kept as a reference row for what the prior literature used.
+    "dinov2": "facebook/dinov2-base",                          # 2023-04
     "dinov2-large": "facebook/dinov2-large",
-    "clip": "openai/clip-vit-base-patch16",
-    "vit-in1k": "google/vit-base-patch16-224",
-    "siglip": "google/siglip-base-patch16-224",
+    "siglip": "google/siglip-base-patch16-224",                # 2023-03
+    "clip": "openai/clip-vit-base-patch16",                    # 2021-01
+    "vit-in1k": "google/vit-base-patch16-224",                 # 2020-10
 }
 
 
