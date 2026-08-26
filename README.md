@@ -126,11 +126,26 @@ This reconciles with E6's negative rather than contradicting it: pretraining
 buys nothing from single-view data, and what it buys is the **ability to exploit
 multi-view supervision**, which simulation provides for free.
 
-**Caveat that a wider comparison is still running.** One baseline cannot
-separate "video pretraining specifically buys this" from "any strong pretraining
-beats noise". E11 (`scripts/run_e11.sh`) adds DINOv2, DINOv3, SigLIP 2, AIMv2,
-CLIP and supervised ViT at matched pooling. Until DINOv3 — the direct image-SSL
-contemporary of V-JEPA 2 — reports, the encoder claim is provisional.
+**That claim did not survive a wider comparison.** E11
+([`docs/e11-results.md`](docs/e11-results.md)) ran nine frozen encoders at
+matched pooling. V-JEPA 2 leads at 0.251 but **does not separate** from DINOv2
+at 0.284 — overlapping intervals, despite 3/3 seed wins. An 87M image encoder
+from 2023 matches a 326M video encoder from 2025, so "video pretraining
+specifically buys viewpoint generalization" is **not supported**.
+
+What E11 found instead is sharper. Probing the same frozen features
+**in-distribution** ranks them almost oppositely to the held-out ranking
+(Spearman **ρ = −0.317**): V-JEPA 2 has the *weakest* features of all nine
+(R² 0.410, below random) and is the most viewpoint-robust, while VC-1 has the
+*second-strongest* (R² 0.627) and collapses to worst.
+
+> **In-distribution feature quality and viewpoint robustness are different,
+> nearly independent properties. A linear probe — what most encoder comparisons
+> report — cannot predict which encoder survives a camera move.**
+
+Also: **DINOv3 (2025) loses decisively to DINOv2 (2023)**, and the
+robotics-specific **VC-1 is the least viewpoint-robust of all nine**, echoing
+Burns et al. (CoRL 2024).
 
 ### What does not transfer across tasks
 
@@ -618,6 +633,7 @@ repository does not have.
 | [`docs/novelty-upgrade.md`](docs/novelty-upgrade.md) | The sim-to-real latent-gap measurements, and a confound to settle first |
 | [`docs/paper.md`](docs/paper.md) | Paper plan: candidate claims, required experiments, open decisions |
 | [`docs/a1-results.md`](docs/a1-results.md) | Simulator alignment, falsified by its own primary falsifier |
+| [`docs/e11-results.md`](docs/e11-results.md) | Nine frozen encoders; why in-distribution quality does not predict viewpoint robustness |
 | [`docs/e2-results.md`](docs/e2-results.md) | The distribution-shift ladder in one space; session drift; the sim ruler withdrawn |
 | [`docs/h1-results.md`](docs/h1-results.md) | Gap→degradation across three simulated tasks, with two registered failures |
 | [`docs/h1d-results.md`](docs/h1d-results.md) | The registered differentiator, and why it failed on real video |
