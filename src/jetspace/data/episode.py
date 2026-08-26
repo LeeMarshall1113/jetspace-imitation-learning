@@ -46,7 +46,7 @@ class EpisodeBuffer:
     """Accumulates one episode in memory before it is flushed to disk."""
 
     def __init__(self) -> None:
-        self.Episode: episode = Episode()
+        self.episode: Episode = Episode()
 
     def buffer_size(self) -> int:
         return len(self.Episode.action)
@@ -63,9 +63,9 @@ class EpisodeBuffer:
     ) -> None:
         
         for cam, frame in pixels.items():
-            self.Episode.pixels.setdefault(cam, []).append(np.asarray(frame, dtype=np.uint8))
+            self.episode.pixels.setdefault(cam, []).append(np.asarray(frame, dtype=np.uint8))
 
-        self.Episode.proprio.append(np.asarray(proprio, dtype=np.float32))
+        self.episode.proprio.append(np.asarray(proprio, dtype=np.float32))
         
         # Actions are stored float64, deliberately. Quantizing to float32 costs
         # ~3e-08 rad, which the dynamics amplify ~6300x over a 17-step episode
@@ -73,13 +73,13 @@ class EpisodeBuffer:
         # a rounding error in the byte budget next to 224x224x3 images, so there
         # is no reason to lose the precision.
         
-        self.Episode.action.append(np.asarray(action, dtype=np.float64))
-        self.Episode.action_executed.append(
+        self.episode.action.append(np.asarray(action, dtype=np.float64))
+        self.episode.action_executed.append(
             np.asarray(action if action_executed is None else action_executed, dtype=np.float64)
         )
 
-        self.Episode.reward.append(float(reward))
-        self.Episode.success.append(bool(success))
+        self.episode.reward.append(float(reward))
+        self.episode.success.append(bool(success))
 
 
 class EpisodeWriter:
