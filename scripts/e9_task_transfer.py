@@ -53,7 +53,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from jetspace.utils.device import get_device  # noqa: E402
 
-TASKS = {
+#: The eight real laboratories: eight tasks, but also eight action conventions.
+#: E9's negative cannot separate those two, which is what SIM_TASKS is for.
+REAL_TASKS = {
     "A_cubes": "A_cubes__ego",
     "B_svla": "B_svla__side",
     "C_tape": "C_tape__birdEye",
@@ -63,6 +65,12 @@ TASKS = {
     "G_bin": "G_bin__front",
     "H_penmug": "H_penmug1__camera_2",
 }
+
+#: Three tasks on ONE simulated SO-101, so the action convention is held fixed
+#: by construction. Measured spread ratios across tasks are 1.17-1.59 on the
+#: five arm joints, against ~5x on the real labs. A cross-task result here is
+#: about representation, not action rescaling.
+SIM_TASKS = {"push": "push", "pickplace": "pickplace", "reach": "reach"}
 
 
 class Head(nn.Module):
@@ -124,6 +132,9 @@ def score(head, X, Y, device):
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--prefix", default="n1b", help="n1b or n1bcnn")
+    ap.add_argument("--task-set", default="real", choices=["real", "sim"],
+                    help="real = 8 labs (task and action convention both vary); "
+                         "sim = 3 tasks on one robot (action convention fixed)")
     ap.add_argument("--shots", type=int, nargs="+", default=[1, 2, 4])
     ap.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2])
     ap.add_argument("--pca-dim", type=int, default=128)
@@ -141,14 +152,19 @@ def main() -> int:
     print(f"E9 -- few-shot transfer to UNSEEN TASKS ({args.prefix})")
     print("=" * 76)
 
+    tasks = SIM_TASKS if args.task_set == "sim" else REAL_TASKS
     data = {}
-    for tag, name in TASKS.items():
-        eps = load_episodes(f"{args.prefix}_{name}", f"n1b_{name}")
+    for tag, name in tasks.items():
+        # The sim sets are their own latent and episode directories; the real
+        # ones carry the n1b_ prefix on both sides.
+        lat = name if args.task_set == "sim" else f"{args.prefix}_{name}"
+        dat = name if args.task_set == "sim" else f"n1b_{name}"
+        eps = load_episodes(lat, dat)
         if eps:
             data[tag] = eps
-    print(f"  {len(data)}/8 tasks loaded: {sorted(data)}\n")
-    if len(data) < 4:
-        print("need at least 4 tasks; cache the missing encoders first")
+    print(f"  {len(data)}/{len(tasks)} tasks loaded: {sorted(data)}")
+    if len(data) < 2:
+        print("need at least 2 tasks for leave-one-out; cache the missing encoders first")
         return 1
 
     rows = []
@@ -178,12 +194,27 @@ def main() -> int:
         def proj(z):
             return ((z - mu) @ basis) / sd
 
+        # Drop action dimensions this task never moves. push never opens the
+        # gripper, so that column is constant; standardised it becomes exactly
+        # zero, is trivially predictable, and would dilute the MSE across the
+        # dimensions that actually carry the task.
+        #
+        # Computed per TARGET rather than per fold, because the pretrained head
+        # is built once per target and both heads must share an output width.
+        # This uses only WHICH dimensions are non-constant -- a structural
+        # property of the task, not the values of any evaluation episode.
+        tgt_all = np.concatenate([a for _, a in data[target]])
+        live = tgt_all.std(0) > 1e-6
+        if not live.all():
+            dead = [i for i, m in enumerate(live) if not m]
+            print(f"  {target:10s} dropping constant action dims {dead}")
+
         Xs = np.concatenate([proj(z) for t in sources for z, _ in data[t]])
         Ys = []
         for t in sources:
             ta = np.concatenate([a for _, a in data[t]])
             tm, ts = ta.mean(0), ta.std(0) + 1e-6
-            Ys.append(np.concatenate([(a - tm) / ts for _, a in data[t]]))
+            Ys.append(np.concatenate([((a - tm) / ts)[:, live] for _, a in data[t]]))
         Ys = np.concatenate(Ys)
 
         for seed in args.seeds:
@@ -206,9 +237,9 @@ def main() -> int:
                 amu, asd = ay.mean(0), ay.std(0) + 1e-6
 
                 Xa = np.concatenate([proj(z) for z, _ in adapt])
-                Ya = np.concatenate([(a - amu) / asd for _, a in adapt])
+                Ya = np.concatenate([((a - amu) / asd)[:, live] for _, a in adapt])
                 Xe = np.concatenate([proj(z) for z, _ in evalep])
-                Ye = np.concatenate([(a - amu) / asd for _, a in evalep])
+                Ye = np.concatenate([((a - amu) / asd)[:, live] for _, a in evalep])
 
                 scratch = fit(Head(k, Ya.shape[1]).to(device), Xa, Ya,
                               device, args.epochs, 1e-3, seed)
@@ -224,7 +255,7 @@ def main() -> int:
                     "scratch": score(scratch, Xe, Ye, device),
                     "transfer": score(tr, Xe, Ye, device),
                     "zeroshot": zs,
-                    "n_eval": int(len(Xe)),
+                    "n_eval": int(len(Xe)), "dims_scored": int(live.sum()),
                 })
         done = [r for r in rows if r["target"] == target]
         print(f"  {target:10s} folds {len(done):2d}  "
@@ -252,6 +283,16 @@ def main() -> int:
               f"{t.mean():10.3f} +-{t.std():.3f} {z.mean():12.3f} "
               f"{s.mean() - t.mean():+8.3f}")
         print(f"      transfer wins {int((t < s).sum())}/{len(sel)} folds")
+        # A comparison between two models that both lose to predicting the
+        # mean action is not evidence in either direction. R2 printed a
+        # confident verdict off a 3.3%-success policy for exactly this reason,
+        # and E7 registered the same guard as invalidation 4.
+        if min(s.mean(), t.mean()) > 1.0:
+            print(f"      NO DYNAMIC RANGE at K={K}: both arms exceed 1.0, "
+                  f"i.e. both are worse than")
+            print(f"      predicting the mean action. The win count above is "
+                  f"not interpretable.")
+            summary[K]["no_dynamic_range"] = True
 
     print("\n  1.0 = no better than predicting the mean action of the K "
           "adaptation episodes")

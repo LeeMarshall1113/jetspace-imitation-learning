@@ -506,6 +506,52 @@ something a single `ls -la` closed.
 
 ---
 
+## L13 -- An experiment ran before its own ceiling was checked
+
+**Silent?** Worse than silent -- it produced a clean, unanimous, wrong-looking
+result. **Cost:** a full experiment, two reruns, and an explanation that was
+itself refuted.
+
+E9 found cross-task transfer fails on eight real laboratories, but those labs
+differ in task AND action convention, so the negative was confounded. E10 was
+built to remove the confound: three tasks on one simulated SO-101, one action
+space, measured spread ratios of 1.17-1.59 against the real labs' 5x. The design
+was right.
+
+The result came back **transfer wins 36 of 36 folds**. Every fold, every shot
+count, every seed. And every single number was above 1.0 normalised MSE, meaning
+both arms were worse than predicting the mean action. A unanimous sweep between
+two non-functional models.
+
+**What was missing was the ceiling.** Nobody had ever asked whether a head can
+predict actions from these simulated latents *at all* -- train on most of one
+task, test on held-out episodes of the same task, no transfer and no few-shot
+constraint. Without that number, "transfer beats scratch" is unreadable: it
+could mean transfer helps, or it could mean both arms are pinned at a floor set
+by something else entirely.
+
+**Then the explanation was wrong too.** The first diagnosis was that the
+simulated sets are domain-randomised, so viewpoint changes every episode and
+action prediction is a harder problem than on a fixed-camera real lab. Plausible,
+and false: measured within-task episode spread is 66-117 for the sim tasks and
+41-80 for the real ones, against 531.9 for a five-viewpoint sweep. Same regime.
+The hypothesis survived about four minutes past the measurement that could
+check it.
+
+**Lesson.** A treatment comparison needs its ceiling measured before it is run,
+not after it returns something surprising. The floor guard added to R2 (refuse a
+verdict below 25% success) and E7's invalidation 4 (report bands where an arm
+exceeds 1.0 separately) are the same idea arrived at twice; E10 needed it a
+third time and did not have it. `check_action_ceiling.py` is now that control,
+and `e9_task_transfer.py` refuses to interpret any K where both arms exceed the
+mean-action floor.
+
+**Second lesson, cheaper.** Unanimity is a warning sign, not a strong result.
+36 of 36 with no exceptions should have prompted a check of the metric before a
+check of the interpretation.
+
+---
+
 ## Simulation
 
 ### S1 — MuJoCo defaults to degrees; the arm was clamped to a 6° sweep
