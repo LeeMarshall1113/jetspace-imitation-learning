@@ -46,7 +46,7 @@ class EpisodeBuffer:
     """Accumulates one episode in memory before it is flushed to disk."""
 
     def __init__(self) -> None:
-        self.Episode: Episode = Episode()
+        self.Episode: episode = Episode()
 
     def buffer_size(self) -> int:
         return len(self.Episode.action)
@@ -150,8 +150,8 @@ class EpisodeWriter:
         record = {
             "index": index,
             "file": path.name,
-            "length": len(buffer.buffer_size()),
-            "duration_s": round(len(buffer.buffer_size()) / self.info["fps"], 3),
+            "length": buffer.buffer_size(),
+            "duration_s": round(buffer.buffer_size()) / self.info["fps"], 3),
             "success": bool(buffer.Episode.success[-1]),
             "return": round(float(np.sum(buffer.Episode.reward)), 4),
             **(metadata or {}),
