@@ -1,0 +1,67 @@
+{
+  "_why": [
+    "Canonical settings for every reported result, committed next to the numbers.",
+    "",
+    "This file exists because two runs were compared that differed in four",
+    "fields rather than one. train_predictor.py defaults to --pca-dim 0, but",
+    "every original result was produced with --pca-dim 128 passed by hand. The",
+    "divergence lived only in shell history, so a later run that omitted it",
+    "looked comparable and was not -- see ledger L7.",
+    "",
+    "Rule: a number quoted in results.md names the config block that produced",
+    "it. Before comparing two runs, diff them: scripts/diff_checkpoints.py."
+  ],
+
+  "encode": {
+    "default": {
+      "chunk": 32,
+      "margin": 8,
+      "pool_grid": 4,
+      "dtype": "float16",
+      "_stride_latents": 8,
+      "_comb_ratio": {"push": 1.669, "pickplace": 1.533, "reach": 1.438,
+                      "real_cubes": 1.014},
+      "_note": "stride = (chunk - 2*margin)/tubelet = 8 latents, which stamps a period-8 comb into simulated latents. Real video is unaffected. See ledger L6."
+    },
+    "comb_free": {
+      "chunk": 32,
+      "margin": 15,
+      "pool_grid": 4,
+      "dtype": "float16",
+      "_stride_latents": 1,
+      "_comb_ratio": {"push": 1.126},
+      "_note": "Maximum overlap. Reduces but does not eliminate the comb, and costs roughly 8x. Use for anything that compares sim against real."
+    }
+  },
+
+  "predictor": {
+    "pca128": {
+      "pca_dim": 128,
+      "hidden": 128,
+      "epochs": 30,
+      "horizon": 4,
+      "batch_size": 64,
+      "lr": 3e-4,
+      "_note": "The setting behind every original E3 number. PCA concentrates the low-rank comb into the retained directions, so the artifact matters MORE here than at full width -- 0.887 combed vs 0.832 comb-free."
+    },
+    "full": {
+      "pca_dim": 0,
+      "hidden": 1024,
+      "epochs": 30,
+      "horizon": 4,
+      "batch_size": 64,
+      "lr": 3e-4,
+      "_note": "Full 1024-d. Direction cosine is far lower here (~0.69) than under PCA (~0.88) for the same data -- the two are NOT comparable. The comb is nearly irrelevant at this width: 0.692 combed vs 0.695 comb-free."
+    }
+  },
+
+  "reported": {
+    "e3_horizon": {"encode": "default", "predictor": "pca128",
+                   "_caveat": "combed; gain figures carry a period-8 sawtooth"},
+    "conservatism": {"encode": "default", "predictor": "pca128"},
+    "real_data": {"encode": "default", "predictor": "pca128",
+                  "_caveat": "real latents have no comb, so 'default' is clean here"},
+    "sim_vs_real": {"encode": "comb_free", "predictor": "pca128",
+                    "_caveat": "the only pairing in which the comparison is valid"}
+  }
+}

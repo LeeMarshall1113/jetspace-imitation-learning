@@ -52,10 +52,22 @@ _DISTRACTORS = "\n".join(
     for i in range(N_DISTRACTOR_SLOTS)
 )
 
+# Sweep cameras for the N1b viewpoint experiment. The poses and the
+# look-at geometry are defined once in so101_env; only the existing
+# "front" camera is per-task, because each task framed its own
+# workspace and every earlier result depends on it staying put.
+from .so101_env import R1_POSES, _SWEEP_POSES, _camera_xml  # noqa: E402
+
+_SWEEP_XML = "\n".join(
+    f"    {_camera_xml(n, pos)}"
+    for n, pos in {**_SWEEP_POSES, **R1_POSES}.items()
+)
+
 WRAPPER_XML = f"""<mujoco model="so101_push">
   <include file="scene.xml"/>
   <worldbody>
     <camera name="front" pos="0.25 -0.62 0.42" xyaxes="1 0 0 0 0.45 0.89"/>
+{_SWEEP_XML}
     <body name="goal" mocap="true" pos="0.28 0.12 0.001">
       <site name="goal" type="cylinder" size="{GOAL_RADIUS} 0.0008"
             rgba="0.20 0.85 0.35 0.45"/>
@@ -112,8 +124,19 @@ class SO101PushEnv(RobotEnv):
         randomize: bool | RandomizationConfig = False,
         pretty: bool = False,
         servo: str = DEFAULT_SERVO,
+        cameras: tuple[str, ...] | None = None,
     ) -> None:
         import mujoco
+
+        # Opt-in: rendering N cameras costs N times as much, and every result
+        # before N1b used ("front",) alone.
+        if cameras:
+            from .so101_env import ALL_CAMERAS
+
+            unknown = [c for c in cameras if c not in ALL_CAMERAS]
+            if unknown:
+                raise ValueError(f"unknown camera(s) {unknown}; have {ALL_CAMERAS}")
+            self.camera_names = tuple(cameras)
 
         self._mj = mujoco
         asset_dir = Path(asset_dir)
@@ -163,7 +186,10 @@ class SO101PushEnv(RobotEnv):
         cfg = randomize if isinstance(randomize, RandomizationConfig) else RandomizationConfig(
             enabled=bool(randomize)
         )
-        self.randomizer = DomainRandomizer(self.model, cfg, camera_name=self.camera_names[0])
+        # Always randomise the primary view, never whichever camera happens
+        # to be first in a sweep -- otherwise DR and viewpoint move together
+        # and the N1b sweep measures both at once.
+        self.randomizer = DomainRandomizer(self.model, cfg, camera_name="front")
         self._action_queue: list[np.ndarray] = []
 
     # -- contract -----------------------------------------------------------

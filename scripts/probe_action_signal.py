@@ -69,7 +69,10 @@ def ridge_r2(X: np.ndarray, Y: np.ndarray, lam: float = 1.0, folds: int = 4) -> 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--task", default="pickplace", choices=["reach", "push", "pickplace"])
+    # No `choices` here. These scripts take an arbitrary name plus explicit
+    # --data/--latents paths, and a fixed choice list has already blocked
+    # real-robot data once; E6 adds e6_* arms that would hit it again.
+    ap.add_argument("--task", default="pickplace")
     ap.add_argument("--data", default=None)
     ap.add_argument("--latents", default=None)
     ap.add_argument("--episodes", type=int, default=60)

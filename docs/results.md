@@ -435,3 +435,78 @@ disagreement between ensemble members rather than variance in magnitude — whic
 directly shapes E4.
 
 **Reproduce:** `python scripts/check_conservatism.py --task push`
+
+---
+
+## Sim versus real, once the encoder artifact is controlled
+
+**Every number in this section names its config block in
+`configs/experiments.json`.** Two runs were compared earlier that differed in
+four fields rather than one, and the settings existed only in shell history.
+
+### The artifact
+
+Overlapped-window encoding stamps a periodic signature into the latents:
+latents `stride/tubelet` apart occupy the same offset inside their encoding
+window and share V-JEPA's temporal position embedding. Measured as the ratio of
+off-phase to on-phase autodistance, where 1.0 means no comb:
+
+| | push | pickplace | reach | **real_cubes** |
+|---|---|---|---|---|
+| comb ratio | 1.669× | 1.533× | 1.438× | **1.014×** |
+
+**It is a simulation phenomenon.** Real video carries enough sensor noise and
+motion blur to swamp the position embedding; clean renders do not. The period
+tracks the encode stride across four settings (8, 4, 12 latents), which is what
+identifies it as ours rather than the robot's.
+
+### Whether it matters depends entirely on PCA
+
+Holding everything but the encode stride fixed, on 60 push episodes:
+
+| predictor | encode | comb | direction cosine |
+|---|---|---|---|
+| `full` (1024-d) | default (stride 8) | 1.401× | 0.692 |
+| `full` (1024-d) | comb_free (stride 1) | 1.126× | 0.695 |
+| `pca128` | default (stride 8) | 1.401× | **0.887** |
+| `pca128` | comb_free (stride 1) | 1.126× | **0.832** |
+
+At full width the comb is worth 0.003 and is irrelevant. Under PCA-128 it is
+worth 0.055, because the comb is large, low-rank and periodic — exactly the kind
+of structure a principal-component projection retains. **A preprocessing step
+decides whether the artifact is measured.**
+
+Note also that cosine is not comparable across the two predictor settings at
+all: ~0.69 at full width versus ~0.88 under PCA, on identical data.
+
+### The comparison
+
+At matched settings — `pca128` predictor, `comb_free` encoding, 60 episodes:
+
+| domain | comb | displacement ratio | direction cosine |
+|---|---|---|---|
+| sim (push) | 1.126× | 0.932 | **0.832** |
+| real (cubes) | 1.014× | 0.923 | **0.847** |
+
+Sim retains some comb, so extrapolating to comb-free puts it near 0.81.
+
+**Simulation and real video are equivalent within the resolution available.**
+Neither domain has an advantage that survives controlling for the artifact.
+
+This is duller than the "real beats sim" reading an uncontrolled comparison
+produced, and it is the result N2 actually needs: a sim-trained latent world
+model is not disadvantaged relative to a real-trained one.
+
+**Remaining confounds, unresolved:** different tasks (scripted push versus human
+cube teleoperation), different frame rates (25 versus 15 Hz), different episode
+counts. A matched task recorded in both domains is the experiment that would
+settle it, and it is not an afternoon's work.
+
+### What holds across every condition
+
+The horizon result is insensitive to all of this. Useful and action-aware to
+**≥96 steps** under combed, de-combed, stride-1, full-width and PCA-128 alike —
+still censored, so still a lower bound.
+
+**Reproduce:**
+`bash scripts/run_pca_matched.sh` and `python scripts/check_chunk_phase.py --task push`

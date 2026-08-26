@@ -106,6 +106,7 @@ def collect(args: argparse.Namespace) -> int:
     env = spec["env"](
         image_size=args.image_size, max_steps=steps,
         randomize=args.randomize, pretty=args.pretty,
+        cameras=tuple(args.cameras.split(',')) if args.cameras else None,
     )
     rng = np.random.default_rng(args.seed)
     policy = (
@@ -208,6 +209,10 @@ def main() -> int:
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--pretty", action="store_true",
                    help="render visual meshes (11x slower); for human-facing output")
+    p.add_argument("--cameras", default=None,
+                   help="comma-separated camera names for the N1b viewpoint sweep, "
+                        "e.g. front,side,top. Costs one render per camera per step. "
+                        "Default is the single 'front' view every earlier result used.")
     p.add_argument("--randomize", action="store_true",
                    help="domain randomization: lighting, camera, clutter, dynamics, latency")
     p.add_argument("--keep-failures", action="store_true")

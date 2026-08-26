@@ -43,12 +43,174 @@ _DISTRACTORS = "\n".join(
     for i in range(N_DISTRACTOR_SLOTS)
 )
 
+#: Where the extra sweep cameras aim. Roughly the middle of the reachable
+#: workspace, so every pose frames the same volume.
+_LOOK_AT = (0.30, 0.0, 0.10)
+
+#: Camera poses for the N1b viewpoint sweep (docs/prereg-n1b.md).
+#:
+#: Simulation is the only condition whose camera we control, which makes it the
+#: only place viewpoint can be varied with *everything else pinned* -- same
+#: seeds, same physics, same actions, same meshes, same episode. Public datasets
+#: cannot offer that: each lab's camera differs along with its room, lighting,
+#: table and operator.
+#:
+#: These span where a person would plausibly mount a camera over a tabletop arm.
+#: `front` is NOT in this list -- it is declared separately below and left
+#: byte-identical, because every result recorded before N1b was rendered from it
+#: and re-deriving its xyaxes here would silently perturb the baseline.
+_SWEEP_POSES = {
+    "front_high": (0.25, -0.55, 0.85),
+    "side": (0.90, -0.10, 0.45),
+    "side_high": (0.80, -0.35, 0.80),
+    "top": (0.30, -0.05, 1.05),
+}
+
+
+#: R1 camera ruler (docs/prereg-camera-ruler.md).
+#:
+#: A camera aimed at a fixed point has three parameters people actually adjust
+#: when mounting one: azimuth around the vertical, elevation above horizontal,
+#: and distance. The reference pose below reproduces the existing `front`
+#: camera to within a centimetre -- azimuth 0, elevation 30, distance 0.81 --
+#: so the sweep is anchored on the viewpoint every earlier result used.
+#:
+#: Grids are exactly those registered, fixed before any gap was measured.
+R1_REF = {"azim": 0.0, "elev": 30.0, "dist": 0.81}
+R1_AZIMUTHS = (0, 10, 20, 30, 45, 60, 90)
+R1_ELEVATIONS = (15, 25, 35, 45, 60, 75)
+R1_DISTANCES = (0.6, 0.8, 1.0, 1.3, 1.8)
+#: Off-axis combinations, to test whether displacement composes or the axes
+#: interact. If an off-axis gap exceeds the sum of its two one-axis gaps, the
+#: ruler is not a scalar and prediction 4 fails.
+R1_OFF_AXIS = ((10, 45), (20, 45), (30, 15), (30, 60), (45, 25), (60, 45))
+
+
+def _spherical(azim_deg: float, elev_deg: float, dist: float,
+               look_at: tuple[float, float, float] = _LOOK_AT
+               ) -> tuple[float, float, float]:
+    """Camera position from azimuth, elevation and distance about `look_at`.
+
+    Azimuth 0 points along -y, matching the existing `front` camera, and
+    increases toward +x. Elevation is measured up from the horizontal plane.
+    """
+    import math
+
+    a, e = math.radians(azim_deg), math.radians(elev_deg)
+    return (
+        look_at[0] + dist * math.cos(e) * math.sin(a),
+        look_at[1] - dist * math.cos(e) * math.cos(a),
+        look_at[2] + dist * math.sin(e),
+    )
+
+
+def _build_r1_poses() -> dict[str, tuple[float, float, float]]:
+    """Every R1 pose, keyed by a name that encodes its displacement.
+
+    Deduplicated: the reference appears in all three sweeps and is emitted once
+    as `r1_ref`. Rendering it several times under different names would put the
+    zero-displacement control into the curve repeatedly and flatten it.
+    """
+    poses: dict[str, tuple[float, float, float]] = {
+        "r1_ref": _spherical(R1_REF["azim"], R1_REF["elev"], R1_REF["dist"])
+    }
+    for a in R1_AZIMUTHS:
+        if a == R1_REF["azim"]:
+            continue
+        poses[f"r1_az{a:02d}"] = _spherical(a, R1_REF["elev"], R1_REF["dist"])
+    for e in R1_ELEVATIONS:
+        if e == R1_REF["elev"]:
+            continue
+        poses[f"r1_el{e:02d}"] = _spherical(R1_REF["azim"], e, R1_REF["dist"])
+    for d in R1_DISTANCES:
+        if abs(d - 1.0) < 1e-9:
+            continue
+        poses[f"r1_d{int(d * 100):03d}"] = _spherical(
+            R1_REF["azim"], R1_REF["elev"], R1_REF["dist"] * d
+        )
+    for a, e in R1_OFF_AXIS:
+        poses[f"r1_a{a:02d}e{e:02d}"] = _spherical(a, e, R1_REF["dist"])
+    return poses
+
+
+R1_POSES = _build_r1_poses()
+
+
+def r1_displacement(name: str) -> dict:
+    """Angular and radial displacement of an R1 pose from the reference.
+
+    Returns the components separately AND a combined angular magnitude, because
+    the registration predicts angle dominates distance and that cannot be
+    checked from a single scalar.
+    """
+    import math
+
+    if name == "r1_ref":
+        return {"azim": 0.0, "elev": 0.0, "dist_ratio": 1.0, "angle": 0.0}
+    if name.startswith("r1_az"):
+        a = float(name[5:])
+        return {"azim": a, "elev": 0.0, "dist_ratio": 1.0, "angle": a}
+    if name.startswith("r1_el"):
+        e = float(name[5:]) - R1_REF["elev"]
+        return {"azim": 0.0, "elev": e, "dist_ratio": 1.0, "angle": abs(e)}
+    if name.startswith("r1_d"):
+        return {"azim": 0.0, "elev": 0.0, "dist_ratio": float(name[4:]) / 100.0,
+                "angle": 0.0}
+    if name.startswith("r1_a"):
+        a = float(name[4:6])
+        e = float(name[7:9]) - R1_REF["elev"]
+        # Great-circle angle between the two viewing directions, not the sum of
+        # the components -- azimuth displacement shrinks with elevation.
+        ar, er0, er1 = (math.radians(a), math.radians(R1_REF["elev"]),
+                        math.radians(float(name[7:9])))
+        cos_g = (math.sin(er0) * math.sin(er1)
+                 + math.cos(er0) * math.cos(er1) * math.cos(ar))
+        return {"azim": a, "elev": e, "dist_ratio": 1.0,
+                "angle": math.degrees(math.acos(max(-1.0, min(1.0, cos_g))))}
+    return {"azim": 0.0, "elev": 0.0, "dist_ratio": 1.0, "angle": 0.0}
+
+
+def _camera_xml(name: str, pos: tuple[float, float, float],
+                look_at: tuple[float, float, float] = _LOOK_AT) -> str:
+    """A MuJoCo camera at `pos` aimed at `look_at`.
+
+    MuJoCo's `xyaxes` is the camera frame's right and up vectors; the camera
+    looks along its own -z. Deriving them from a look-at point beats writing
+    them by hand, which is how a camera ends up edge-on to the plane of motion
+    -- a mistake already made once in this project and caught only by looking
+    at a contact sheet.
+    """
+    import numpy as np
+
+    p = np.asarray(pos, dtype=float)
+    f = np.asarray(look_at, dtype=float) - p
+    f /= np.linalg.norm(f)
+    world_up = np.array([0.0, 0.0, 1.0])
+    if abs(float(f @ world_up)) > 0.999:      # looking straight down
+        world_up = np.array([0.0, 1.0, 0.0])
+    right = np.cross(f, world_up)
+    right /= np.linalg.norm(right)
+    up = np.cross(right, f)
+    ax = " ".join(f"{v:.6f}" for v in [*right, *up])
+    return f'<camera name="{name}" pos="{p[0]} {p[1]} {p[2]}" xyaxes="{ax}"/>'
+
+
+#: Everything the wrapper declares beyond `front`: the four N1b sweep poses and
+#: the R1 ruler grid. Declaring a camera costs nothing; only the ones named in
+#: `--cameras` are ever rendered.
+_ALL_EXTRA_POSES = {**_SWEEP_POSES, **R1_POSES}
+
+_SWEEP_XML = "\n".join(
+    f"    {_camera_xml(n, pos)}" for n, pos in _ALL_EXTRA_POSES.items()
+)
+
 WRAPPER_XML = f"""<mujoco model="so101_reach">
   <include file="scene.xml"/>
   <worldbody>
     <!-- Third-person view of the workspace. The model ships only a wrist
          camera, which moves with the arm and so cannot show where the arm is. -->
     <camera name="front" pos="0.25 -0.70 0.50" xyaxes="1 0 0 0 0.394 0.919"/>
+{_SWEEP_XML}
     <body name="target" mocap="true" pos="0.30 0.0 0.25">
       <site name="target" size="0.018" rgba="0.20 0.85 0.35 0.85"/>
     </body>
@@ -117,6 +279,10 @@ TARGET_BOX_HIGH = np.array([0.36, 0.22, 0.34])
 RENDER_FAST = (0, 1, 3)      # primitives only
 RENDER_PRETTY = (0, 1, 2, 3, 4)
 
+#: Every camera the wrapper declares. "front" first: it is the default and
+#: the one all earlier results used.
+ALL_CAMERAS = ("front",) + tuple(_SWEEP_POSES) + tuple(R1_POSES)
+
 
 class SO101ReachEnv(RobotEnv):
     camera_names = ("front",)
@@ -132,8 +298,25 @@ class SO101ReachEnv(RobotEnv):
         randomize: bool | RandomizationConfig = False,
         pretty: bool = False,
         servo: str = DEFAULT_SERVO,
+        cameras: tuple[str, ...] | None = None,
+        success_radius: float | None = None,
     ) -> None:
+        # Overridable so the G1 falsification test can score the SAME
+        # rollouts at 4, 6 and 8 cm. Re-running per radius would confound
+        # tolerance with rollout noise.
+        self.success_radius = (
+            SUCCESS_RADIUS if success_radius is None else float(success_radius)
+        )
         import mujoco
+
+        # Rendering N cameras costs N times as much, so the sweep is opt-in and
+        # the default stays a single view. Every pre-N1b result used ("front",)
+        # and must keep doing so.
+        if cameras:
+            unknown = [c for c in cameras if c not in ALL_CAMERAS]
+            if unknown:
+                raise ValueError(f"unknown camera(s) {unknown}; have {ALL_CAMERAS}")
+            self.camera_names = tuple(cameras)
 
         self._mj = mujoco
         asset_dir = Path(asset_dir)
@@ -183,7 +366,10 @@ class SO101ReachEnv(RobotEnv):
         cfg = randomize if isinstance(randomize, RandomizationConfig) else RandomizationConfig(
             enabled=bool(randomize)
         )
-        self.randomizer = DomainRandomizer(self.model, cfg, camera_name=self.camera_names[0])
+        # Always randomise the primary view, never whichever camera happens
+        # to be first in a sweep -- otherwise DR and viewpoint move together
+        # and the N1b sweep measures both at once.
+        self.randomizer = DomainRandomizer(self.model, cfg, camera_name="front")
         self._action_queue: list[np.ndarray] = []
         self.n_distractors = 0
 
@@ -313,7 +499,7 @@ class SO101ReachEnv(RobotEnv):
 
         self._steps += 1
         dist = self._dist()
-        success = dist < SUCCESS_RADIUS
+        success = dist < self.success_radius
         return StepResult(
             obs=self._observe(),
             reward=-dist + (1.0 if success else 0.0),

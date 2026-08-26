@@ -64,15 +64,43 @@ class SimpleVisualEncoder(nn.Module):
     7 px across at this input size and localising it on a 7x7 grid is hopeless.
     """
 
-    def __init__(self, out_dim: int = 256, in_size: int = 112, channels: int = 128):
+    def __init__(self, out_dim: int = 256, in_size: int = 112, channels: int = 128,
+                 stages: int = 3):
+        """`in_size` and `stages` together set the spatial grid, and the grid is
+        what bounds how precisely the policy can localise anything.
+
+        The default 112 with 3 stride-2 stages gives a 14x14 map. Measured on
+        reach, that policy's median closest approach was 3.9 cm against a 4.0 cm
+        success radius -- landing just inside the boundary half the time. One
+        grid cell spans roughly the same 3.6 cm, which is not a coincidence:
+        the policy was precision-limited by its own feature resolution, not by
+        capacity or by perception.
+
+        Raising `in_size` to 224 or dropping to `stages=2` each double the grid.
+        Both cost compute in the early layers only, where the maps are cheap.
+        """
         super().__init__()
         self.in_size = in_size
-        self.backbone = nn.Sequential(
-            nn.Conv2d(3, 32, 5, stride=2, padding=2), nn.ReLU(),        # 112 -> 56
-            nn.Conv2d(32, 64, 3, stride=2, padding=1), nn.ReLU(),       # 56 -> 28
-            nn.Conv2d(64, channels, 3, stride=2, padding=1), nn.ReLU(), # 28 -> 14
-        )
-        feat_size = in_size // 8
+        self.stages = stages
+        # Widths must always END at `channels`, because the spatial-softmax
+        # head projects from 2*channels. The previous slice-based version
+        # produced [3, 32, 64] for stages=4 -- three layers ending at 64, a
+        # feature map the head could not consume -- and every stages=4 run died
+        # before printing a number.
+        widths = {1: [3, channels],
+                  2: [3, 64, channels],
+                  3: [3, 32, 64, channels],
+                  4: [3, 32, 64, 96, channels]}
+        if stages not in widths:
+            raise ValueError(f"stages must be one of {sorted(widths)}, got {stages}")
+        chans = widths[stages]
+        layers = []
+        for i, (a, b) in enumerate(zip(chans[:-1], chans[1:])):
+            k, pad = (5, 2) if i == 0 else (3, 1)
+            layers += [nn.Conv2d(a, b, k, stride=2, padding=pad), nn.ReLU()]
+        self.backbone = nn.Sequential(*layers)
+        feat_size = in_size // (2 ** stages)
+        self.feat_size = feat_size
         self.keypoints = SpatialSoftmax(feat_size, feat_size)
         self.proj = nn.Sequential(nn.Linear(2 * channels, out_dim), nn.ReLU())
         self.out_dim = out_dim

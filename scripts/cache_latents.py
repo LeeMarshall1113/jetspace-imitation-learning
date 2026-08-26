@@ -47,6 +47,10 @@ def main() -> int:
     ap.add_argument("--dtype", default="float16", choices=["float16", "float32"],
                     help="storage dtype; float16 halves disk for no measurable loss")
     ap.add_argument("--limit", type=int, default=None)
+    ap.add_argument("--camera", default=None,
+                    help="which camera to encode; default is the first in meta. "
+                         "The N1b sweep stores five per episode, so the choice "
+                         "has to be explicit rather than positional.")
     args = ap.parse_args()
 
     data = Path(args.data or f"data/episodes/{args.task}")
@@ -54,7 +58,9 @@ def main() -> int:
     out.mkdir(parents=True, exist_ok=True)
 
     ds = EpisodeDataset(data)
-    camera = ds.info["cameras"][0]
+    camera = args.camera or ds.info["cameras"][0]
+    if camera not in ds.info["cameras"]:
+        raise SystemExit(f"camera {camera!r} not in {ds.info['cameras']}")
     n = min(args.limit or len(ds), len(ds))
     print(f"{data}: {len(ds)} episodes, encoding {n} from camera {camera!r}")
 

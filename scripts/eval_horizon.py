@@ -37,6 +37,7 @@ import torch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from jetspace.data.episode import EpisodeDataset  # noqa: E402
+from jetspace.models.vjepa import TUBELET  # noqa: E402
 from jetspace.models.predictor import ActionConditionedPredictor  # noqa: E402
 from jetspace.utils.device import get_device  # noqa: E402
 
@@ -102,6 +103,14 @@ def main() -> int:
             loaded.append((z, a))
         if len(loaded) >= args.episodes:
             break
+    # Denominator is episodes WITH LATENTS, not episodes in the dataset. The
+    # data directory accumulates runs (push holds 102) while a given cache
+    # may cover only some of them (60), so dividing by the dataset size
+    # understated coverage as 35% where it was actually 60%.
+    total_episodes = sum(
+        1 for r in ds.records
+        if (lat_dir / f"episode_{r['index']:06d}.npy").exists()
+    ) or len(ds)
     if len(loaded) < 2:
         print(f"Need >=2 episodes with at least {H+1} latents; found {len(loaded)}.")
         print("Try a smaller --max-horizon, or a task with longer episodes.")
@@ -152,12 +161,55 @@ def main() -> int:
         print(f"{h+1:>3} {model_e[h]:>10.5f} {static_e[h]:>12.5f} {shuf_e[h]:>13.5f} "
               f"{gain:>7.2f}x {aware:>12.2f}x")
 
+    # Frame rate comes from the dataset, not from a constant. Simulation runs at
+    # 25 Hz and imported real data at 15 Hz; hardcoding 25 silently reported the
+    # real horizon as 2.56 s when it was 4.27 s. A timing mismatch is
+    # indistinguishable from a domain gap unless it is stated, so state it.
+    fps = 25
+    try:
+        fps = json.loads((data / "info.json").read_text())["fps"]
+    except Exception:  # noqa: BLE001
+        print("  (no dataset fps found; assuming 25 Hz)")
+    latent_hz = fps / TUBELET
+
+    useful = (breakeven - 1) if breakeven else H
+    aware_h = (action_blind - 1) if action_blind else H
+    # Right-censored: the curve never crossed the threshold inside the tested
+    # range, so H is a lower bound on the horizon and not a measurement of it.
+    censored = breakeven is None
+    aware_censored = action_blind is None
+    ge = ">=" if censored else "  "
+    ga = ">=" if aware_censored else "  "
+
+    # COVERAGE. eval needs episodes holding H+1 latents, so a larger horizon
+    # silently narrows the evaluation to the longest episodes -- which for a
+    # scripted task are the atypical ones where the expert took the longest
+    # route. Measured on push: h=48 keeps 77% of episodes, h=96 keeps 30%,
+    # h=145 keeps TWO. A confident number printed off two episodes is how
+    # "push is action-blind" got reported and then withdrawn.
+    coverage = len(loaded) / max(total_episodes, 1)
+
     print("\n" + "=" * 68)
-    print(f"USEFUL HORIZON     : {breakeven - 1 if breakeven else H} steps "
-          f"({(breakeven - 1 if breakeven else H) / 12.5:.2f} s at 25 Hz / tubelet 2)")
+    print(f"EPISODES USED      : {len(loaded)} of {total_episodes} "
+          f"({100 * coverage:.0f}% have {H + 1}+ latents)")
+    if len(loaded) < 5:
+        print("   TOO FEW EPISODES. Everything below rests on a handful of the")
+        print("   LONGEST recordings, which are not representative. Lower")
+        print("   --max-horizon until coverage is reasonable before quoting any")
+        print("   of it.")
+    elif coverage < 0.25:
+        print("   LOW COVERAGE. This is a slice of the longest episodes, not the")
+        print("   dataset. Report the coverage alongside the horizon.")
+    print(f"USEFUL HORIZON     : {ge}{useful} steps "
+          f"({useful / latent_hz:.2f} s at {fps} Hz / tubelet {TUBELET})")
     print("   (last horizon where imagination beats predicting no change)")
-    print(f"ACTION-AWARE UNTIL : {action_blind - 1 if action_blind else H} steps")
+    print(f"ACTION-AWARE UNTIL : {ga}{aware_h} steps")
     print("   (beyond this the rollout ignores which actions were taken)")
+    if censored or aware_censored:
+        print("\n   CENSORED: the model never crossed the threshold within the")
+        print(f"   {H} horizons tested, so this is a LOWER BOUND, not the horizon.")
+        print("   Re-run with a larger --max-horizon before quoting the number,")
+        print("   and never compare a censored bound against an uncensored one.")
     print("=" * 68)
 
     out = Path(args.out or f"cache/e3_horizon_{args.task}.json")
@@ -167,9 +219,17 @@ def main() -> int:
         "model_error": model_e.tolist(),
         "static_error": static_e.tolist(),
         "shuffled_error": shuf_e.tolist(),
-        "useful_horizon": (breakeven - 1) if breakeven else H,
-        "action_aware_horizon": (action_blind - 1) if action_blind else H,
+        "useful_horizon": useful,
+        "action_aware_horizon": aware_h,
+        "censored": censored,
+        "action_aware_censored": aware_censored,
+        "max_horizon_tested": H,
+        "fps": fps,
+        "tubelet": TUBELET,
+        "useful_horizon_seconds": useful / latent_hz,
         "episodes": len(loaded),
+        "total_episodes": int(total_episodes),
+        "coverage": float(coverage),
     }, indent=2))
     print(f"\nwrote {out}")
     return 0
