@@ -129,6 +129,8 @@ def main() -> int:
     ap.add_argument("--pca-dim", type=int, default=128)
     ap.add_argument("--epochs", type=int, default=40)
     ap.add_argument("--ft-epochs", type=int, default=40)
+    ap.add_argument("--pca-fit-rows", type=int, default=2000,
+                    help="rows subsampled to fit the PCA basis")
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
 
@@ -158,15 +160,39 @@ def main() -> int:
         src_raw = np.concatenate([z for t in sources for z, _ in data[t]])
         mu = src_raw.mean(0)
         k = min(args.pca_dim, src_raw.shape[0] - 1)
-        _, _, vt = np.linalg.svd(src_raw - mu, full_matrices=False)
+        # Fit the basis on a random subsample of rows. np.linalg.svd on an
+        # (m, n) matrix with m < n costs O(m^2 n), and m here is ~8800 pooled
+        # source latents against n = 16384 -- about 500x the cost of E8's
+        # 398-row fit, which put the first attempt at over two hours of pure
+        # SVD. 2000 rows is ample for a 128-dimensional basis and the mean is
+        # still taken over everything.
+        fit_rows = src_raw
+        if len(src_raw) > args.pca_fit_rows:
+            sel = np.random.default_rng(0).choice(
+                len(src_raw), args.pca_fit_rows, replace=False)
+            fit_rows = src_raw[sel]
+        _, _, vt = np.linalg.svd(fit_rows - mu, full_matrices=False)
         basis = vt[:k].T
         sd = ((src_raw - mu) @ basis).std(0) + 1e-6
 
         def proj(z):
             return ((z - mu) @ basis) / sd
 
-        for K in args.shots:
-            for seed in args.seeds:
+        Xs = np.concatenate([proj(z) for t in sources for z, _ in data[t]])
+        Ys = []
+        for t in sources:
+            ta = np.concatenate([a for _, a in data[t]])
+            tm, ts = ta.mean(0), ta.std(0) + 1e-6
+            Ys.append(np.concatenate([(a - tm) / ts for _, a in data[t]]))
+        Ys = np.concatenate(Ys)
+
+        for seed in args.seeds:
+            # Pretrain once per (target, seed). It does not depend on K, and
+            # rebuilding it inside the K loop repeated the most expensive step
+            # in the script three times for an identical result.
+            pre = fit(Head(k, Ys.shape[1]).to(device), Xs, Ys,
+                      device, args.epochs, 1e-3, seed)
+            for K in args.shots:
                 rng = np.random.default_rng(seed)
                 eps = data[target]
                 order = rng.permutation(len(eps))
@@ -184,21 +210,8 @@ def main() -> int:
                 Xe = np.concatenate([proj(z) for z, _ in evalep])
                 Ye = np.concatenate([(a - amu) / asd for _, a in evalep])
 
-                Xs = np.concatenate([proj(z) for t in sources for z, _ in data[t]])
-                # Source actions standardised PER SOURCE TASK, since ledger L8
-                # showed per-dimension spread differs up to 5x between labs and
-                # pooling them raw would let the largest-amplitude lab dominate.
-                Ys = []
-                for t in sources:
-                    ta = np.concatenate([a for _, a in data[t]])
-                    tm, ts = ta.mean(0), ta.std(0) + 1e-6
-                    Ys.append(np.concatenate([(a - tm) / ts for _, a in data[t]]))
-                Ys = np.concatenate(Ys)
-
                 scratch = fit(Head(k, Ya.shape[1]).to(device), Xa, Ya,
                               device, args.epochs, 1e-3, seed)
-                pre = fit(Head(k, Ys.shape[1]).to(device), Xs, Ys,
-                          device, args.epochs, 1e-3, seed)
                 zs = score(pre, Xe, Ye, device)
                 # Fine-tune a copy at a lower rate: the point is to adapt the
                 # pretrained solution, not to overwrite it from K episodes.
@@ -216,7 +229,8 @@ def main() -> int:
         done = [r for r in rows if r["target"] == target]
         print(f"  {target:10s} folds {len(done):2d}  "
               f"scratch {np.mean([r['scratch'] for r in done]):.3f}  "
-              f"transfer {np.mean([r['transfer'] for r in done]):.3f}")
+              f"transfer {np.mean([r['transfer'] for r in done]):.3f}",
+              flush=True)
 
     print("\n" + "=" * 76)
     print("FEW-SHOT TRANSFER TO AN UNSEEN TASK")
