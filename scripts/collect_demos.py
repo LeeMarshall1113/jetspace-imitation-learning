@@ -181,7 +181,7 @@ def collect(args: argparse.Namespace) -> int:
         written += 1
         
         if ep % 20 == 0 or ep == args.episodes - 1:
-            print(f"  episode {ep}: {buffer.buffer_size()} frames, success={buffer.Episode.success[-1]}")
+            print(f"  episode {ep}: {buffer.buffer_size()} frames, success={buffer.episode.success[-1]}")
 
     env.close()
     if hasattr(policy, "close"):
