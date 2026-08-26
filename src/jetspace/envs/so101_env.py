@@ -305,7 +305,8 @@ class SO101ReachEnv(RobotEnv):
         # by the sampled number of control steps, holding the last command.
         self._action_queue.append(np.clip(action, low, high))
         delay = self.randomizer.action_latency
-        applied = self._action_queue[-1 - delay] if len(self._action_queue) > delay else self._action_queue[0]
+        applied = (self._action_queue[-1 - delay]
+                   if len(self._action_queue) > delay else self._action_queue[0])
         self.data.ctrl[:] = applied
         for _ in range(self.frame_skip):
             self._mj.mj_step(self.model, self.data)

@@ -161,7 +161,8 @@ class DomainRandomizer:
                 0, c.light_pos_jitter, size=self.nominal["light_pos"].shape
             )
             m.light_diffuse[:] = np.clip(
-                u(*c.light_diffuse_range) + rng.normal(0, 0.05, size=self.nominal["light_diffuse"].shape),
+                u(*c.light_diffuse_range)
+                + rng.normal(0, 0.05, size=self.nominal["light_diffuse"].shape),
                 0.0,
                 1.0,
             )
@@ -172,7 +173,8 @@ class DomainRandomizer:
         m.geom_rgba[:] = rgba
 
         # -- control ----------------------------------------------------
-        self.action_latency = int(rng.integers(c.action_latency_steps[0], c.action_latency_steps[1] + 1))
+        self.action_latency = int(
+            rng.integers(c.action_latency_steps[0], c.action_latency_steps[1] + 1))
 
     def _randomize_camera(self, rng: np.random.Generator) -> None:
         """Place the third-person camera and aim it at the workspace.

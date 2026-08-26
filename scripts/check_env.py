@@ -127,7 +127,8 @@ def check_mujoco() -> None:
     except ImportError as exc:
         _report(False, "import mujoco", str(exc))
         return
-    print(f"         mujoco {mujoco.__version__}  |  MUJOCO_GL={os.environ.get('MUJOCO_GL', 'unset')}")
+    gl = os.environ.get("MUJOCO_GL", "unset")
+    print(f"         mujoco {mujoco.__version__}  |  MUJOCO_GL={gl}")
 
     model = mujoco.MjModel.from_xml_string(
         """<mujoco><worldbody>

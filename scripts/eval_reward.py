@@ -108,13 +108,13 @@ def main() -> int:
         z = np.load(f).astype(np.float32).reshape(len(np.load(f)), -1)
         ep = ds[i]
         latents.append(z)
-        pixels.append(ep[f"pixels_{camera}"].astype(np.float32).reshape(len(ep["proprio"]), -1) / 255.0)
+        flat = ep[f"pixels_{camera}"].astype(np.float32)
+        pixels.append(flat.reshape(len(ep["proprio"]), -1) / 255.0)
         proprios.append(ep["proprio"].astype(np.float32))
         goals.append(z[-1])
     if not latents:
         print("No cached latents matched the episodes in the dataset.")
         return 1
-    goals_arr = np.stack(goals)
     print(f"loaded {len(latents)} episodes with latents\n")
 
     results: dict[str, dict[str, float]] = {}
@@ -123,7 +123,9 @@ def main() -> int:
     #        trajectory's OWN endpoint fall as it progresses? If this fails,
     #        nothing else can work.
     print("distance to the episode's OWN final state:")
-    for label, seqs in (("V-JEPA latent", latents), ("raw pixels", pixels), ("proprioception", proprios)):
+    arms = (("V-JEPA latent", latents), ("raw pixels", pixels),
+            ("proprioception", proprios))
+    for label, seqs in arms:
         per_ep = []
         for s in seqs:
             d = np.linalg.norm(s - s[-1], axis=1)

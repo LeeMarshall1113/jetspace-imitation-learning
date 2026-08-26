@@ -51,7 +51,8 @@ class HumanTeleop:
         self.action_dim = env.action_dim
         pygame.init()
         self.screen = pygame.display.set_mode((360, 140))
-        pygame.display.set_caption("JetSpace teleop - 1-5 select joint, arrows move, R restart, ESC quit")
+        pygame.display.set_caption(
+            "JetSpace teleop - 1-5 select joint, arrows move, R restart, ESC quit")
         self.joystick = None
         if mode == "gamepad":
             pygame.joystick.init()
@@ -130,7 +131,7 @@ def collect(args: argparse.Namespace) -> int:
     for ep in range(args.episodes):
         # Record the reset seed: without it the target cannot be reproduced, and
         # an episode that cannot be replayed cannot be verified.
-        
+
         ep_seed = int(rng.integers(2**31))
         obs = env.reset(seed=ep_seed)
         if not policy.reset(env):
@@ -179,9 +180,10 @@ def collect(args: argparse.Namespace) -> int:
 
         writer.write(buffer, metadata={"policy": args.policy, "seed": ep_seed})
         written += 1
-        
+
         if ep % 20 == 0 or ep == args.episodes - 1:
-            print(f"  episode {ep}: {buffer.buffer_size()} frames, success={buffer.episode.success[-1]}")
+            print(f"  episode {ep}: {buffer.buffer_size()} frames, "
+                  f"success={buffer.episode.success[-1]}")
 
     env.close()
     if hasattr(policy, "close"):

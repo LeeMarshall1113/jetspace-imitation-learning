@@ -71,7 +71,8 @@ class BCFrameDataset(Dataset):
 
     def __getitem__(self, i: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         px = torch.from_numpy(self.pixels[i]).permute(2, 0, 1).float() / 255.0
-        pr = torch.from_numpy((self.proprio[i] - self.proprio_mean[0]) / self.proprio_std[0]).float()
+        pr_norm = (self.proprio[i] - self.proprio_mean[0]) / self.proprio_std[0]
+        pr = torch.from_numpy(pr_norm).float()
         target = (self.delta[i] - self.action_mean[0]) / self.action_std[0]
         return px, pr, torch.from_numpy(target).float()
 
