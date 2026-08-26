@@ -131,7 +131,7 @@ class EpisodeWriter:
         return self._next_index
 
     def write(self, buffer: EpisodeBuffer, *, metadata: dict[str, Any] | None = None) -> Path:
-        if len(buffer) == 0:
+        if (buffer.buffer_size()) == 0:
             raise ValueError("Refusing to write an empty episode")
 
         index = self._next_index
