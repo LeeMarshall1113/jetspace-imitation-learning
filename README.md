@@ -200,6 +200,29 @@ directional. Asymmetry is **proportional** to the magnitude measured (22–32%
 across families), not an absolute floor. Differences below ~30% of the gaps
 compared are not claimable.
 
+### Latent gap predicts task success, at half the strength it predicts internals
+
+The only result here measured in **task success** rather than action-prediction
+error ([`docs/r2-results.md`](docs/r2-results.md)). A behaviour-cloning policy
+trained at one camera, run at 22 displaced viewpoints, unadapted and untold.
+
+| | |
+|---|---|
+| reference pose success | 46.7% ± 10.9% |
+| Spearman ρ, gap vs success | **−0.516**, 95% CI **[−0.743, −0.137]** |
+| registered | ρ ≤ −0.6 — **fails** |
+
+The threshold is missed and reported as missed. But the interval **excludes
+zero**, so the relationship is real and simply weaker than registered. Against
+the world-model numbers on the same poses (ρ −0.85 to −0.92):
+
+> **Latent distance predicts behaviour at roughly half the strength with which
+> it predicts world-model internals** — a loose proxy for what a policy will do,
+> not a blind one.
+
+This bounds every action-MSE result elsewhere in this repository, including the
+encoder table.
+
 ### The instrument works in simulation and does not survive real data
 
 Latent gap predicting world-model degradation
@@ -633,6 +656,7 @@ repository does not have.
 | [`docs/novelty-upgrade.md`](docs/novelty-upgrade.md) | The sim-to-real latent-gap measurements, and a confound to settle first |
 | [`docs/paper.md`](docs/paper.md) | Paper plan: candidate claims, required experiments, open decisions |
 | [`docs/a1-results.md`](docs/a1-results.md) | Simulator alignment, falsified by its own primary falsifier |
+| [`docs/r2-results.md`](docs/r2-results.md) | Latent gap vs task success — the one behavioural measurement |
 | [`docs/e11-results.md`](docs/e11-results.md) | Nine frozen encoders; why in-distribution quality does not predict viewpoint robustness |
 | [`docs/e2-results.md`](docs/e2-results.md) | The distribution-shift ladder in one space; session drift; the sim ruler withdrawn |
 | [`docs/h1-results.md`](docs/h1-results.md) | Gap→degradation across three simulated tasks, with two registered failures |

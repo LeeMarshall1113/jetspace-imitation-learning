@@ -210,10 +210,26 @@ elif rho <= -0.6:
 else:
     print("REGISTERED PREDICTION FAILS.")
     print(f"  rho = {rho:+.3f}, CI [{lo:+.3f}, {hi:+.3f}].")
-    print("  A policy keeps working at gaps that wreck the world model, so")
-    print("  latent distance predicts world-model internals and NOT behaviour.")
-    print("  Every latent-space evaluation here -- N1b, R1, and the wider")
-    print("  literature -- is then measuring something narrower than it claims.")
+    # Missing the registered threshold is not the same as no relationship.
+    # An earlier version of this branch printed "predicts world-model
+    # internals and NOT behaviour" for any miss, which is false whenever the
+    # interval excludes zero -- the relationship is then real and merely
+    # weaker than registered. Which of the two it is decides whether this is a
+    # warning to the literature or a demolition of it, so it is checked rather
+    # than asserted.
+    if hi < 0:
+        print("  The interval EXCLUDES zero, so the relationship is real and")
+        print("  simply weaker than registered. Gap does predict behaviour,")
+        print("  with more slack than the world-model metrics imply: H1")
+        print("  measured rho -0.85 to -0.92 against world-model degradation")
+        print("  on the same poses. Latent-space evaluation is therefore a")
+        print("  loose proxy for behaviour, not a blind one.")
+    else:
+        print("  The interval INCLUDES zero, so no relationship is")
+        print("  demonstrated. Latent distance would then predict world-model")
+        print("  internals and not behaviour, and every latent-space")
+        print("  evaluation here -- N1b, R1, and the wider literature -- is")
+        print("  measuring something narrower than it claims.")
     print("  Registered in advance as the more consequential outcome.")
 print("=" * 72)
 
