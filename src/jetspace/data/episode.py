@@ -34,9 +34,16 @@ EPISODE_GLOB = "episode_*.npz"
 
 @dataclass
 class Episode:
+    """One episode's recorded arrays, as they will be written to disk."""
+
     pixels: dict[str, list[np.ndarray]] = field(default_factory=dict)
     proprio: list[np.ndarray] = field(default_factory=list)
     action: list[np.ndarray] = field(default_factory=list)
+    # What was actually sent to the simulator. Differs from `action`
+    # whenever exploration noise is executed but not labelled, which is the
+    # normal case for scripted collection. Replay verification needs this
+    # one; learning needs `action`. Recording only one of them loses a
+    # property we want (ledger L5, L6).
     action_executed: list[np.ndarray] = field(default_factory=list)
     reward: list[float] = field(default_factory=list)
     success: list[bool] = field(default_factory=list)
@@ -49,7 +56,7 @@ class EpisodeBuffer:
         self.episode: Episode = Episode()
 
     def buffer_size(self) -> int:
-        return len(self.Episode.action)
+        return len(self.episode.action)
 
     def add(
         self,
@@ -61,18 +68,18 @@ class EpisodeBuffer:
         success: bool,
         action_executed: np.ndarray | None = None,
     ) -> None:
-        
+
         for cam, frame in pixels.items():
             self.episode.pixels.setdefault(cam, []).append(np.asarray(frame, dtype=np.uint8))
 
         self.episode.proprio.append(np.asarray(proprio, dtype=np.float32))
-        
+
         # Actions are stored float64, deliberately. Quantizing to float32 costs
         # ~3e-08 rad, which the dynamics amplify ~6300x over a 17-step episode
         # to ~2e-04 rad -- enough to break exact replay verification. Actions are
         # a rounding error in the byte budget next to 224x224x3 images, so there
         # is no reason to lose the precision.
-        
+
         self.episode.action.append(np.asarray(action, dtype=np.float64))
         self.episode.action_executed.append(
             np.asarray(action if action_executed is None else action_executed, dtype=np.float64)
@@ -131,19 +138,19 @@ class EpisodeWriter:
         return self._next_index
 
     def write(self, buffer: EpisodeBuffer, *, metadata: dict[str, Any] | None = None) -> Path:
-        if (buffer.buffer_size()) == 0:
+        if buffer.buffer_size() == 0:
             raise ValueError("Refusing to write an empty episode")
 
         index = self._next_index
         path = self.root / f"episode_{index:06d}.npz"
         arrays: dict[str, np.ndarray] = {
-            "proprio": np.stack(buffer.Episode.proprio),
-            "action": np.stack(buffer.Episode.action),
-            "action_executed": np.stack(buffer.Episode.action_executed),
-            "reward": np.asarray(buffer.Episode.reward, dtype=np.float32),
-            "success": np.asarray(buffer.Episode.success, dtype=bool),
+            "proprio": np.stack(buffer.episode.proprio),
+            "action": np.stack(buffer.episode.action),
+            "action_executed": np.stack(buffer.episode.action_executed),
+            "reward": np.asarray(buffer.episode.reward, dtype=np.float32),
+            "success": np.asarray(buffer.episode.success, dtype=bool),
         }
-        for cam, frames in buffer.Episode.pixels.items():
+        for cam, frames in buffer.episode.pixels.items():
             arrays[f"pixels_{cam}"] = np.stack(frames)
         np.savez_compressed(path, **arrays)
 
@@ -151,9 +158,9 @@ class EpisodeWriter:
             "index": index,
             "file": path.name,
             "length": buffer.buffer_size(),
-            "duration_s": round(buffer.buffer_size()) / self.info["fps"], 3),
-            "success": bool(buffer.Episode.success[-1]),
-            "return": round(float(np.sum(buffer.Episode.reward)), 4),
+            "duration_s": round(buffer.buffer_size() / self.info["fps"], 3),
+            "success": bool(buffer.episode.success[-1]),
+            "return": round(float(np.sum(buffer.episode.reward)), 4),
             **(metadata or {}),
         }
         with (self.root / INDEX_FILE).open("a") as fh:
