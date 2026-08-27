@@ -65,6 +65,12 @@ ALIASES = {
     "siglip": "google/siglip-base-patch16-224",                # 2023-03
     "clip": "openai/clip-vit-base-patch16",                    # 2021-01
     "vit-in1k": "google/vit-base-patch16-224",                 # 2020-10
+    # Capacity variants, for the scale-up. Each changes one thing
+    # relative to an arm already present rather than adding a
+    # near-duplicate.
+    "vit-large": "google/vit-large-patch16-224",
+    "clip-large": "openai/clip-vit-large-patch14",
+    "aimv2-base": "apple/aimv2-base-patch14-224",
 }
 
 

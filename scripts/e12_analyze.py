@@ -26,9 +26,16 @@ from pathlib import Path
 import numpy as np
 
 ENCODERS = [
+    # The original nine.
     ("vjepa2", "r1"), ("dinov3", "dinov3"), ("siglip2", "siglip2"),
     ("aimv2", "aimv2"), ("dinov2", "dino"), ("clip", "clip"),
     ("vit-in1k", "vitin1k"), ("vc1", "vc1"), ("random", "r1cnn"),
+    # Scale-up. Each changes one thing against an arm already present --
+    # capacity within a family, or an earlier generation of one objective --
+    # rather than adding a near-duplicate row.
+    ("dinov2-large", "dinov2l"), ("dinov3-large", "dinov3l"),
+    ("siglip1", "siglip1"), ("vit-large", "vitlarge"),
+    ("clip-large", "cliplarge"), ("vc1-large", "vc1large"),
 ]
 AXES = ["lighting", "texture", "clutter"]
 FLOOR = 0.9          # prereg S3.1: a head above this cannot be compared
