@@ -1,0 +1,43 @@
+# GitHub renders this as a "Cite this repository" button with a ready BibTeX
+# block. Most people cite when it is one click and skip it when they would have
+# to construct the entry themselves.
+#
+# When the paper is on arXiv, add a `preferred-citation:` block below so the
+# button points at the paper rather than at the repository. That is the
+# citation you actually want accruing.
+cff-version: 1.2.0
+title: >-
+  JetSpace: measurement validity for frozen visual encoders in robot
+  imitation learning
+message: >-
+  If you use this software, the cached representations, or the measurement
+  protocol, please cite it.
+type: software
+authors:
+  - family-names: Marshall
+    given-names: Lee
+    email: leemarshall1113@gmail.com
+    alias: LeeMarshall1113
+repository-code: >-
+  https://github.com/LeeMarshall1113/jetspace-imitation-learning
+abstract: >-
+  Frozen visual encoders for robot imitation learning are conventionally
+  selected by how well a linear probe recovers actions from their features, and
+  distribution shift is conventionally evaluated as a distance between latent
+  sets. Neither convention has been validated against behaviour. This
+  repository measures both: fifteen frozen encoders are compared across
+  multiple nuisance axes under a matched protocol, latent distance is
+  calibrated against task success rather than against world-model internals,
+  and session-to-session drift within a single laboratory is quantified as the
+  reference floor under cross-domain comparisons. Predictions were
+  pre-registered with named falsifiers before each experiment ran, and the
+  failures are recorded alongside the results.
+keywords:
+  - robot learning
+  - imitation learning
+  - visual representation learning
+  - frozen encoders
+  - distribution shift
+  - benchmark
+  - reproducibility
+license: Apache-2.0
