@@ -31,6 +31,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from jetspace.data.episode import EpisodeDataset  # noqa: E402
@@ -52,6 +53,9 @@ def main() -> int:
     ap.add_argument("--frames-per-latent", type=int, default=2)
     ap.add_argument("--dtype", default="float16", choices=["float16", "float32"])
     ap.add_argument("--limit", type=int, default=None)
+    ap.add_argument("--nuisance", default=None,
+                    help="image-space axis applied before encoding")
+    ap.add_argument("--nuisance-level", type=float, default=None)
     ap.add_argument("--seed", type=int, default=0)
     args = ap.parse_args()
 
@@ -100,6 +104,13 @@ def main() -> int:
             skipped += 1
             continue
         frames = ds[i][f"pixels_{camera}"]
+        if args.nuisance:
+            # Applied at encode time so an image-space axis costs a
+            # transform rather than a rendering pass or a second copy
+            # of the dataset. Seeded per frame, so every encoder sees
+            # the SAME corrupted pixels.
+            from image_nuisance import apply_axis
+            frames = apply_axis(frames, args.nuisance, args.nuisance_level)
         z = enc.encode(torch.from_numpy(np.ascontiguousarray(frames))).numpy().astype(store)
         np.save(dest, z)
         total += len(frames)

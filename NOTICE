@@ -1,0 +1,37 @@
+JetSpace
+Copyright 2026 Lee Marshall
+
+This product includes software developed for the JetSpace project
+(https://github.com/LeeMarshall1113/jetspace-imitation-learning).
+
+Licensed under the Apache License, Version 2.0. Section 4(d) of that licence
+requires anyone redistributing this work, or a derivative of it, to carry the
+contents of this file. That is what makes attribution a condition of reuse
+rather than a courtesy.
+
+Note on scope. This NOTICE and the Apache licence cover the SOFTWARE. They do
+not govern the research findings, which are facts and methods rather than
+copyrightable expression. Reproducing an experiment and publishing your own
+results is ordinary science and requires no permission. If you build on the
+findings, cite the work -- see CITATION.cff.
+
+---
+
+Third-party components used but not included:
+
+  MuJoCo                Apache-2.0    physics simulation
+  PyTorch               BSD-3-Clause
+  Hugging Face
+    transformers        Apache-2.0
+    huggingface_hub     Apache-2.0
+  timm                  Apache-2.0    used to rebuild the VC-1 architecture
+  NumPy, SciPy          BSD-3-Clause
+  matplotlib            PSF-based
+
+Pretrained model weights are obtained from their original publishers and remain
+under their own licences, several of which are more restrictive than this one.
+DINOv3 in particular is gated and carries terms that must be accepted
+separately; nothing here redistributes any model weights.
+
+Public robot datasets accessed through the LeRobot ecosystem remain under the
+licences set by their respective contributors.

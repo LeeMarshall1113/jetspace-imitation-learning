@@ -28,6 +28,7 @@ from pathlib import Path
 
 import numpy as np
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from jetspace.data.episode import EpisodeDataset  # noqa: E402
@@ -47,6 +48,9 @@ def main() -> int:
     ap.add_argument("--dtype", default="float16", choices=["float16", "float32"],
                     help="storage dtype; float16 halves disk for no measurable loss")
     ap.add_argument("--limit", type=int, default=None)
+    ap.add_argument("--nuisance", default=None,
+                    help="image-space axis applied before encoding")
+    ap.add_argument("--nuisance-level", type=float, default=None)
     ap.add_argument("--camera", default=None,
                     help="which camera to encode; default is the first in meta. "
                          "The N1b sweep stores five per episode, so the choice "
@@ -81,6 +85,13 @@ def main() -> int:
             skipped += 1
             continue
         frames = ds[i][f"pixels_{camera}"]
+        if args.nuisance:
+            # Applied at encode time so an image-space axis costs a
+            # transform rather than a rendering pass or a second copy
+            # of the dataset. Seeded per frame, so every encoder sees
+            # the SAME corrupted pixels.
+            from image_nuisance import apply_axis
+            frames = apply_axis(frames, args.nuisance, args.nuisance_level)
         z = enc.encode(frames, chunk=args.chunk, margin=args.margin).numpy().astype(store_dtype)
         np.save(dest, z)
         total_frames += len(frames)

@@ -57,15 +57,85 @@ ALIASES = {
     "siglip2": "google/siglip2-base-patch16-224",              # 2025-02
     "aimv2": "apple/aimv2-large-patch14-224",                  # 2024-11
     # Older, kept as a reference row for what the prior literature used.
+    # Robotics-specific, loaded through timm rather than transformers.
+    "vc1": "vc1",                                              # 2023-06, NeurIPS
+    "vc1-large": "vc1-large",
     "dinov2": "facebook/dinov2-base",                          # 2023-04
     "dinov2-large": "facebook/dinov2-large",
     "siglip": "google/siglip-base-patch16-224",                # 2023-03
     "clip": "openai/clip-vit-base-patch16",                    # 2021-01
     "vit-in1k": "google/vit-base-patch16-224",                 # 2020-10
+    # Capacity variants, for the scale-up. Each changes one thing
+    # relative to an arm already present rather than adding a
+    # near-duplicate.
+    "vit-large": "google/vit-large-patch16-224",
+    "clip-large": "openai/clip-vit-large-patch14",
+    "aimv2-base": "apple/aimv2-base-patch14-224",
 }
 
 
+#: Robotics-specific encoders that are not transformers models. VC-1
+#: (NeurIPS 2023) ships an MAE ViT-B/16 state dict plus a hydra config, so the
+#: architecture has to be rebuilt with timm before the weights mean anything.
+#: A manipulation benchmark without it invites the obvious question.
+VC1_MODELS = {
+    "vc1": ("facebook/vc1-base", "vit_base_patch16_224"),
+    "vc1-large": ("facebook/vc1-large", "vit_large_patch16_224"),
+}
+
+
+class _TimmWrapper:
+    """Presents a timm backbone through the same call shape as a transformers
+    model, so the encode() path does not need to know which it has."""
+
+    def __init__(self, model):
+        self.model = model
+
+    def __call__(self, pixel_values=None, **_):
+        class _Out:
+            pass
+        out = _Out()
+        out.last_hidden_state = self.model.forward_features(pixel_values)
+        return out
+
+    def parameters(self):
+        return self.model.parameters()
+
+
+class _TimmProcessor:
+    """ImageNet normalisation, matching what VC-1's own transform applies."""
+
+    MEAN = (0.485, 0.456, 0.406)
+    STD = (0.229, 0.224, 0.225)
+
+    def __call__(self, images, return_tensors=None):
+        import numpy as _np
+        arr = _np.stack([_np.asarray(im, dtype=_np.float32) / 255.0 for im in images])
+        arr = (arr - _np.asarray(self.MEAN)) / _np.asarray(self.STD)
+        t = torch.from_numpy(arr).permute(0, 3, 1, 2).float()
+        if t.shape[-1] != 224:
+            t = F.interpolate(t, size=(224, 224), mode="bilinear",
+                              align_corners=False)
+        return {"pixel_values": t}
+
+
 def build(model_id: str, device: str):
+    if model_id in VC1_MODELS:
+        import timm
+        from huggingface_hub import get_token, hf_hub_download
+
+        repo, arch = VC1_MODELS[model_id]
+        ckpt = hf_hub_download(repo, "pytorch_model.bin", token=get_token())
+        state = torch.load(ckpt, map_location="cpu", weights_only=False)
+        sd = state.get("model", state)
+        net = timm.create_model(arch, pretrained=False, num_classes=0)
+        missing, _ = net.load_state_dict(sd, strict=False)
+        if len(missing) > 20:
+            raise ValueError(
+                f"{repo}: {len(missing)} keys missing from {arch}; the "
+                f"checkpoint does not map onto this architecture")
+        return _TimmProcessor(), _TimmWrapper(net.to(device).eval())
+
     from transformers import AutoImageProcessor, AutoModel
 
     proc = AutoImageProcessor.from_pretrained(model_id)
@@ -87,20 +157,26 @@ def encode(frames: np.ndarray, proc, model, device: str, grid: int,
     feats = []
     for i in range(0, usable, batch):
         chunk = frames[i:i + batch]
-        inputs = proc(images=list(chunk), return_tensors="pt").to(device)
-        out = model(**inputs).last_hidden_state          # (B, 1 + P, D)
-        n_patch = out.shape[1]
-        side = int(round((n_patch - 1) ** 0.5))
-        if side * side == n_patch - 1:
-            tokens = out[:, 1:]                          # drop CLS
-        else:
-            # SigLIP and some others emit no CLS token at all.
-            side = int(round(n_patch ** 0.5))
-            tokens = out
-            if side * side != n_patch:
-                raise ValueError(
-                    f"{n_patch} tokens is not a square grid (+/- CLS); this "
-                    f"backbone's output layout is not handled")
+        inputs = proc(images=list(chunk), return_tensors="pt")
+        inputs = {k: v.to(device) for k, v in dict(inputs).items()}
+        out = model(**inputs).last_hidden_state          # (B, prefix + P, D)
+        n_tok = out.shape[1]
+        # Backbones differ in what they put BEFORE the patch grid: SigLIP has
+        # nothing, CLIP and DINOv2 have a CLS token, and DINOv3 has CLS plus
+        # four register tokens (201 = 196 + 1 + 4), which an earlier
+        # CLS-or-nothing check rejected outright. In every case the patch
+        # tokens are the trailing square block, so find the largest square that
+        # fits and take the tail.
+        side = int(n_tok ** 0.5)
+        while side > 0 and side * side > n_tok:
+            side -= 1
+        prefix = n_tok - side * side
+        if side == 0 or prefix > 8:
+            raise ValueError(
+                f"{n_tok} tokens leaves no plausible square patch grid "
+                f"(largest square {side}x{side} implies {prefix} prefix "
+                f"tokens); this backbone's layout is not handled")
+        tokens = out[:, prefix:] if prefix else out
         b, _, d = tokens.shape
         t = tokens.reshape(b, side, side, d).permute(0, 3, 1, 2)
         t = F.adaptive_avg_pool2d(t, (grid, grid))       # (B, D, g, g)
@@ -123,6 +199,9 @@ def main() -> int:
     ap.add_argument("--frames-per-latent", type=int, default=2)
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--dtype", default="float16", choices=["float16", "float32"])
+    ap.add_argument("--nuisance", default=None,
+                    help="image-space axis applied before encoding, e.g. noise")
+    ap.add_argument("--nuisance-level", type=float, default=None)
     args = ap.parse_args()
 
     model_id = ALIASES.get(args.model, args.model)
@@ -150,6 +229,11 @@ def main() -> int:
             skipped += 1
             continue
         frames = ds[i][f"pixels_{camera}"]
+        if args.nuisance:
+            # Applied here rather than stored: an image-space axis costs a
+            # transform, not a rendering pass or a second copy of the dataset.
+            from image_nuisance import apply_axis
+            frames = apply_axis(frames, args.nuisance, args.nuisance_level)
         z = encode(frames, proc, model, device, args.pool_grid,
                    args.frames_per_latent)
         np.save(dest, z.astype(store))
@@ -163,6 +247,7 @@ def main() -> int:
         "model": model_id, "camera": camera, "pool_grid": args.pool_grid,
         "frames_per_latent": args.frames_per_latent, "params": int(n_params),
         "source": str(args.data), "dtype": args.dtype,
+        "nuisance": args.nuisance, "nuisance_level": args.nuisance_level,
         "note": "image encoder; consecutive frames averaged to match the "
                 "video encoder's tubelet. Not equivalent to joint 2-frame "
                 "encoding.",
