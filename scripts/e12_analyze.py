@@ -108,16 +108,27 @@ def cell(prefix: str, axis: str, task: str, levels: list[str]):
     # Reference-fit MSE, the denominator for degradation and the floor check.
     ref_mse = float(((Yte_n - pred) ** 2).mean())
 
-    # Robustness: same ridge map, applied at each held-out level.
+    # Robustness: same ridge map, at the SAME held-out episodes.
+    #
+    # Episode seeds are shared across conditions by design, so episode i at a
+    # displaced condition is the same trajectory as episode i at the reference.
+    # Evaluating on all ten would therefore score 80% of the displaced set on
+    # trajectories the ridge was fitted to, and `ref_mse` -- which uses only
+    # the held-out 20% -- would not be a comparable denominator.
+    #
+    # That leak is invisible wherever the nuisance is strong enough to swamp
+    # it, and dominant wherever it is not: the first run of this analysis
+    # reported clutter degrading performance by MINUS 69.6%, i.e. distractors
+    # apparently making the task easier, which is what sent me looking.
     mses = []
     for lv in levels:
         f = load(prefix, lv, task)
         if f is None:
             continue
         Xl, Yl = pair(f, actions(lv, task))
-        if not Xl:
+        if len(Xl) <= cut:
             continue
-        X, Y = np.concatenate(Xl), np.concatenate(Yl)
+        X, Y = np.concatenate(Xl[cut:]), np.concatenate(Yl[cut:])
         Yn = ((Y - ay) / asd)[:, live]
         mses.append(float(((Yn - ridge(Xtr, Ytr_n, X)) ** 2).mean()))
     if not mses:
@@ -177,6 +188,28 @@ def main() -> int:
             out[axis] = {"rows": {n: c for n, c in usable}, "rho": None,
                          "too_weak": True, "degradation": degrade}
             continue
+
+        # E12d, the registered control on ourselves. Frozen random features
+        # should be near-useless on any axis that genuinely separates
+        # encoders. If they are competitive, the axis is not discriminating
+        # and ranking encoders on it measures noise -- so its rows are
+        # reported and then excluded, exactly as registered. This check was
+        # written into the pre-registration and then omitted from the first
+        # version of this script.
+        order = [n for n, _ in sorted(usable, key=lambda r: r[1]["held"])]
+        if "random" in order:
+            pos = order.index("random") + 1
+            third = len(order) / 3.0
+            print(f"  E12d control: random ranks {pos}/{len(order)}")
+            if pos <= 2 * third:
+                print(f"  AXIS DOES NOT DISCRIMINATE: random features are not "
+                      f"in the bottom third.")
+                print(f"  Ranking encoders here measures noise. Reported, "
+                      f"excluded from E12a/E12b.")
+                out[axis] = {"rows": {n: c for n, c in usable}, "rho": None,
+                             "e12d_fired": True, "random_rank": pos,
+                             "degradation": degrade}
+                continue
 
         # Higher probe = better; lower held-out MSE = better. Negate the probe
         # so both rank "better" the same way before correlating.

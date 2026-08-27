@@ -200,6 +200,31 @@ directional. Asymmetry is **proportional** to the magnitude measured (22–32%
 across families), not an absolute floor. Differences below ~30% of the gaps
 compared are not claimable.
 
+### There is no robust encoder, only encoders robust to particular nuisances
+
+Nine frozen encoders crossed with four nuisance axes
+([`docs/e12-results.md`](docs/e12-results.md)). Probe R² is measured **once** at
+a shared reference; everything else is a different ranking of the same nine.
+
+| encoder | probe R² | lighting | texture | clutter | viewpoint |
+|---|---|---|---|---|---|
+| **clip** | **0.834** (1st) | **1st** | 5th | **1st** | 8th |
+| siglip2 | 0.677 | 3rd | **1st** | 2nd | 3rd |
+| random | 0.710 | 9th | 9th | 3rd | 7th |
+| **vjepa2** | **0.519** (9th) | 6th | 3rd | 5th | **1st** |
+
+Spearman between probe rank and robustness rank runs from **−0.317 to +0.467**
+with no consistent sign — mean |ρ| = 0.317 across the valid axes, so the
+registered prediction holds.
+
+> **Probe accuracy does not tell you which encoder survives a nuisance.** The
+> best-probing encoder is 1st on two axes and 5th and 8th on the others; the
+> worst-probing one is the reverse.
+
+**Clutter was excluded by its own control**: frozen random features rank 3rd of
+9 there, so the axis ranks noise rather than encoders. Reporting distractor
+robustness on a task this insensitive would report nothing.
+
 ### Latent gap predicts task success, at half the strength it predicts internals
 
 The only result here measured in **task success** rather than action-prediction
@@ -656,6 +681,7 @@ repository does not have.
 | [`docs/novelty-upgrade.md`](docs/novelty-upgrade.md) | The sim-to-real latent-gap measurements, and a confound to settle first |
 | [`docs/paper.md`](docs/paper.md) | Paper plan: candidate claims, required experiments, open decisions |
 | [`docs/a1-results.md`](docs/a1-results.md) | Simulator alignment, falsified by its own primary falsifier |
+| [`docs/e12-results.md`](docs/e12-results.md) | Nine encoders x four nuisance axes; probe accuracy does not predict robustness |
 | [`docs/r2-results.md`](docs/r2-results.md) | Latent gap vs task success — the one behavioural measurement |
 | [`docs/e11-results.md`](docs/e11-results.md) | Nine frozen encoders; why in-distribution quality does not predict viewpoint robustness |
 | [`docs/e2-results.md`](docs/e2-results.md) | The distribution-shift ladder in one space; session drift; the sim ruler withdrawn |
