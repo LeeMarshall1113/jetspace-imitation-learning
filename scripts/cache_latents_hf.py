@@ -199,6 +199,9 @@ def main() -> int:
     ap.add_argument("--frames-per-latent", type=int, default=2)
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--dtype", default="float16", choices=["float16", "float32"])
+    ap.add_argument("--nuisance", default=None,
+                    help="image-space axis applied before encoding, e.g. noise")
+    ap.add_argument("--nuisance-level", type=float, default=None)
     args = ap.parse_args()
 
     model_id = ALIASES.get(args.model, args.model)
@@ -226,6 +229,11 @@ def main() -> int:
             skipped += 1
             continue
         frames = ds[i][f"pixels_{camera}"]
+        if args.nuisance:
+            # Applied here rather than stored: an image-space axis costs a
+            # transform, not a rendering pass or a second copy of the dataset.
+            from image_nuisance import apply_axis
+            frames = apply_axis(frames, args.nuisance, args.nuisance_level)
         z = encode(frames, proc, model, device, args.pool_grid,
                    args.frames_per_latent)
         np.save(dest, z.astype(store))
@@ -239,6 +247,7 @@ def main() -> int:
         "model": model_id, "camera": camera, "pool_grid": args.pool_grid,
         "frames_per_latent": args.frames_per_latent, "params": int(n_params),
         "source": str(args.data), "dtype": args.dtype,
+        "nuisance": args.nuisance, "nuisance_level": args.nuisance_level,
         "note": "image encoder; consecutive frames averaged to match the "
                 "video encoder's tubelet. Not equivalent to joint 2-frame "
                 "encoding.",

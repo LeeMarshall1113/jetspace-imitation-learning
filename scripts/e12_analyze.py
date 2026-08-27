@@ -37,7 +37,10 @@ ENCODERS = [
     ("siglip1", "siglip1"), ("vit-large", "vitlarge"),
     ("clip-large", "cliplarge"), ("vc1-large", "vc1large"),
 ]
-AXES = ["lighting", "texture", "clutter"]
+AXES = ["lighting", "texture", "clutter",
+        # Image-space axes, applied at encode time rather than
+        # rendered. Same treatment, same controls.
+        "noise", "defocus", "compress", "exposure", "lowres"]
 FLOOR = 0.9          # prereg S3.1: a head above this cannot be compared
 MIN_DEGRADE = 0.10   # prereg S3.2: an axis this weak cannot rank anything
 
@@ -152,6 +155,12 @@ def main() -> int:
         "texture": ["texture_0p06", "texture_0p1", "texture_0p16",
                     "texture_0p24"],
         "clutter": ["clutter_1", "clutter_2", "clutter_3", "clutter_4"],
+        "noise": ["noise_4p0", "noise_10p0", "noise_20p0", "noise_35p0"],
+        "defocus": ["defocus_1", "defocus_2", "defocus_4", "defocus_7"],
+        "compress": ["compress_4", "compress_8", "compress_14", "compress_22"],
+        "exposure": ["exposure_0p65", "exposure_0p80", "exposure_1p25",
+                     "exposure_1p55"],
+        "lowres": ["lowres_2", "lowres_3", "lowres_5", "lowres_8"],
     }
 
     out: dict = {}
