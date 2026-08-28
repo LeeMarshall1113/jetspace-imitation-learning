@@ -136,6 +136,43 @@ reported, with the reason, never silently dropped.
   lands just over 0.4, that is H1 falsified. It is not an invitation to adjust
   the threshold, the axis count, or the aggregation.**
 
+## 6a. Amendment, 2026-08-27, written before running it
+
+**Registered before any CV or variance-decomposition result exists.**
+
+§5 fixed the hypothesis test but said nothing about how each cell is estimated.
+Each is currently a single 80/20 split: ten episodes per condition, eight fitted
+and **two held out**, so every probe R^2 and every held-out MSE rests on one
+split of 300 samples. That noise enters the encoder ranking, and the ranking is
+what rho is computed from. It is a plausible reason the stage-2 intervals were
+too wide to resolve anything.
+
+Two additions, both pure re-analysis of already-cached latents:
+
+- **A1, leave-one-episode-out CV.** Estimate each cell by averaging over ten
+  folds, each holding out one episode, instead of one split holding out two.
+  Same latents, same actions, same encoders, same axes.
+- **A2, variance decomposition.** Partition held-out MSE variance into encoder,
+  episode and level components, to establish whether encoder-level signal
+  exists above episode noise at all.
+
+Status and predictions, fixed now:
+
+- The **80/20 result stays primary** for stage 3, exactly as registered in §5.
+  A1 is reported as a clearly labelled precision analysis alongside it, never
+  in place of it. If they disagree, both are shown and the disagreement is the
+  finding.
+- **Predicted:** A1 narrows the CIs materially but does not change any sign,
+  and the push/pickplace difference remains not distinguishable. *If A1 flips a
+  sign or manufactures a distinguishable task difference that the registered
+  analysis lacked, that is a warning that the effect is split-dependent, and it
+  will be reported that way rather than as the better result.*
+- **A2 governs what is worth buying next.** If episode variance dominates
+  encoder variance, adding encoders will not help and more episodes is the only
+  route; if encoder variance dominates, more encoders is the efficient buy.
+  This is registered so the decision cannot be reverse-engineered from
+  whichever answer is cheaper.
+
 ## 7. Consequences for the paper's claims
 
 - Stage 3 may be described as pre-registered, with the §0 caveat that it was
