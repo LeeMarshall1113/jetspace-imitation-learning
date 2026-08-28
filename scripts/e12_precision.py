@@ -138,7 +138,16 @@ def per_episode(prefix, axis, task):
         Yte_n = ((Yte - ay) / asd)[:, live]
         pred = ridge(Xtr, Ytr_n, Xte)
         ss_res = float(((Yte_n - pred) ** 2).sum())
-        ss_tot = float(((Yte_n - Yte_n.mean(0)) ** 2).sum())
+        # ss_tot against the TRAINING mean, not this fold's own mean.
+        #
+        # A single episode is one smooth trajectory, so its internal action
+        # variance is far below the across-episode variance. Using the fold's
+        # own mean as the baseline made R^2 collapse toward zero and go
+        # negative for good encoders -- vjepa2 scored -0.119 under CV against
+        # 0.519 on the registered 80/20 split. That is not the encoder getting
+        # worse, it is the denominator changing meaning between folds and
+        # becoming incomparable across them.
+        ss_tot = float(((Yte_n - Ytr_n.mean(0)) ** 2).sum())
         probes.append(1.0 - ss_res / max(ss_tot, 1e-12))
         ref_mse = float(((Yte_n - pred) ** 2).mean())
         refs.append(ref_mse)
@@ -202,31 +211,55 @@ def main() -> int:
               f"   sign {'AGREES' if ref[axis]['rho'] * rho_cv > 0 else 'DIFFERS'}")
 
     print("\nA2  variance decomposition of relative degradation\n")
-    # grid[enc][episode, level]
-    M = np.stack([grids[n] for n in names])          # (enc, ep, level)
-    M = M[:, :, ~np.all(np.isnan(M), axis=(0, 1))]
-    grand = np.nanmean(M)
-    v_enc = float(np.nanvar(np.nanmean(M, axis=(1, 2))))
-    v_ep = float(np.nanvar(np.nanmean(M, axis=(0, 2))))
-    v_lvl = float(np.nanvar(np.nanmean(M, axis=(0, 1))))
-    resid = float(np.nanvar(M)) - (v_enc + v_ep + v_lvl)
-    tot = max(v_enc + v_ep + v_lvl + max(resid, 0.0), 1e-12)
-    print(f"  grand mean relative degradation {grand:.3f}")
-    print(f"  {'component':12s} {'variance':>12s} {'share':>8s}")
-    for lab, v in (("encoder", v_enc), ("episode", v_ep),
-                   ("level", v_lvl), ("residual", max(resid, 0.0))):
-        print(f"  {lab:12s} {v:12.5f} {100 * v / tot:7.1f}%")
 
-    print()
-    if v_enc > v_ep:
-        print("  Encoder variance exceeds episode variance: encoders are")
-        print("  genuinely separable here, and buying more encoders is the")
-        print("  efficient way to narrow rho.")
+    def decompose(sel_names, label):
+        M = np.stack([grids[n] for n in sel_names])   # (enc, ep, level)
+        keep = ~np.all(np.isnan(M), axis=(0, 1))
+        M = M[:, :, keep]
+        v_enc = float(np.nanvar(np.nanmean(M, axis=(1, 2))))
+        v_ep = float(np.nanvar(np.nanmean(M, axis=(0, 2))))
+        v_lvl = float(np.nanvar(np.nanmean(M, axis=(0, 1))))
+        resid = max(float(np.nanvar(M)) - (v_enc + v_ep + v_lvl), 0.0)
+        tot = max(v_enc + v_ep + v_lvl + resid, 1e-12)
+        print(f"  --- {label} (n={len(sel_names)}) ---")
+        print(f"  grand mean relative degradation {np.nanmean(M):.3f}")
+        print(f"  {'component':12s} {'variance':>12s} {'share':>8s}")
+        for lab, v in (("encoder", v_enc), ("episode", v_ep),
+                       ("level", v_lvl), ("residual", resid)):
+            print(f"  {lab:12s} {v:12.5f} {100 * v / tot:7.1f}%")
+        print()
+        return v_enc, v_ep
+
+    e_all, p_all = decompose(names, "all encoders, including the random control")
+
+    # The random control is a deliberate outlier -- it is SUPPOSED to be far
+    # worse than everything else, and on lighting it degrades ~14x against
+    # ~1.1-2.0 for every trained encoder. Including it, "encoder variance" is
+    # largely the distance from random to the pack, which says nothing about
+    # whether the TRAINED encoders are separable from each other. That is the
+    # question that decides whether buying more encoders narrows rho.
+    real = [n for n in names if n != "random"]
+    e_real, p_real = (decompose(real, "trained encoders only, random excluded")
+                      if len(real) >= 5 else (None, None))
+
+    print("  VERDICT (registered in prereg-e12-stage3 S6a as the rule for")
+    print("  deciding what to buy next):")
+    if e_real is None:
+        print("    too few encoders to judge.")
+    elif e_real > p_real:
+        print(f"    Among trained encoders, encoder variance ({e_real:.4f}) still")
+        print(f"    exceeds episode variance ({p_real:.4f}). They are genuinely")
+        print("    separable, and more encoders is the efficient buy.")
     else:
-        print("  Episode variance exceeds encoder variance: much of the")
-        print("  ranking reflects which episodes landed in the fold, not which")
-        print("  encoder was used. More encoders will NOT fix that -- more")
-        print("  episodes per condition is the only route.")
+        print(f"    Among trained encoders, episode variance ({p_real:.4f})")
+        print(f"    EXCEEDS encoder variance ({e_real:.4f}). Most of the ranking")
+        print("    reflects which episodes landed in the fold rather than which")
+        print("    encoder was used. More encoders will NOT narrow rho; more")
+        print("    episodes per condition is the only route.")
+        if e_all > p_all:
+            print("    Note the reversal: with the random control included the")
+            print("    same test says the opposite, because that one point is")
+            print("    most of the between-encoder variance.")
     return 0
 
 
