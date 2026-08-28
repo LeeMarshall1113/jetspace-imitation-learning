@@ -13,8 +13,8 @@ This re-runs no experiment. It recomputes each headline from the cached
 artifacts and prints it beside the number in circulation.
 
 Outcome, 2026-08-28: E2 and R2 reproduce exactly. E11 reproduces and its
-write-up UNDERSTATES it. E9's figures do not reproduce -- the conclusions hold
-and are stronger, but the denominators cited never appear in the cache.
+write-up UNDERSTATES it. E9 reproduces exactly, but only under a fold
+restriction the cited figures never mention.
 """
 
 from __future__ import annotations
@@ -91,21 +91,39 @@ def verify_e9():
         return
     ra = json.loads(fa.read_text())["rows"]
     rb = json.loads(fb.read_text())["rows"]
-    w = sum(1 for r in ra if r["transfer"] < r["scratch"])
     key = lambda r: (r["target"], r["K"], r["seed"])          # noqa: E731
     mb = {key(r): r for r in rb}
-    pairs = [(r["scratch"], mb[key(r)]["scratch"]) for r in ra if key(r) in mb]
-    w2 = sum(1 for x, y in pairs if x < y)
+    both = [(r, mb[key(r)]) for r in ra if key(r) in mb]
     pv = (lambda k, n: stats.binomtest(k, n, 0.5).pvalue) if stats else \
         (lambda k, n: float("nan"))
-    print(f"  transfer beats scratch          {w:3d}/{len(ra)}   "
-          f"p={pv(w, len(ra)):.3e}")
-    print(f"  V-JEPA scratch beats random CNN {w2:3d}/{len(pairs)}   "
-          f"p={pv(w2, len(pairs)):.3e}")
-    print("\n  DOES NOT REPRODUCE. Both conclusions hold and are stronger than")
-    print("  claimed, but the denominator is 72, not 53, and neither numerator")
-    print("  matches. The cited figures came from a subset this cache does not")
-    print("  describe. Recompute before citing; do not quote 1/53 or 39/53.")
+
+    # THE FILTER, recovered from scripts/e9_compare.py section 4. The cited
+    # figures are computed only over "learnable" folds: those where BOTH
+    # encoders' from-scratch arms reach normalised MSE < 1.0, i.e. both
+    # actually beat predicting the mean action. A fold where neither arm learns
+    # anything cannot inform a comparison between them -- the same reasoning as
+    # E12's FLOOR = 0.9. It removes 19 of 72 folds, 26%.
+    LEARNABLE = 1.0
+    keep = [(x, y) for x, y in both
+            if x["scratch"] < LEARNABLE and y["scratch"] < LEARNABLE]
+
+    for label, sel in (("all folds", both), ("learnable only", keep)):
+        w = sum(1 for x, _ in sel if x["transfer"] < x["scratch"])
+        w2 = sum(1 for x, y in sel if x["scratch"] < y["scratch"])
+        print(f"  {label:16s} n={len(sel):3d}")
+        print(f"    transfer beats scratch          {w:3d}/{len(sel):<3d} "
+              f"p={pv(w, len(sel)):.2e}")
+        print(f"    V-JEPA scratch beats random CNN {w2:3d}/{len(sel):<3d} "
+              f"p={pv(w2, len(sel)):.2e}")
+
+    print("\n  REPRODUCES, under a filter the claim does not carry.")
+    print("  1/53 and 39/53 are exact once folds are restricted to those where")
+    print("  BOTH scratch arms reach normalised MSE < 1.0 (53 of 72 qualify).")
+    print("  The restriction is principled and lives in e9_compare.py, but it")
+    print("  travels nowhere with the numbers: anyone recomputing from the")
+    print("  released cache gets 3/72 and 55/72 and concludes the figures were")
+    print("  invented. Cite the restriction in the same breath as the ratio,")
+    print("  and report the unrestricted counts alongside -- they are stronger.")
 
 
 def verify_e11():
@@ -174,7 +192,7 @@ def main() -> int:
             print(f"  VERIFICATION ERROR: {type(e).__name__}: {e}")
     print("\n" + "=" * 76)
     print("E2 verified. R2 verified exactly. E11 verified and understated.")
-    print("E9 does not reproduce: same conclusions, different numbers.")
+    print("E9 verified, but only under an unstated fold restriction.")
     return 0
 
 
