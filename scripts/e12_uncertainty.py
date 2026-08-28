@@ -85,7 +85,15 @@ def main() -> int:
             rows = cell["rows"]
             names = sorted(rows)
             probe = np.array([rows[n]["probe"] for n in names])
-            held = np.array([rows[n]["held"] for n in names])
+            # The registered PRIMARY metric is relative degradation
+            # (prereg-e12-stage3 S2). This script predated that change and
+            # correlated against absolute `held`, so its intervals described
+            # the secondary result while being read as the primary one.
+            # Fall back to held/ref for caches written before `rel` existed.
+            held = np.array([rows[n].get("rel",
+                                         rows[n]["held"]
+                                         / max(rows[n]["ref_mse"], 1e-9))
+                             for n in names])
             rho = spearman(probe, held)
             lo, hi, _ = boot_ci(probe, held)
             marg[(task, ax)] = (names, probe, held, rho, lo, hi)
