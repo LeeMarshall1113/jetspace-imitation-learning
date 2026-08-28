@@ -317,7 +317,14 @@ def main() -> int:
     if rhos:
         vals = np.array(list(rhos.values()))
         mean_abs = float(np.abs(vals).mean())
-        below = int((vals < 0.5).sum())
+        # |rho|, not rho. The registered clause is "rho < 0.5 on >= 3 axes" and
+        # it means "no relationship on those axes". A signed test made every
+        # negative rho satisfy it for free -- including a hypothetical -0.9,
+        # which is a strong relationship being counted as evidence of none.
+        # This passed unnoticed while the absolute metric produced positive
+        # rho; switching to the registered primary metric turned them negative
+        # and exposed it.
+        below = int((np.abs(vals) < 0.5).sum())
         print("\n" + "=" * 62)
         print("E12a -- does probe accuracy predict robustness?")
         print("=" * 62)
