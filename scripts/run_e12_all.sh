@@ -27,6 +27,28 @@ DC="docker compose -f docker/compose.yaml --profile wsl2 run --rm -T dev-wsl"
 DCP="docker compose -f docker/compose.yaml --profile wsl2 run --rm -T -e PYTHONPATH=/workspace/.pydeps dev-wsl"
 mkdir -p logs
 
+# Yield politely if the compute broker has asked for this machine back. A cell
+# is the natural checkpoint: everything already encoded is cached, so stopping
+# between cells costs nothing and re-running resumes. Stop the whole run rather
+# than skipping cells -- a skipped cell looks like a finished one, and the
+# analysis at the end would then be computed over incomplete arms.
+preempt_check() {
+    if [ -n "${BROKER_PREEMPT_FILE:-}" ] && [ -f "$BROKER_PREEMPT_FILE" ]; then
+        echo
+        echo "########## yielding to compute broker at $(date +%T)"
+        echo "cached work is intact; re-run this script to resume"
+        exit 0
+    fi
+}
+
+# Docker is the backend for every encode. If it is down, encode_cell fails
+# instantly for each cell in turn and the run marches to the end having done
+# nothing, then analyses whatever partial arms exist. Fail loudly instead.
+if ! timeout 60 docker info >/dev/null 2>&1; then
+    echo "docker is not responding -- refusing to start" >&2
+    exit 69
+fi
+
 RENDERED="ref lighting_0p3 lighting_0p45 lighting_0p55 lighting_0p62 \
 texture_0p06 texture_0p1 texture_0p16 texture_0p24 \
 clutter_1 clutter_2 clutter_3 clutter_4"
@@ -78,6 +100,7 @@ encode_cell() {
 
 echo "########## stage 1: finish pickplace, nine arms  $(date +%T)"
 for c in $RENDERED; do
+    preempt_check
     printf "  %-16s " "$c"
     encode_cell pickplace "$c" "data/episodes/e12_pickplace__${c}" "$BASE_HF"
     echo "$(ls -d cache/latents/*_e12_pickplace__${c} 2>/dev/null | wc -l)/9"
@@ -88,6 +111,7 @@ echo "########## stage 2: scale to fifteen arms  $(date +%T)"
 for task in push pickplace; do
     echo "--- ${task} ---"
     for c in $RENDERED; do
+        preempt_check
         printf "  %-16s " "$c"
         encode_cell "$task" "$c" "data/episodes/e12_${task}__${c}" "$SCALE_HF"
         echo "$(ls -d cache/latents/*_e12_${task}__${c} 2>/dev/null | wc -l)/15"
@@ -101,6 +125,7 @@ for task in push pickplace; do
     src="data/episodes/e12_${task}__ref"
     [ -d "$src" ] || continue
     for spec in $IMAGE_CONDS; do
+        preempt_check
         axis="${spec%%:*}"; level="${spec##*:}"; tag="${axis}_${level//./p}"
         printf "  %-16s " "$tag"
         encode_cell "$task" "$tag" "$src" "$BASE_HF $SCALE_HF" "$axis" "$level"
