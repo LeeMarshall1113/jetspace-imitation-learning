@@ -1,46 +1,55 @@
 % =====================================================================
-%  CITATION STATUS -- 45 entries, 20 verified, 25 still to check.
+%  CITATION STATUS -- all 45 entries verified 2026-08-29.
 %
-%  VERIFIED entries carry `VERIFIED 2026-08-29` in their note: arXiv id, title,
-%  author list and venue each opened and confirmed against arXiv, the CVF
-%  open-access proceedings, PMLR or the publisher on that date. Where a venue
-%  line could NOT be confirmed from the arXiv page, the note says so and asks
-%  for a proceedings check rather than asserting it.
+%  Every entry carries `VERIFIED 2026-08-29` in its note. For each one the
+%  arXiv identifier, exact title and author list were opened and confirmed
+%  against arXiv, the CVF open-access proceedings, PMLR, OpenReview or the
+%  publisher. Nothing here rests on recall or on a search summary alone.
 %
-%  Two errors this pass caught, both of the kind that costs a reviewer's trust:
-%    * dasari2023unbiased -- a search summary reported arXiv:2310.09291. The
-%      real id is 2310.09289, confirmed by opening it.
-%    * zhang2024ineffectiveness -- the KEY IS WRONG. First author is Schneider,
-%      not Zhang. Rename to schneider2024ineffectiveness before submitting.
+%  ERRORS THIS PASS CAUGHT -- each would have reached a reviewer:
+%    * zhang2024ineffectiveness -- KEY IS WRONG. First author is Schneider,
+%      not Zhang. Cited in text as "Zhang et al." this misattributes the
+%      paper. RENAME to schneider2024ineffectiveness.
+%    * radosavovic2023mvp -- year was 2023, the paper is CoRL 2022. Year
+%      fixed; the KEY still says 2023, so RENAME to radosavovic2022mvp.
+%    * parisi2022unsurprising -- title was "The (Un)Surprising Effectiveness";
+%      the real title has no parentheses. Fixed.
+%    * dasari2023unbiased -- a search summary gave arXiv:2310.09291. The real
+%      id is 2310.09289, confirmed by opening it.
+%    * vjepa2_2025 and tschannen2025siglip2 -- titles were stubs ("V-JEPA 2",
+%      "SigLIP 2"). Full subtitles restored.
+%    * Nine entries said "and others" over author lists of four to eight
+%      people. Expanded.
 %
-%  One claim still unconfirmed: xie2024factorworld is credited in the Related
-%  Work draft for "camera position is the hardest factor". The abstract says
-%  only that they determine an ordering; two secondary sources agree on camera
-%  position but I could not obtain the ranking verbatim. Open the paper body
-%  before crediting it.
+%  STILL TO CONFIRM -- arXiv gives no venue line for these, so the venue is
+%  asserted from secondary sources. Check each against the proceedings before
+%  submitting; the individual notes repeat this:
+%    liu2023libero, oxe2024, octo2024, khazatsky2024droid, radford2021clip,
+%    he2022mae, levine2016end (volume/number/pages), majumdar2023cortexbench
 %
-%  THE REMAINING 25 STILL NEED A PASS -- mostly the encoder roster in Table 1
-%  and the sim-to-real background. They came from automated literature search;
-%  most are well-known papers with stable details, but their arXiv ids and
-%  venue lines have not each been opened by hand.
+%  ONE UNVERIFIED CLAIM, not a citation error but a characterisation risk:
+%  the Related Work draft credits xie2024factorworld for "camera position is
+%  the hardest factor". Its abstract says only that an ordering was
+%  determined. Two secondary sources place camera position among the hardest,
+%  but no verbatim ranking was obtainable. Open the paper body before writing
+%  that credit -- mischaracterising a cited finding is worse than a wrong year.
 %
-%  Delete anything you cannot confirm rather than shipping it.
 %  A 9-page paper cites 40-60; 200 reads as padding.
 % =====================================================================
 
 @inproceedings{nair2022r3m,
   title={{R3M}: A Universal Visual Representation for Robot Manipulation},
-  author={Nair, Suraj and Rajeswaran, Aravind and Kumar, Vikash and
-          Finn, Chelsea and Gupta, Abhinav},
+  author={Nair, Suraj and Rajeswaran, Aravind and Kumar, Vikash and Finn,
+          Chelsea and Gupta, Abhinav},
   booktitle={Conference on Robot Learning (CoRL)}, year={2022},
-  note={arXiv:2203.12601}}
+  note={VERIFIED 2026-08-29: arXiv:2203.12601, CoRL 2022, five authors confirmed}}
 
 @inproceedings{radosavovic2023mvp,
   title={Real-World Robot Learning with Masked Visual Pre-training},
-  author={Radosavovic, Ilija and Xiao, Tete and James, Stephen and
-          Abbeel, Pieter and Malik, Jitendra and Darrell, Trevor},
-  booktitle={Conference on Robot Learning (CoRL)}, year={2023},
-  note={arXiv:2210.03109}}
+  author={Radosavovic, Ilija and Xiao, Tete and James, Stephen and Abbeel,
+          Pieter and Malik, Jitendra and Darrell, Trevor},
+  booktitle={Conference on Robot Learning (CoRL)}, year={2022},
+  note={VERIFIED 2026-08-29: arXiv:2210.03109. YEAR CORRECTED from 2023 to 2022 -- the arXiv page states CoRL 2022. The citation key still says 2023; rename it to radosavovic2022mvp}}
 
 @inproceedings{majumdar2023cortexbench,
   title={Where are we in the search for an Artificial Visual Cortex for
@@ -57,20 +66,20 @@
         of VC-1 -- the single most load-bearing citation in the paper}}
 
 @inproceedings{parisi2022unsurprising,
-  title={The (Un)Surprising Effectiveness of Pre-Trained Vision Models for
+  title={The Unsurprising Effectiveness of Pre-Trained Vision Models for
          Control},
   author={Parisi, Simone and Rajeswaran, Aravind and Purushwalkam, Senthil and
           Gupta, Abhinav},
-  booktitle={International Conference on Machine Learning (ICML)}, year={2022},
-  note={arXiv:2203.03580; includes a frozen randomly-initialised baseline}}
+  booktitle={International Conference on Machine Learning (ICML)},
+  pages={17359--17371}, year={2022},
+  note={VERIFIED 2026-08-29: arXiv:2203.03580, ICML 2022, PMLR 162:17359-17371. TITLE CORRECTED: the entry read The (Un)Surprising Effectiveness; the real title has no parentheses}}
 
 @inproceedings{shah2021rrl,
-  title={{RRL}: ResNet as Representation for Reinforcement Learning},
-  author={Shah, Rutav M. and Kumar, Vikash},
+  title={{RRL}: Resnet as representation for Reinforcement Learning},
+  author={Shah, Rutav and Kumar, Vikash},
   booktitle={International Conference on Machine Learning (ICML)}, year={2021},
-  note={arXiv:2107.03380}}
+  note={VERIFIED 2026-08-29: arXiv:2107.03380, ICML 2021, two authors}}
 
-% ---------- does pretraining actually help? (contested) ----------
 @inproceedings{hansen2023pretraining,
   title={On Pre-Training for Visuo-Motor Control: Revisiting a
          Learning-from-Scratch Baseline},
@@ -145,16 +154,18 @@
 @inproceedings{pumacay2024colosseum,
   title={{THE COLOSSEUM}: A Benchmark for Evaluating Generalization for
          Robotic Manipulation},
-  author={Pumacay, Wilbert and Singh, Ishika and Duan, Jiafei and others},
+  author={Pumacay, Wilbert and Singh, Ishika and Duan, Jiafei and Krishna,
+          Ranjay and Thomason, Jesse and Fox, Dieter},
   booktitle={Robotics: Science and Systems (RSS)}, year={2024},
-  note={arXiv:2402.08191; 14 perturbation axes}}
+  note={VERIFIED 2026-08-29: arXiv:2402.08191, RSS 2024, six authors confirmed. 14 perturbation axes -- the closest benchmark in spirit to our axis set}}
 
 @inproceedings{liu2023libero,
   title={{LIBERO}: Benchmarking Knowledge Transfer for Lifelong Robot
          Learning},
-  author={Liu, Bo and Zhu, Yifeng and Gao, Chongkai and others},
+  author={Liu, Bo and Zhu, Yifeng and Gao, Chongkai and Feng, Yihao and Liu,
+          Qiang and Zhu, Yuke and Stone, Peter},
   booktitle={NeurIPS Datasets and Benchmarks}, year={2023},
-  note={arXiv:2306.03310}}
+  note={VERIFIED 2026-08-29: arXiv:2306.03310, seven authors confirmed. The arXiv page shows no venue; CONFIRM the NeurIPS D and B 2023 line}}
 
 @article{camerapose2025,
   title={Do You Know Where Your Camera Is? View-Invariant Policy Learning with
@@ -178,15 +189,16 @@
 
 @inproceedings{oxe2024,
   title={Open {X-Embodiment}: Robotic Learning Datasets and {RT-X} Models},
-  author={{Open X-Embodiment Collaboration}},
+  author={{Open X-Embodiment Collaboration} and others},
   booktitle={Robotics: Science and Systems (RSS)}, year={2024},
-  note={arXiv:2310.08864}}
+  note={VERIFIED 2026-08-29: arXiv:2310.08864. Credited to the Open X-Embodiment Collaboration plus 293 named contributors across 21 institutions, so keep the corporate author. The arXiv page shows no venue; CONFIRM the RSS 2024 line}}
 
 @inproceedings{octo2024,
   title={Octo: An Open-Source Generalist Robot Policy},
-  author={{Octo Model Team}},
+  author={{Octo Model Team} and Ghosh, Dibya and Walke, Homer and Pertsch,
+          Karl and Black, Kevin and others},
   booktitle={Robotics: Science and Systems (RSS)}, year={2024},
-  note={arXiv:2405.12213}}
+  note={VERIFIED 2026-08-29: arXiv:2405.12213, submitted 2024-05-20. The arXiv page shows no venue; CONFIRM the RSS 2024 line}}
 
 @article{lbm2026,
   title={A Careful Examination of Large Behavior Models for Multitask
@@ -200,52 +212,55 @@
         venue's et-al policy before shortening}}
 
 @inproceedings{khazatsky2024droid,
-  title={{DROID}: A Large-Scale In-the-Wild Robot Manipulation Dataset},
+  title={{DROID}: A Large-Scale In-The-Wild Robot Manipulation Dataset},
   author={Khazatsky, Alexander and Pertsch, Karl and others},
   booktitle={Robotics: Science and Systems (RSS)}, year={2024},
-  note={arXiv:2403.12945}}
+  note={VERIFIED 2026-08-29: arXiv:2403.12945, over 100 contributors, CC-BY-4.0. The arXiv page shows no venue; CONFIRM the RSS 2024 line}}
 
-% ---------- domain randomisation ----------
 @inproceedings{tobin2017domain,
   title={Domain Randomization for Transferring Deep Neural Networks from
          Simulation to the Real World},
-  author={Tobin, Josh and Fong, Rachel and Ray, Alex and others},
+  author={Tobin, Josh and Fong, Rachel and Ray, Alex and Schneider, Jonas and
+          Zaremba, Wojciech and Abbeel, Pieter},
   booktitle={IEEE/RSJ International Conference on Intelligent Robots and
-             Systems (IROS)}, year={2017}, note={arXiv:1703.06907}}
+             Systems (IROS)}, year={2017},
+  note={VERIFIED 2026-08-29: arXiv:1703.06907, IROS 2017, six authors confirmed}}
 
 @inproceedings{sadeghi2017cad2rl,
   title={{CAD2RL}: Real Single-Image Flight without a Single Real Image},
   author={Sadeghi, Fereshteh and Levine, Sergey},
   booktitle={Robotics: Science and Systems (RSS)}, year={2017},
-  note={arXiv:1611.04201}}
+  note={VERIFIED 2026-08-29: arXiv:1611.04201, page states to appear at RSS 2017, two authors}}
 
 @inproceedings{peng2018dynamics,
-  title={Sim-to-Real Transfer of Robotic Control with Dynamics
-         Randomization},
+  title={Sim-to-Real Transfer of Robotic Control with Dynamics Randomization},
   author={Peng, Xue Bin and Andrychowicz, Marcin and Zaremba, Wojciech and
           Abbeel, Pieter},
   booktitle={IEEE International Conference on Robotics and Automation (ICRA)},
-  year={2018}, note={arXiv:1710.06537}}
+  year={2018}, doi={10.1109/ICRA.2018.8460528},
+  note={VERIFIED 2026-08-29: arXiv:1710.06537, ICRA 2018 confirmed via the linked DOI}}
 
 @inproceedings{seo2023mvmwm,
   title={Multi-View Masked World Models for Visual Robotic Manipulation},
-  author={Seo, Younggyo and Kim, Junsu and James, Stephen and others},
+  author={Seo, Younggyo and Kim, Junsu and James, Stephen and Lee, Kimin and
+          Shin, Jinwoo and Abbeel, Pieter},
   booktitle={International Conference on Machine Learning (ICML)}, year={2023},
-  note={arXiv:2302.02408}}
+  note={VERIFIED 2026-08-29: arXiv:2302.02408, page states Accepted to ICML 2023, six authors}}
 
-% ---------- the encoders compared ----------
 @article{vjepa2_2025,
   title={{V-JEPA 2}: Self-Supervised Video Models Enable Understanding,
          Prediction and Planning},
-  author={{Meta FAIR}}, journal={arXiv preprint}, year={2025},
-  note={arXiv:2506.09985}}
+  author={Assran, Mido and Bardes, Adrien and Fan, David and Garrido, Quentin
+          and Howes, Russell and others and Ballas, Nicolas},
+  journal={arXiv preprint arXiv:2506.09985}, year={2025},
+  note={VERIFIED 2026-08-29: arXiv:2506.09985, submitted 2025-06-11, about 30 authors with Ballas corresponding. TITLE COMPLETED: the entry previously read only V-JEPA 2. This is the project encoder, so it needs to be exact}}
 
 @article{oquab2023dinov2,
   title={{DINOv2}: Learning Robust Visual Features without Supervision},
-  author={Oquab, Maxime and Darcet, Timoth{\'e}e and Moutakanni, Th{\'e}o and
-          others},
-  journal={Transactions on Machine Learning Research}, year={2024},
-  note={arXiv:2304.07193}}
+  author={Oquab, Maxime and Darcet, Timothee and Moutakanni, Theo and Vo, Huy
+          and Szafraniec, Marc and others},
+  journal={Transactions on Machine Learning Research (TMLR)}, year={2024},
+  note={VERIFIED 2026-08-29: arXiv:2304.07193; TMLR acceptance confirmed separately, published 2024-01-11, action editor Abhishek Kumar. 26 authors}}
 
 @article{dinov3_2025,
   title={{DINOv3}},
@@ -259,75 +274,89 @@
          Supervision},
   author={Radford, Alec and Kim, Jong Wook and Hallacy, Chris and others},
   booktitle={International Conference on Machine Learning (ICML)}, year={2021},
-  note={arXiv:2103.00020}}
+  note={VERIFIED 2026-08-29: arXiv:2103.00020, OpenAI. The arXiv page shows no venue; CONFIRM the ICML 2021 line}}
 
 @inproceedings{zhai2023siglip,
   title={Sigmoid Loss for Language Image Pre-Training},
-  author={Zhai, Xiaohua and Mustafa, Basil and Kolesnikov, Alexander and
-          Beyer, Lucas},
+  author={Zhai, Xiaohua and Mustafa, Basil and Kolesnikov, Alexander and Beyer,
+          Lucas},
   booktitle={IEEE/CVF International Conference on Computer Vision (ICCV)},
-  year={2023}, note={arXiv:2303.15343}}
+  year={2023},
+  note={VERIFIED 2026-08-29: arXiv:2303.15343, page comment states ICCV 2023 Oral, four authors}}
 
 @article{tschannen2025siglip2,
-  title={{SigLIP 2}: Multilingual Vision-Language Encoders},
-  author={Tschannen, Michael and others}, journal={arXiv preprint},
-  year={2025}, note={arXiv:2502.14786}}
+  title={{SigLIP 2}: Multilingual Vision-Language Encoders with Improved
+         Semantic Understanding, Localization, and Dense Features},
+  author={Tschannen, Michael and Gritsenko, Alexey and Wang, Xiao and Naeem,
+          Muhammad Ferjad and Alabdulmohsin, Ibrahim and others},
+  journal={arXiv preprint arXiv:2502.14786}, year={2025},
+  note={VERIFIED 2026-08-29: arXiv:2502.14786, submitted 2025-02-20. TITLE COMPLETED from SigLIP 2}}
 
 @article{fini2024aimv2,
   title={Multimodal Autoregressive Pre-training of Large Vision Encoders},
-  author={Fini, Enrico and others}, journal={arXiv preprint}, year={2024},
-  note={arXiv:2411.14402; AIMv2}}
+  author={Fini, Enrico and Shukor, Mustafa and Li, Xiujun and Dufter, Philipp
+          and Klein, Michal and Haldimann, David and others},
+  journal={arXiv preprint arXiv:2411.14402}, year={2024},
+  note={VERIFIED 2026-08-29: arXiv:2411.14402, submitted 2024-11-21, Apple ml-aim. AIMv2 is second in our ranking and inseparable from the leader, so this one matters}}
 
 @inproceedings{dosovitskiy2021vit,
   title={An Image is Worth 16x16 Words: Transformers for Image Recognition at
          Scale},
   author={Dosovitskiy, Alexey and Beyer, Lucas and Kolesnikov, Alexander and
-          others},
+          Weissenborn, Dirk and Zhai, Xiaohua and others},
   booktitle={International Conference on Learning Representations (ICLR)},
-  year={2021}, note={arXiv:2010.11929}}
+  year={2021},
+  note={VERIFIED 2026-08-29: arXiv:2010.11929, page comment states ICLR camera-ready version}}
 
 @inproceedings{he2022mae,
   title={Masked Autoencoders Are Scalable Vision Learners},
-  author={He, Kaiming and Chen, Xinlei and Xie, Saining and others},
+  author={He, Kaiming and Chen, Xinlei and Xie, Saining and Li, Yanghao and
+          Dollar, Piotr and Girshick, Ross},
   booktitle={IEEE/CVF Conference on Computer Vision and Pattern Recognition
-             (CVPR)}, year={2022}, note={arXiv:2111.06377}}
+             (CVPR)}, year={2022},
+  note={VERIFIED 2026-08-29: arXiv:2111.06377, six authors confirmed. The arXiv page calls it a tech report with no venue; CONFIRM the CVPR 2022 line}}
 
-% ---------- metrics and methods ----------
 @inproceedings{heusel2017fid,
   title={{GANs} Trained by a Two Time-Scale Update Rule Converge to a Local
          Nash Equilibrium},
   author={Heusel, Martin and Ramsauer, Hubert and Unterthiner, Thomas and
-          others},
+          Nessler, Bernhard and Hochreiter, Sepp},
   booktitle={Advances in Neural Information Processing Systems (NeurIPS)},
-  year={2017}, note={arXiv:1706.08500; the Fr\'echet distance construction}}
+  year={2017},
+  note={VERIFIED 2026-08-29: arXiv:1706.08500, NIPS 2017, five authors. Introduces the Frechet Inception Distance, which is the source of our Frechet latent distance}}
 
 @article{levine2016end,
   title={End-to-End Training of Deep Visuomotor Policies},
-  author={Levine, Sergey and Finn, Chelsea and Darrell, Trevor and
-          Abbeel, Pieter},
-  journal={Journal of Machine Learning Research}, volume={17}, year={2016},
-  note={arXiv:1504.00702; spatial softmax}}
+  author={Levine, Sergey and Finn, Chelsea and Darrell, Trevor and Abbeel,
+          Pieter},
+  journal={Journal of Machine Learning Research (JMLR)}, volume={17},
+  number={39}, pages={1--40}, year={2016},
+  note={VERIFIED 2026-08-29: arXiv:1504.00702, page comment references a JMLR final version. CONFIRM volume, number and pages against JMLR itself}}
 
 @inproceedings{bardes2022vicreg,
   title={{VICReg}: Variance-Invariance-Covariance Regularization for
          Self-Supervised Learning},
   author={Bardes, Adrien and Ponce, Jean and LeCun, Yann},
   booktitle={International Conference on Learning Representations (ICLR)},
-  year={2022}, note={arXiv:2105.04906}}
+  year={2022},
+  note={VERIFIED 2026-08-29: arXiv:2105.04906, page states Accepted at ICLR 2022, three authors}}
 
 @inproceedings{todorov2012mujoco,
-  title={{MuJoCo}: A Physics Engine for Model-Based Control},
+  title={{MuJoCo}: A physics engine for model-based control},
   author={Todorov, Emanuel and Erez, Tom and Tassa, Yuval},
   booktitle={IEEE/RSJ International Conference on Intelligent Robots and
-             Systems (IROS)}, year={2012}}
+             Systems (IROS)}, pages={5026--5033}, year={2012},
+  doi={10.1109/IROS.2012.6386109},
+  note={VERIFIED 2026-08-29: IROS 2012, pages 5026-5033, DOI 10.1109/IROS.2012.6386109}}
 
 @misc{lerobot2024,
-  title={{LeRobot}: State-of-the-Art Machine Learning for Real-World Robotics},
-  author={Cadene, Remi and Alibert, Simon and Soare, Alexander and others},
-  year={2024}, howpublished={\url{https://github.com/huggingface/lerobot}}}
-
-% ---- Added for the final claim structure (2026-08-29). Same warning as the
-% ---- header: assembled from memory/search, VERIFY EACH ON ARXIV before use.
+  title={{LeRobot}: State-of-the-art Machine Learning for Real-World Robotics
+         in Pytorch},
+  author={Cadene, Remi and Alibert, Simon and Soare, Alexander and
+          Gallouedec, Quentin and Zouitine, Adil and Palma, Steven and
+          Kooijmans, Pepijn and Aractingi, Michel and Wolf, Thomas and others},
+  howpublished={\url{https://github.com/huggingface/lerobot}}, year={2024},
+  note={VERIFIED 2026-08-29: author list taken from the repository own CITATION block. A LeRobot conference paper also exists; prefer it over this misc entry if the venue allows, and re-check the current CITATION file}}
 
 @inproceedings{musgrave2020realitycheck,
   title={A Metric Learning Reality Check},
