@@ -20,15 +20,24 @@ Two disclosures, because they bound what this document is worth:
    is weaker than one written before, and this one should be described that way
    in the paper: *pre-registered for stage 3, informed by stage 2.*
 
-2. **The stage 1–2 thresholds were never archived.** `e12_analyze.py` cites
-   `docs/prereg-e12.md`, `prereg S3.1` and `prereg S3.2`. No such document
-   exists in this repository or in its git history. The thresholds it names
-   (mean |rho| <= 0.4, floor 0.9, min degradation 0.10) live only in code
-   comments. They may well have been chosen before the runs, but there is no
-   artifact to prove it, and on 2026-08-27 one of them was softened
-   (`>= 3 axes` to `min(3, n)`) after it had been observed to fail by 0.007 —
-   with nothing to check the change against. **The paper must not claim
-   stage 1–2 was pre-registered.** See §7.
+2. **Stages 1–2 ARE pre-registered — I claimed otherwise and was wrong.**
+   `docs/prereg-e12.md` exists: 140 lines, committed 2026-08-26 20:04 as
+   `9ed0225`, the day before the experiment ran. It registers E12a–E12d with
+   falsifiers, an outcome table, and invalidation conditions.
+
+   On 2026-08-28 I reported it had "never existed here or in git history" and
+   wrote that into this document, into `e12_analyze.py`'s docstring, and into
+   `CITATION.cff`. The search was run in the WSL working copy, which sits on an
+   older commit and never contained the file. Searching the wrong clone and
+   reporting absence as fact is the same error class as attributing a process
+   by its command line — an inference presented as a check. All three files
+   are corrected.
+
+   One thing from that report does stand: on 2026-08-27 the E12a clause
+   `>= 3 axes` was softened to `min(3, n)` after it was seen to fail by 0.007.
+   The registered text says "at least three of four axes", so that change
+   contradicted an archived registration rather than an unwritten one, which
+   makes it worse, not better. It is reverted.
 
 ## 1. The question
 
@@ -177,10 +186,17 @@ Status and predictions, fixed now:
 
 - Stage 3 may be described as pre-registered, with the §0 caveat that it was
   designed after stage 2 was known.
-- Stage 1–2 may **not**. The honest phrasing is that thresholds were fixed in
-  code before the analysis was run, with no archived registration. If Lee can
-  attest they were chosen in advance, "criteria fixed in advance, not archived"
-  is defensible. "Pre-registered" is not.
-- `CITATION.cff` currently asserts "Predictions were pre-registered with named
-  falsifiers before each experiment ran." That sentence is not supportable for
-  E12 as written and must be narrowed.
+- **Stages 1–2 may also be described as pre-registered**, against
+  `docs/prereg-e12.md` at `9ed0225`. `CITATION.cff`'s original wording was
+  correct and has been restored.
+- Two deviations from that registration must be disclosed rather than glossed:
+  - **The axis set changed.** It registers four axes — viewpoint, lighting,
+    texture, clutter. Viewpoint was dropped and five image-space axes added.
+    E12a's "three of four" was written for the registered four.
+  - **The threshold was never powered.** §2 anchors 0.4 to E11's prior
+    |rho| = 0.317 plus slack, which is a reasonable way to pick an effect size
+    but says nothing about whether the design can resolve it. At the registered
+    nine encoders the interval on a Spearman is roughly +/-0.6, so 0.4 was set
+    where no verdict could be earned. That is why the outcome has twice turned
+    on 0.007, and it is a limitation of the registration itself, not of the
+    data.

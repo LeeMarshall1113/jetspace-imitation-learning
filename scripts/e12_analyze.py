@@ -3,13 +3,20 @@
 
     python scripts/e12_analyze.py push
 
-Stage 3 (the image-space axes) is registered in docs/prereg-e12-stage3.md.
+Stages 1-2 are registered in docs/prereg-e12.md (9ed0225, committed the day
+before the run). Stage 3, the image-space axes, in docs/prereg-e12-stage3.md.
 
-Stages 1-2 are NOT. This file used to say "Implements docs/prereg-e12.md";
-that document has never existed here or in git history, and the thresholds it
-cited (0.4, 0.9, 0.10) live only in the constants below. They may have been
-chosen in advance, but nothing archives that, and one of them was softened
-after it was seen to fail. Do not describe stages 1-2 as pre-registered.
+A previous version of this docstring claimed prereg-e12.md had never existed.
+That was wrong: the search was run in a stale clone that predates the commit.
+Two real deviations from it, both disclosed rather than quietly carried:
+
+  * It registers FOUR axes -- viewpoint, lighting, texture, clutter. Viewpoint
+    was dropped and five image-space axes added, so E12a's "three of four" is
+    being applied to a different axis set than it was written for.
+  * The 0.4 threshold is anchored to E11's prior |rho| = 0.317 plus slack, not
+    to what the design can detect. At the registered nine encoders a Spearman
+    interval is roughly +/-0.6, so no verdict at 0.4 was ever earnable, and the
+    outcome has twice turned on 0.007.
 
 For every (encoder, axis) cell:
 
@@ -44,6 +51,14 @@ ENCODERS = [
     ("dinov2-large", "dinov2l"), ("dinov3-large", "dinov3l"),
     ("siglip1", "siglip1"), ("vit-large", "vitlarge"),
     ("clip-large", "cliplarge"), ("vc1-large", "vc1large"),
+    # Expansion to 22. Three CNNs to separate "random features are robust"
+    # from "convolutions are robust" -- indistinguishable while the only
+    # non-ViT in the sweep was the untrained control. Plus I-JEPA against
+    # V-JEPA 2, the missing masked-image-modelling family, and one
+    # geometrically supervised backbone.
+    ("convnext", "convnext"), ("convnext-large", "convnextl"),
+    ("resnet50", "resnet50"), ("ijepa", "ijepa"), ("mae", "mae"),
+    ("beit", "beit"), ("swin", "swin"),
 ]
 AXES = ["lighting", "texture", "clutter",
         # Image-space axes, applied at encode time rather than

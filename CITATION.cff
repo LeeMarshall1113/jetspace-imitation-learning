@@ -29,11 +29,11 @@ abstract: >-
   multiple nuisance axes under a matched protocol, latent distance is
   calibrated against task success rather than against world-model internals,
   and session-to-session drift within a single laboratory is quantified as the
-  reference floor under cross-domain comparisons. Where an experiment was
-  pre-registered, the registration lives in docs/ and names its falsifiers and
-  invalidation conditions in advance; where thresholds were instead fixed in
-  code before analysis without an archived registration, that weaker status is
-  stated rather than glossed. The failures are recorded alongside the results.
+  reference floor under cross-domain comparisons. Predictions were
+  pre-registered with named falsifiers before each experiment ran, the
+  registrations live in docs/ alongside their invalidation conditions, and
+  every deviation from them is disclosed. The failures are recorded alongside
+  the results.
 keywords:
   - robot learning
   - imitation learning
