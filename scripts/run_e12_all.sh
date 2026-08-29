@@ -64,6 +64,12 @@ vit-in1k:vitin1k vc1:vc1"
 SCALE_HF="dinov2-large:dinov2l dinov3-large:dinov3l siglip:siglip1 \
 vit-large:vitlarge clip-large:cliplarge vc1-large:vc1large"
 
+# Expansion to 22. Kept as its own list so the fifteen-arm results stay
+# reproducible: run with EXPAND=1 to include these.
+EXPAND_HF="convnext:convnext convnext-large:convnextl resnet50:resnet50 \
+ijepa:ijepa mae:mae beit:beit swin:swin"
+[ "${EXPAND:-0}" = "1" ] && SCALE_HF="$SCALE_HF $EXPAND_HF"
+
 # encode <task> <condition-tag> <data-dir> <hf-arm-list> [nuisance] [level]
 encode_cell() {
     local task="$1" tag="$2" data="$3" arms="$4" nz="${5:-}" lvl="${6:-}"
