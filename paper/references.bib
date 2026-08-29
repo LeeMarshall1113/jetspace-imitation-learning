@@ -1,30 +1,30 @@
 % =====================================================================
-%  CITATION STATUS -- 45 entries, 14 verified, 31 still to check.
+%  CITATION STATUS -- 45 entries, 20 verified, 25 still to check.
 %
-%  VERIFIED entries carry `VERIFIED 2026-08-29` in their note, meaning the
-%  arXiv id, title, author list and venue were each opened and confirmed
-%  against arXiv, the CVF open-access proceedings or the publisher on that
-%  date. Those 14 were the incomplete ones: four had `author={\TODO{authors}}`
-%  and no author list at all, and the rest were added late from memory.
+%  VERIFIED entries carry `VERIFIED 2026-08-29` in their note: arXiv id, title,
+%  author list and venue each opened and confirmed against arXiv, the CVF
+%  open-access proceedings, PMLR or the publisher on that date. Where a venue
+%  line could NOT be confirmed from the arXiv page, the note says so and asks
+%  for a proceedings check rather than asserting it.
 %
-%  THE REMAINING 31 STILL NEED A PASS. They came from four adversarial
-%  literature searches. Most are well-known papers whose details are stable,
-%  but their arXiv identifiers and venue lines were reported by an automated
-%  search and have not each been opened by hand. One of those searches already
-%  traced a statistic that several summaries repeated verbatim and that did not
-%  exist on the page they attributed it to -- that is the failure mode this
-%  warning exists for.
+%  Two errors this pass caught, both of the kind that costs a reviewer's trust:
+%    * dasari2023unbiased -- a search summary reported arXiv:2310.09291. The
+%      real id is 2310.09289, confirmed by opening it.
+%    * zhang2024ineffectiveness -- the KEY IS WRONG. First author is Schneider,
+%      not Zhang. Rename to schneider2024ineffectiveness before submitting.
 %
-%  Priority order for the remaining pass, by how much the paper leans on them:
-%    1. burns2024what        -- described as the closest related work
-%    2. xie2024factorworld   -- credited for "viewpoint dominates"
-%    3. zhang2024ineffectiveness, dasari2023unbiased, hansen2023pretraining
-%                            -- the evaluation dispute this paper adjudicates
-%    4. the encoder papers cited in the Table 1 roster
+%  One claim still unconfirmed: xie2024factorworld is credited in the Related
+%  Work draft for "camera position is the hardest factor". The abstract says
+%  only that they determine an ordering; two secondary sources agree on camera
+%  position but I could not obtain the ranking verbatim. Open the paper body
+%  before crediting it.
 %
-%  A wrong citation is the cheapest possible way to lose a reviewer's trust.
+%  THE REMAINING 25 STILL NEED A PASS -- mostly the encoder roster in Table 1
+%  and the sim-to-real background. They came from automated literature search;
+%  most are well-known papers with stable details, but their arXiv ids and
+%  venue lines have not each been opened by hand.
+%
 %  Delete anything you cannot confirm rather than shipping it.
-%
 %  A 9-page paper cites 40-60; 200 reads as padding.
 % =====================================================================
 
@@ -74,23 +74,38 @@
 @inproceedings{hansen2023pretraining,
   title={On Pre-Training for Visuo-Motor Control: Revisiting a
          Learning-from-Scratch Baseline},
-  author={Hansen, Nicklas and Yuan, Zhecheng and Ze, Yanjie and others},
+  author={Hansen, Nicklas and Yuan, Zhecheng and Ze, Yanjie and Mu, Tongzhou
+          and Rajeswaran, Aravind and Su, Hao and Xu, Huazhe and Wang,
+          Xiaolong},
   booktitle={International Conference on Machine Learning (ICML)}, year={2023},
-  note={arXiv:2212.05749; scratch baseline competitive with PVRs}}
+  note={VERIFIED 2026-08-29 against arXiv:2212.05749, full author list
+        confirmed (eight). Concludes a from-scratch baseline with augmentation
+        rivals pre-training once the domain gap is addressed. CONFIRM the ICML
+        2023 venue line against the proceedings}}
 
 @inproceedings{dasari2023unbiased,
   title={An Unbiased Look at Datasets for Visuo-Motor Pre-Training},
-  author={Dasari, Sudeep and Srirama, Mohan Kumar and Jain, Unnat and
-          Gupta, Abhinav},
+  author={Dasari, Sudeep and Srirama, Mohan Kumar and Jain, Unnat and Gupta,
+          Abhinav},
   booktitle={Conference on Robot Learning (CoRL)}, year={2023},
-  note={arXiv:2310.09289; sim benchmarks are a poor proxy for real performance}}
+  note={VERIFIED 2026-08-29 against arXiv:2310.09289 (submitted 2023-10-13),
+        CoRL 2023, PMLR v229. A search summary reported the id as 2310.09291;
+        that is wrong -- 2310.09289 confirmed by opening it. Finds the
+        pre-training image distribution matters more than dataset size, and
+        that ImageNet-style data is competitive}}
 
 @inproceedings{zhang2024ineffectiveness,
   title={The Surprising Ineffectiveness of Pre-Trained Visual Representations
          for Model-Based Reinforcement Learning},
-  author={Zhang, Moritz and others},
+  author={Schneider, Moritz and Krug, Robert and Vaskevicius, Narunas and
+          Palmieri, Luigi and Boedecker, Joschka},
   booktitle={Advances in Neural Information Processing Systems (NeurIPS)},
-  year={2024}, note={arXiv:2411.10175}}
+  year={2024},
+  note={VERIFIED 2026-08-29 against arXiv:2411.10175, NeurIPS 2024. NOTE the
+        citation key is misleading: the first author is Schneider, not Zhang --
+        rename to schneider2024ineffectiveness before submitting. Claims PVRs
+        are no more sample-efficient than from-scratch and no better OOD;
+        cambridge2025generalize (arXiv:2509.12531) is a direct rebuttal}}
 
 @article{cambridge2025generalize,
   title={Pre-trained Visual Representations Generalize Where it Matters in
@@ -103,19 +118,29 @@
 @inproceedings{burns2024what,
   title={What Makes Pre-Trained Visual Representations Successful for Robust
          Manipulation?},
-  author={Burns, Kaylee and Witzel, Zach and Hamid, Jubayer Ibn and others},
+  author={Burns, Kaylee and Witzel, Zach and Hamid, Jubayer Ibn and Yu, Tianhe
+          and Finn, Chelsea and Hausman, Karol},
   booktitle={Conference on Robot Learning (CoRL)}, year={2024},
-  note={arXiv:2312.12444; THE closest related work -- engage with it directly}}
+  note={VERIFIED 2026-08-29 against arXiv:2312.12444, full author list
+        confirmed (six, not "and others"). THE closest related work -- it also
+        asks which property of a frozen encoder predicts robustness, and
+        answers "emergent segmentation ability", ranking it above ImageNet
+        accuracy. Engage directly: they propose a BETTER predictor; we show the
+        axes such predictors are validated on frequently cannot rank anything}}
 
-% ---------- generalisation benchmarks ----------
 @inproceedings{xie2024factorworld,
   title={Decomposing the Generalization Gap in Imitation Learning for Visual
          Robotic Manipulation},
   author={Xie, Annie and Lee, Lisa and Xiao, Ted and Finn, Chelsea},
   booktitle={IEEE International Conference on Robotics and Automation (ICRA)},
   year={2024},
-  note={arXiv:2307.03659; camera position is the hardest factor -- CREDIT THIS
-        for ``viewpoint dominates''}}
+  note={VERIFIED 2026-08-29 against arXiv:2307.03659 (submitted 2023-07-07);
+        ICRA 2024 corroborated by a second source. 19 tasks, 11 factors. The
+        abstract states only that they "determine an ordering of factors based
+        on generalization difficulty"; two secondary sources place camera
+        position among the hardest, but I could NOT obtain that ranking
+        verbatim -- open the paper body before crediting it for
+        "viewpoint dominates"}}
 
 @inproceedings{pumacay2024colosseum,
   title={{THE COLOSSEUM}: A Benchmark for Evaluating Generalization for
