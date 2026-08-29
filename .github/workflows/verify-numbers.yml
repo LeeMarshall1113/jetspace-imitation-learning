@@ -1,0 +1,49 @@
+# Re-derive every number the paper claims, from the committed result artifacts.
+#
+# This runs on a plain CPU runner in seconds: no GPU, no Docker, no model
+# downloads. It reads cache/*.json and asserts that docs/paper-numbers.md --
+# the canonical record the paper is written from -- still agrees with the data.
+#
+# It also asserts that the six RETRACTED claims stay false, so a future edit
+# cannot quietly resurrect one. That mattered here: interim findings at 9 and
+# 15 encoders moved at final scale and one headline had to be withdrawn.
+name: verify paper numbers
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  numbers:
+    name: paper numbers match the data
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install (numpy and scipy only)
+        run: python -m pip install --quiet numpy scipy
+
+      - name: Verify
+        run: python scripts/verify_paper_numbers.py --verbose
+
+  compile:
+    name: every script parses
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # Deliberately compileall and not ruff. The repository carries 181
+      # pre-existing lint findings, so a ruff gate would be red on arrival --
+      # and a CI that is always red is one nobody reads. A syntax error, by
+      # contrast, is unambiguous and has actually shipped here before: main
+      # once carried an unbalanced parenthesis after a merge.
+      - name: Byte-compile scripts and package
+        run: python -m compileall -q scripts src

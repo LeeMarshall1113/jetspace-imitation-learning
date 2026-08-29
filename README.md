@@ -66,6 +66,7 @@ not reproduce and was withdrawn. Four earlier attempts failed at 24.7%, 9.3%,
 
 ## Table of contents
 
+- [Verify our numbers](#verify-our-numbers)
 - [Findings](#findings)
 - [Novelty](#novelty-what-is-actually-unclaimed)
 - [Overview](#overview)
@@ -83,6 +84,42 @@ not reproduce and was withdrawn. Four earlier attempts failed at 24.7%, 9.3%,
 - [References](#references)
 - [License](#license)
 - [Disclosure](#disclosure)
+
+---
+
+## Verify our numbers
+
+Every figure the paper reports can be re-derived from the committed artifacts
+in one command. No GPU, no Docker, no model downloads — numpy and scipy, a few
+seconds:
+
+```bash
+pip install numpy scipy
+python scripts/verify_paper_numbers.py --verbose
+```
+
+It reads `cache/*.json` and checks each headline in
+[`docs/paper-numbers.md`](docs/paper-numbers.md) — the canonical record the
+paper is written from — against the data: per-axis correlations, the
+probe/reference-MSE identity, where the untrained control ranks on every axis,
+the encoder ranking with its paired bootstrap intervals, the CortexBench
+control, and the corroborating experiments. **128 checks; it exits non-zero if
+any of them disagrees.**
+
+It also asserts that six **retracted** claims stay false. Interim findings at 9
+and 15 encoders moved at final scale and one headline had to be withdrawn
+outright; those are listed in `paper-numbers.md` §7, and the script fails if a
+future edit resurrects one.
+
+The same script runs in CI on every push
+([`.github/workflows/verify-numbers.yml`](.github/workflows/verify-numbers.yml)),
+so the paper cannot silently drift from the data behind it.
+
+To rebuild the figures and LaTeX tables from the same artifacts:
+
+```bash
+python scripts/make_figures.py --out paper/figures
+```
 
 ---
 
