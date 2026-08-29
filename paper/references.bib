@@ -7,11 +7,11 @@
 %  publisher. Nothing here rests on recall or on a search summary alone.
 %
 %  ERRORS THIS PASS CAUGHT -- each would have reached a reviewer:
-%    * zhang2024ineffectiveness -- KEY IS WRONG. First author is Schneider,
-%      not Zhang. Cited in text as "Zhang et al." this misattributes the
-%      paper. RENAME to schneider2024ineffectiveness.
-%    * radosavovic2023mvp -- year was 2023, the paper is CoRL 2022. Year
-%      fixed; the KEY still says 2023, so RENAME to radosavovic2022mvp.
+%    * schneider2024ineffectiveness -- was keyed schneider2024ineffectiveness.
+%      First author is Schneider, not Zhang; cited as "Zhang et al." this
+%      misattributed the paper. RENAMED, cites in main.tex updated.
+%    * radosavovic2022mvp -- was keyed radosavovic2022mvp with year 2023;
+%      the paper is CoRL 2022. RENAMED, cites in main.tex updated.
 %    * parisi2022unsurprising -- title was "The (Un)Surprising Effectiveness";
 %      the real title has no parentheses. Fixed.
 %    * dasari2023unbiased -- a search summary gave arXiv:2310.09291. The real
@@ -44,12 +44,12 @@
   booktitle={Conference on Robot Learning (CoRL)}, year={2022},
   note={VERIFIED 2026-08-29: arXiv:2203.12601, CoRL 2022, five authors confirmed}}
 
-@inproceedings{radosavovic2023mvp,
+@inproceedings{radosavovic2022mvp,
   title={Real-World Robot Learning with Masked Visual Pre-training},
   author={Radosavovic, Ilija and Xiao, Tete and James, Stephen and Abbeel,
           Pieter and Malik, Jitendra and Darrell, Trevor},
   booktitle={Conference on Robot Learning (CoRL)}, year={2022},
-  note={VERIFIED 2026-08-29: arXiv:2210.03109. YEAR CORRECTED from 2023 to 2022 -- the arXiv page states CoRL 2022. The citation key still says 2023; rename it to radosavovic2022mvp}}
+  note={VERIFIED 2026-08-29: arXiv:2210.03109. YEAR CORRECTED from 2023 to 2022 -- the arXiv page states CoRL 2022. KEY RENAMED 2026-08-29 from radosavovic2022mvp to match}}
 
 @inproceedings{majumdar2023cortexbench,
   title={Where are we in the search for an Artificial Visual Cortex for
@@ -103,16 +103,16 @@
         pre-training image distribution matters more than dataset size, and
         that ImageNet-style data is competitive}}
 
-@inproceedings{zhang2024ineffectiveness,
+@inproceedings{schneider2024ineffectiveness,
   title={The Surprising Ineffectiveness of Pre-Trained Visual Representations
          for Model-Based Reinforcement Learning},
   author={Schneider, Moritz and Krug, Robert and Vaskevicius, Narunas and
           Palmieri, Luigi and Boedecker, Joschka},
   booktitle={Advances in Neural Information Processing Systems (NeurIPS)},
   year={2024},
-  note={VERIFIED 2026-08-29 against arXiv:2411.10175, NeurIPS 2024. NOTE the
-        citation key is misleading: the first author is Schneider, not Zhang --
-        rename to schneider2024ineffectiveness before submitting. Claims PVRs
+  note={VERIFIED 2026-08-29 against arXiv:2411.10175, NeurIPS 2024. KEY RENAMED
+        2026-08-29 from schneider2024ineffectiveness: the first author is Schneider,
+        not Zhang, and the old key invited a misattribution in the text. Claims PVRs
         are no more sample-efficient than from-scratch and no better OOD;
         cambridge2025generalize (arXiv:2509.12531) is a direct rebuttal}}
 
