@@ -25,9 +25,13 @@ attached:
 
 That is measured on **viewpoint**. The harder axis — transfer to **unseen
 tasks** — has since been measured across eight real laboratories and the answer
-is negative: pretraining on seven tasks makes an eighth *worse*, 1 win in 53
-folds, p = 1.2e-14. What survives is narrower and sharper: pretrained features
-help along the **nuisance** axis, not the **semantic** one.
+is negative: pretraining on seven tasks makes an eighth *worse* — transfer beats
+training from scratch in **3 of 72 folds** (p = 2.6e-17), or 1 of 53 when
+restricted to folds where both arms clear the mean-action baseline
+(p = 1.2e-14). Quote the restriction with the ratio; recomputing "1/53" from the
+released cache without it gives 3/72 and looks like a fabrication. What survives
+is narrower and sharper: pretrained features help along the **nuisance** axis,
+not the **semantic** one.
 
 Getting there cost a long run of negative results, and they are reported rather
 than buried. A pre-registered instrument for predicting degradation from latent
@@ -163,12 +167,17 @@ This reconciles with E6's negative rather than contradicting it: pretraining
 buys nothing from single-view data, and what it buys is the **ability to exploit
 multi-view supervision**, which simulation provides for free.
 
-**That claim did not survive a wider comparison.** E11
+**That claim needed a wider comparison.** E11
 ([`docs/e11-results.md`](docs/e11-results.md)) ran nine frozen encoders at
-matched pooling. V-JEPA 2 leads at 0.251 but **does not separate** from DINOv2
-at 0.284 — overlapping intervals, despite 3/3 seed wins. An 87M image encoder
-from 2023 matches a 326M video encoder from 2025, so "video pretraining
-specifically buys viewpoint generalization" is **not supported**.
+matched pooling. V-JEPA 2 leads at **0.251** against DINOv2's **0.284**, and a
+re-derivation from the cached artifacts on 2026-08-29
+(`scripts/verify_prior_results.py`) shows the two **do separate**: the per-seed
+ranges are disjoint, [0.245, 0.255] against [0.266, 0.302], and V-JEPA wins
+9 of 9 pairings. An earlier version of this section said "does not separate";
+that understated a positive result and is corrected here. The margin is small
+in absolute terms — an 87M image encoder from 2023 comes within 0.033 of a 326M
+video encoder from 2025 — so the honest reading is that video pretraining buys
+a real but modest amount of viewpoint generalization, not a step change.
 
 What E11 found instead is sharper. Probing the same frozen features
 **in-distribution** ranks them almost oppositely to the held-out ranking
