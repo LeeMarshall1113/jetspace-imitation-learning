@@ -1,21 +1,33 @@
 % =====================================================================
-%  VERIFY EVERY ENTRY BEFORE SUBMITTING.
+%  CITATION STATUS -- 45 entries, 14 verified, 31 still to check.
 %
-%  These were assembled from four adversarial literature searches. Most are
-%  well-known papers whose details are stable, but arXiv identifiers and venue
-%  lines were reported by an automated search and have NOT each been opened and
-%  checked by hand. One of those searches already traced a statistic that
-%  multiple search summaries repeated verbatim and that did not exist on the
-%  page they attributed it to.
+%  VERIFIED entries carry `VERIFIED 2026-08-29` in their note, meaning the
+%  arXiv id, title, author list and venue were each opened and confirmed
+%  against arXiv, the CVF open-access proceedings or the publisher on that
+%  date. Those 14 were the incomplete ones: four had `author={\TODO{authors}}`
+%  and no author list at all, and the rest were added late from memory.
+%
+%  THE REMAINING 31 STILL NEED A PASS. They came from four adversarial
+%  literature searches. Most are well-known papers whose details are stable,
+%  but their arXiv identifiers and venue lines were reported by an automated
+%  search and have not each been opened by hand. One of those searches already
+%  traced a statistic that several summaries repeated verbatim and that did not
+%  exist on the page they attributed it to -- that is the failure mode this
+%  warning exists for.
+%
+%  Priority order for the remaining pass, by how much the paper leans on them:
+%    1. burns2024what        -- described as the closest related work
+%    2. xie2024factorworld   -- credited for "viewpoint dominates"
+%    3. zhang2024ineffectiveness, dasari2023unbiased, hansen2023pretraining
+%                            -- the evaluation dispute this paper adjudicates
+%    4. the encoder papers cited in the Table 1 roster
 %
 %  A wrong citation is the cheapest possible way to lose a reviewer's trust.
-%  Open each of these on arXiv or the venue site once, and delete anything you
-%  cannot confirm rather than shipping it.
+%  Delete anything you cannot confirm rather than shipping it.
 %
-%  Roughly 40 entries. A 9-page paper cites 40-60; 200 reads as padding.
+%  A 9-page paper cites 40-60; 200 reads as padding.
 % =====================================================================
 
-% ---------- frozen visual representations for control ----------
 @inproceedings{nair2022r3m,
   title={{R3M}: A Universal Visual Representation for Robot Manipulation},
   author={Nair, Suraj and Rajeswaran, Aravind and Kumar, Vikash and
@@ -33,9 +45,16 @@
 @inproceedings{majumdar2023cortexbench,
   title={Where are we in the search for an Artificial Visual Cortex for
          Embodied Intelligence?},
-  author={Majumdar, Arjun and Yadav, Karmesh and Arnaud, Sergio and others},
+  author={Majumdar, Arjun and Yadav, Karmesh and Arnaud, Sergio and Ma,
+          Yecheng Jason and Chen, Claire and others},
   booktitle={Advances in Neural Information Processing Systems (NeurIPS)},
-  year={2023}, note={arXiv:2303.18240; introduces VC-1 and CortexBench}}
+  year={2023},
+  note={VERIFIED 2026-08-29 against arXiv:2303.18240 (submitted 2023-03-31,
+        revised 2024-02-01): title and lead authors confirmed; the abstract
+        names both CortexBench and VC-1. The arXiv page lists no venue, so
+        CONFIRM the NeurIPS 2023 line against the proceedings before
+        submitting. This is the benchmark our control is run on and the source
+        of VC-1 -- the single most load-bearing citation in the paper}}
 
 @inproceedings{parisi2022unsurprising,
   title={The (Un)Surprising Effectiveness of Pre-Trained Vision Models for
@@ -76,8 +95,10 @@
 @article{cambridge2025generalize,
   title={Pre-trained Visual Representations Generalize Where it Matters in
          Model-Based Reinforcement Learning},
-  author={\TODO{authors}}, journal={arXiv preprint}, year={2025},
-  note={arXiv:2509.12531; direct rebuttal of arXiv:2411.10175}}
+  author={Jones, Scott and Zhou, Liyou and Pattinson, Sebastian W.},
+  journal={arXiv preprint arXiv:2509.12531}, year={2025},
+  note={VERIFIED 2026-08-29 against arXiv:2509.12531, submitted 2025-09-16;
+        direct rebuttal of arXiv:2411.10175}}
 
 @inproceedings{burns2024what,
   title={What Makes Pre-Trained Visual Representations Successful for Robust
@@ -113,17 +134,23 @@
 @article{camerapose2025,
   title={Do You Know Where Your Camera Is? View-Invariant Policy Learning with
          Camera Conditioning},
-  author={\TODO{authors}}, journal={arXiv preprint}, year={2025},
-  note={arXiv:2510.02268; camera-count scaling AND a pretraining ablation.
-        A reviewer will raise this -- address it}}
+  author={Jiang, Tianchong and Ji, Jingtian and Tan, Xiangshan and Fang,
+          Jiading and Bhattad, Anand and Guizilini, Vitor and Walter,
+          Matthew R.},
+  journal={arXiv preprint arXiv:2510.02268}, year={2025},
+  note={VERIFIED 2026-08-29 against arXiv:2510.02268, submitted 2025-10-02}}
 
 @article{criticalmse2026,
-  title={\TODO{verify title -- Critical Interval MSE}},
-  author={\TODO{authors}}, journal={arXiv preprint}, year={2026},
-  note={arXiv:2606.29898; argues action MSE is a weak proxy for task success.
-        Cite in Limitations}}
+  title={Critical Interval {MSE}: Toward Reliable Offline Validation for Robot
+         Manipulation Policies},
+  author={Huang, Haoxu and Zheng, Tongsam and Chen, Yifan and You, Jiacheng
+          and Gao, Yang},
+  journal={arXiv preprint arXiv:2606.29898}, year={2026},
+  note={VERIFIED 2026-08-29 against arXiv:2606.29898, submitted 2026-06-29,
+        plus an independent title search. Cite in Limitations: action MSE
+        correlates poorly with rollout success because uncritical timesteps
+        dominate the average -- which is this paper's whole argument}}
 
-% ---------- multi-task / cross-embodiment ----------
 @inproceedings{oxe2024,
   title={Open {X-Embodiment}: Robotic Learning Datasets and {RT-X} Models},
   author={{Open X-Embodiment Collaboration}},
@@ -139,9 +166,13 @@
 @article{lbm2026,
   title={A Careful Examination of Large Behavior Models for Multitask
          Dexterous Manipulation},
-  author={\TODO{authors}}, journal={Science Robotics}, year={2026},
-  note={arXiv:2507.05331; multi-task pretraining HELPS few-shot -- the
-        opposite of our cross-lab result. Address the boundary condition}}
+  author={{TRI LBM Team} and Barreiros, Jose and Beaulieu, Andrew and Bhat,
+          Aditya and others},
+  journal={Science Robotics}, year={2026},
+  doi={10.1126/scirobotics.aea6201},
+  note={VERIFIED 2026-08-29: arXiv:2507.05331 submitted 2025-07-07, published
+        in Science Robotics 2026. Very large TRI author list -- check the
+        venue's et-al policy before shortening}}
 
 @inproceedings{khazatsky2024droid,
   title={{DROID}: A Large-Scale In-the-Wild Robot Manipulation Dataset},
@@ -193,8 +224,10 @@
 
 @article{dinov3_2025,
   title={{DINOv3}},
-  author={{Meta AI}}, journal={arXiv preprint}, year={2025},
-  note={\TODO{verify arXiv id -- released 2025-08, gated on HuggingFace}}}
+  author={{Meta AI}},
+  journal={arXiv preprint arXiv:2508.10104}, year={2025},
+  note={VERIFIED 2026-08-29: arXiv:2508.10104. Author list is large; expand
+        from the arXiv page if the venue disallows a corporate author}}
 
 @inproceedings{radford2021clip,
   title={Learning Transferable Visual Models From Natural Language
@@ -272,65 +305,70 @@
 % ---- header: assembled from memory/search, VERIFY EACH ON ARXIV before use.
 
 @inproceedings{musgrave2020realitycheck,
-  title     = {A Metric Learning Reality Check},
-  author    = {Musgrave, Kevin and Belongie, Serge and Lim, Ser-Nam},
-  booktitle = {ECCV},
-  year      = {2020},
-  note      = {TODO verify}
-}
+  title={A Metric Learning Reality Check},
+  author={Musgrave, Kevin and Belongie, Serge and Lim, Ser-Nam},
+  booktitle={European Conference on Computer Vision (ECCV)}, year={2020},
+  note={VERIFIED 2026-08-29: ECCV 2020, Glasgow; arXiv:2003.08505,
+        doi 10.1007/978-3-030-58595-2_41. Same genre as this paper --
+        fair evaluation collapses a body of claimed gains}}
 
 @inproceedings{ulyanov2018dip,
-  title     = {Deep Image Prior},
-  author    = {Ulyanov, Dmitry and Vedaldi, Andrea and Lempitsky, Victor},
-  booktitle = {CVPR},
-  year      = {2018},
-  note      = {TODO verify}
-}
+  title={Deep Image Prior},
+  author={Ulyanov, Dmitry and Vedaldi, Andrea and Lempitsky, Victor},
+  booktitle={IEEE/CVF Conference on Computer Vision and Pattern Recognition
+             (CVPR)}, year={2018},
+  note={VERIFIED 2026-08-29: CVPR 2018, arXiv:1711.10925. Cite for why an
+        untrained network is a legitimate control -- an untrained generator
+        already carries image structure}}
 
 @inproceedings{rahimi2007random,
-  title     = {Random Features for Large-Scale Kernel Machines},
-  author    = {Rahimi, Ali and Recht, Benjamin},
-  booktitle = {NeurIPS},
-  year      = {2007},
-  note      = {TODO verify}
-}
+  title={Random Features for Large-Scale Kernel Machines},
+  author={Rahimi, Ali and Recht, Benjamin},
+  booktitle={Advances in Neural Information Processing Systems (NeurIPS)},
+  year={2007},
+  note={VERIFIED 2026-08-29: NIPS 2007, proceedings paper 3182. Random
+        features are a strong baseline by construction, which is what makes
+        them a meaningful discriminability control}}
 
 @inproceedings{liu2022convnext,
-  title     = {A ConvNet for the 2020s},
-  author    = {Liu, Zhuang and Mao, Hanzi and Wu, Chao-Yuan and Feichtenhofer, Christoph and Darrell, Trevor and Xie, Saining},
-  booktitle = {CVPR},
-  year      = {2022},
-  note      = {TODO verify}
-}
+  title={A ConvNet for the 2020s},
+  author={Liu, Zhuang and Mao, Hanzi and Wu, Chao-Yuan and Feichtenhofer,
+          Christoph and Darrell, Trevor and Xie, Saining},
+  booktitle={IEEE/CVF Conference on Computer Vision and Pattern Recognition
+             (CVPR)}, year={2022},
+  note={VERIFIED 2026-08-29: CVPR 2022, arXiv:2201.03545, authors confirmed
+        against the CVF open-access page}}
 
 @inproceedings{he2016resnet,
-  title     = {Deep Residual Learning for Image Recognition},
-  author    = {He, Kaiming and Zhang, Xiangyu and Ren, Shaoqing and Sun, Jian},
-  booktitle = {CVPR},
-  year      = {2016},
-  note      = {TODO verify}
-}
+  title={Deep Residual Learning for Image Recognition},
+  author={He, Kaiming and Zhang, Xiangyu and Ren, Shaoqing and Sun, Jian},
+  booktitle={IEEE Conference on Computer Vision and Pattern Recognition
+             (CVPR)}, year={2016},
+  note={VERIFIED 2026-08-29: CVPR 2016, arXiv:1512.03385}}
 
 @inproceedings{liu2021swin,
-  title     = {Swin Transformer: Hierarchical Vision Transformer using Shifted Windows},
-  author    = {Liu, Ze and Lin, Yutong and Cao, Yue and Hu, Han and Wei, Yixuan and Zhang, Zheng and Lin, Stephen and Guo, Baining},
-  booktitle = {ICCV},
-  year      = {2021},
-  note      = {TODO verify}
-}
+  title={{Swin} Transformer: Hierarchical Vision Transformer using Shifted
+         Windows},
+  author={Liu, Ze and Lin, Yutong and Cao, Yue and Hu, Han and Wei, Yixuan and
+          Zhang, Zheng and Lin, Stephen and Guo, Baining},
+  booktitle={IEEE/CVF International Conference on Computer Vision (ICCV)},
+  year={2021},
+  note={VERIFIED 2026-08-29: ICCV 2021, arXiv:2103.14030}}
 
 @inproceedings{bao2022beit,
-  title     = {{BEiT}: {BERT} Pre-Training of Image Transformers},
-  author    = {Bao, Hangbo and Dong, Li and Piao, Songhao and Wei, Furu},
-  booktitle = {ICLR},
-  year      = {2022},
-  note      = {TODO verify}
-}
+  title={{BEiT}: {BERT} Pre-Training of Image Transformers},
+  author={Bao, Hangbo and Dong, Li and Piao, Songhao and Wei, Furu},
+  booktitle={International Conference on Learning Representations (ICLR)},
+  year={2022},
+  note={VERIFIED 2026-08-29: ICLR 2022, arXiv:2106.08254}}
 
 @inproceedings{assran2023ijepa,
-  title     = {Self-Supervised Learning from Images with a Joint-Embedding Predictive Architecture},
-  author    = {Assran, Mahmoud and Duval, Quentin and Misra, Ishan and Bojanowski, Piotr and Vincent, Pascal and Rabbat, Michael and LeCun, Yann and Ballas, Nicolas},
-  booktitle = {CVPR},
-  year      = {2023},
-  note      = {TODO verify}
-}
+  title={Self-Supervised Learning from Images with a Joint-Embedding
+         Predictive Architecture},
+  author={Assran, Mahmoud and Duval, Quentin and Misra, Ishan and Bojanowski,
+          Piotr and Vincent, Pascal and Rabbat, Michael and LeCun, Yann and
+          Ballas, Nicolas},
+  booktitle={IEEE/CVF Conference on Computer Vision and Pattern Recognition
+             (CVPR)}, year={2023},
+  note={VERIFIED 2026-08-29 against arXiv:2301.08243, author list confirmed}}
+
