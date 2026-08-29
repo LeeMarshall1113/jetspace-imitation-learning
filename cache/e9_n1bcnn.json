@@ -1,0 +1,679 @@
+{
+  "prefix": "n1bcnn",
+  "rows": [
+    {
+      "target": "A_cubes",
+      "K": 1,
+      "seed": 0,
+      "scratch": 0.5891302824020386,
+      "transfer": 1.075225591659546,
+      "zeroshot": 5.658746719360352,
+      "n_eval": 1385
+    },
+    {
+      "target": "A_cubes",
+      "K": 2,
+      "seed": 0,
+      "scratch": 0.6072107553482056,
+      "transfer": 0.9500439167022705,
+      "zeroshot": 5.879086494445801,
+      "n_eval": 1226
+    },
+    {
+      "target": "A_cubes",
+      "K": 4,
+      "seed": 0,
+      "scratch": 0.4198915958404541,
+      "transfer": 0.6398419737815857,
+      "zeroshot": 5.504366874694824,
+      "n_eval": 786
+    },
+    {
+      "target": "A_cubes",
+      "K": 1,
+      "seed": 1,
+      "scratch": 0.6812122464179993,
+      "transfer": 1.4288930892944336,
+      "zeroshot": 7.142763137817383,
+      "n_eval": 1423
+    },
+    {
+      "target": "A_cubes",
+      "K": 2,
+      "seed": 1,
+      "scratch": 0.6824637651443481,
+      "transfer": 1.1252437829971313,
+      "zeroshot": 8.037426948547363,
+      "n_eval": 1192
+    },
+    {
+      "target": "A_cubes",
+      "K": 4,
+      "seed": 1,
+      "scratch": 0.7947404980659485,
+      "transfer": 1.0405726432800293,
+      "zeroshot": 8.46399974822998,
+      "n_eval": 819
+    },
+    {
+      "target": "A_cubes",
+      "K": 1,
+      "seed": 2,
+      "scratch": 0.7769514918327332,
+      "transfer": 2.0081546306610107,
+      "zeroshot": 9.555887222290039,
+      "n_eval": 1324
+    },
+    {
+      "target": "A_cubes",
+      "K": 2,
+      "seed": 2,
+      "scratch": 0.38593125343322754,
+      "transfer": 0.8243367075920105,
+      "zeroshot": 9.341951370239258,
+      "n_eval": 1176
+    },
+    {
+      "target": "A_cubes",
+      "K": 4,
+      "seed": 2,
+      "scratch": 0.38974013924598694,
+      "transfer": 0.6967710256576538,
+      "zeroshot": 9.325325012207031,
+      "n_eval": 797
+    },
+    {
+      "target": "B_svla",
+      "K": 1,
+      "seed": 0,
+      "scratch": 0.1340251863002777,
+      "transfer": 0.16973751783370972,
+      "zeroshot": 2.5659220218658447,
+      "n_eval": 407
+    },
+    {
+      "target": "B_svla",
+      "K": 2,
+      "seed": 0,
+      "scratch": 0.11661388725042343,
+      "transfer": 0.1529313027858734,
+      "zeroshot": 2.559511184692383,
+      "n_eval": 353
+    },
+    {
+      "target": "B_svla",
+      "K": 4,
+      "seed": 0,
+      "scratch": 0.11004334688186646,
+      "transfer": 0.14611008763313293,
+      "zeroshot": 2.4680092334747314,
+      "n_eval": 251
+    },
+    {
+      "target": "B_svla",
+      "K": 1,
+      "seed": 1,
+      "scratch": 0.1594165563583374,
+      "transfer": 0.21738706529140472,
+      "zeroshot": 2.448612689971924,
+      "n_eval": 406
+    },
+    {
+      "target": "B_svla",
+      "K": 2,
+      "seed": 1,
+      "scratch": 0.14317531883716583,
+      "transfer": 0.18183927237987518,
+      "zeroshot": 2.579599380493164,
+      "n_eval": 330
+    },
+    {
+      "target": "B_svla",
+      "K": 4,
+      "seed": 1,
+      "scratch": 0.11936549842357635,
+      "transfer": 0.17641645669937134,
+      "zeroshot": 2.6533262729644775,
+      "n_eval": 210
+    },
+    {
+      "target": "B_svla",
+      "K": 1,
+      "seed": 2,
+      "scratch": 0.15044569969177246,
+      "transfer": 0.19740737974643707,
+      "zeroshot": 4.0258469581604,
+      "n_eval": 408
+    },
+    {
+      "target": "B_svla",
+      "K": 2,
+      "seed": 2,
+      "scratch": 0.1486198753118515,
+      "transfer": 0.20225785672664642,
+      "zeroshot": 3.997793436050415,
+      "n_eval": 350
+    },
+    {
+      "target": "B_svla",
+      "K": 4,
+      "seed": 2,
+      "scratch": 0.12145138531923294,
+      "transfer": 0.18273736536502838,
+      "zeroshot": 4.07012939453125,
+      "n_eval": 242
+    },
+    {
+      "target": "C_tape",
+      "K": 1,
+      "seed": 0,
+      "scratch": 4.085671901702881,
+      "transfer": 4.477954387664795,
+      "zeroshot": 6.284822940826416,
+      "n_eval": 1243
+    },
+    {
+      "target": "C_tape",
+      "K": 2,
+      "seed": 0,
+      "scratch": 1.208541750907898,
+      "transfer": 1.0997263193130493,
+      "zeroshot": 2.2785398960113525,
+      "n_eval": 1044
+    },
+    {
+      "target": "C_tape",
+      "K": 4,
+      "seed": 0,
+      "scratch": 0.696728527545929,
+      "transfer": 0.5753750205039978,
+      "zeroshot": 1.9491198062896729,
+      "n_eval": 740
+    },
+    {
+      "target": "C_tape",
+      "K": 1,
+      "seed": 1,
+      "scratch": 2.119654417037964,
+      "transfer": 1.95833158493042,
+      "zeroshot": 2.564110040664673,
+      "n_eval": 1260
+    },
+    {
+      "target": "C_tape",
+      "K": 2,
+      "seed": 1,
+      "scratch": 1.2383419275283813,
+      "transfer": 1.251222848892212,
+      "zeroshot": 2.7126753330230713,
+      "n_eval": 1054
+    },
+    {
+      "target": "C_tape",
+      "K": 4,
+      "seed": 1,
+      "scratch": 0.7268292903900146,
+      "transfer": 0.7545076608657837,
+      "zeroshot": 2.0013558864593506,
+      "n_eval": 656
+    },
+    {
+      "target": "C_tape",
+      "K": 1,
+      "seed": 2,
+      "scratch": 0.8935261964797974,
+      "transfer": 0.9523428082466125,
+      "zeroshot": 1.4406678676605225,
+      "n_eval": 1291
+    },
+    {
+      "target": "C_tape",
+      "K": 2,
+      "seed": 2,
+      "scratch": 1.0602961778640747,
+      "transfer": 1.1761066913604736,
+      "zeroshot": 1.589084267616272,
+      "n_eval": 1114
+    },
+    {
+      "target": "C_tape",
+      "K": 4,
+      "seed": 2,
+      "scratch": 0.49019870162010193,
+      "transfer": 0.6010560989379883,
+      "zeroshot": 1.3451908826828003,
+      "n_eval": 762
+    },
+    {
+      "target": "D_ball",
+      "K": 1,
+      "seed": 0,
+      "scratch": 0.6130021214485168,
+      "transfer": 1.1431533098220825,
+      "zeroshot": 3.7274999618530273,
+      "n_eval": 1050
+    },
+    {
+      "target": "D_ball",
+      "K": 2,
+      "seed": 0,
+      "scratch": 0.36065104603767395,
+      "transfer": 0.5804699063301086,
+      "zeroshot": 3.837996482849121,
+      "n_eval": 900
+    },
+    {
+      "target": "D_ball",
+      "K": 4,
+      "seed": 0,
+      "scratch": 0.27299338579177856,
+      "transfer": 0.36626309156417847,
+      "zeroshot": 3.42940616607666,
+      "n_eval": 600
+    },
+    {
+      "target": "D_ball",
+      "K": 1,
+      "seed": 1,
+      "scratch": 0.45744749903678894,
+      "transfer": 0.9198464155197144,
+      "zeroshot": 2.6359293460845947,
+      "n_eval": 1050
+    },
+    {
+      "target": "D_ball",
+      "K": 2,
+      "seed": 1,
+      "scratch": 0.4974403977394104,
+      "transfer": 0.79141765832901,
+      "zeroshot": 2.9316325187683105,
+      "n_eval": 900
+    },
+    {
+      "target": "D_ball",
+      "K": 4,
+      "seed": 1,
+      "scratch": 0.30937716364860535,
+      "transfer": 0.4583647549152374,
+      "zeroshot": 3.0223910808563232,
+      "n_eval": 600
+    },
+    {
+      "target": "D_ball",
+      "K": 1,
+      "seed": 2,
+      "scratch": 0.45527002215385437,
+      "transfer": 0.9489832520484924,
+      "zeroshot": 3.0824711322784424,
+      "n_eval": 1050
+    },
+    {
+      "target": "D_ball",
+      "K": 2,
+      "seed": 2,
+      "scratch": 0.3454281985759735,
+      "transfer": 0.6293418407440186,
+      "zeroshot": 2.9746527671813965,
+      "n_eval": 900
+    },
+    {
+      "target": "D_ball",
+      "K": 4,
+      "seed": 2,
+      "scratch": 0.22680285573005676,
+      "transfer": 0.30076682567596436,
+      "zeroshot": 2.7280588150024414,
+      "n_eval": 600
+    },
+    {
+      "target": "E_summer",
+      "K": 1,
+      "seed": 0,
+      "scratch": 2.978969097137451,
+      "transfer": 2.959188938140869,
+      "zeroshot": 3.356099843978882,
+      "n_eval": 1050
+    },
+    {
+      "target": "E_summer",
+      "K": 2,
+      "seed": 0,
+      "scratch": 0.3957267105579376,
+      "transfer": 0.3751014173030853,
+      "zeroshot": 1.3730157613754272,
+      "n_eval": 900
+    },
+    {
+      "target": "E_summer",
+      "K": 4,
+      "seed": 0,
+      "scratch": 0.3919247090816498,
+      "transfer": 0.40350329875946045,
+      "zeroshot": 1.50617253780365,
+      "n_eval": 600
+    },
+    {
+      "target": "E_summer",
+      "K": 1,
+      "seed": 1,
+      "scratch": 1.40421724319458,
+      "transfer": 1.486998438835144,
+      "zeroshot": 2.3278539180755615,
+      "n_eval": 1050
+    },
+    {
+      "target": "E_summer",
+      "K": 2,
+      "seed": 1,
+      "scratch": 0.6613954901695251,
+      "transfer": 0.6549874544143677,
+      "zeroshot": 1.532595157623291,
+      "n_eval": 900
+    },
+    {
+      "target": "E_summer",
+      "K": 4,
+      "seed": 1,
+      "scratch": 0.2833399474620819,
+      "transfer": 0.29769429564476013,
+      "zeroshot": 1.0970500707626343,
+      "n_eval": 600
+    },
+    {
+      "target": "E_summer",
+      "K": 1,
+      "seed": 2,
+      "scratch": 1.4545167684555054,
+      "transfer": 1.5602262020111084,
+      "zeroshot": 2.354332208633423,
+      "n_eval": 1050
+    },
+    {
+      "target": "E_summer",
+      "K": 2,
+      "seed": 2,
+      "scratch": 1.4485307931900024,
+      "transfer": 1.4821993112564087,
+      "zeroshot": 2.2935292720794678,
+      "n_eval": 900
+    },
+    {
+      "target": "E_summer",
+      "K": 4,
+      "seed": 2,
+      "scratch": 1.282942771911621,
+      "transfer": 1.336984395980835,
+      "zeroshot": 2.0207676887512207,
+      "n_eval": 600
+    },
+    {
+      "target": "F_cup",
+      "K": 1,
+      "seed": 0,
+      "scratch": 2.144132375717163,
+      "transfer": 2.442979335784912,
+      "zeroshot": 2.596233367919922,
+      "n_eval": 1833
+    },
+    {
+      "target": "F_cup",
+      "K": 2,
+      "seed": 0,
+      "scratch": 1.5995761156082153,
+      "transfer": 1.7300082445144653,
+      "zeroshot": 2.5272116661071777,
+      "n_eval": 1582
+    },
+    {
+      "target": "F_cup",
+      "K": 4,
+      "seed": 0,
+      "scratch": 0.8058901429176331,
+      "transfer": 0.8814135193824768,
+      "zeroshot": 1.5429199934005737,
+      "n_eval": 1071
+    },
+    {
+      "target": "F_cup",
+      "K": 1,
+      "seed": 1,
+      "scratch": 2.0366933345794678,
+      "transfer": 2.6356844902038574,
+      "zeroshot": 2.4330828189849854,
+      "n_eval": 1829
+    },
+    {
+      "target": "F_cup",
+      "K": 2,
+      "seed": 1,
+      "scratch": 1.29243004322052,
+      "transfer": 1.2804467678070068,
+      "zeroshot": 1.9221861362457275,
+      "n_eval": 1598
+    },
+    {
+      "target": "F_cup",
+      "K": 4,
+      "seed": 1,
+      "scratch": 0.663028359413147,
+      "transfer": 0.6942923665046692,
+      "zeroshot": 1.8015817403793335,
+      "n_eval": 1061
+    },
+    {
+      "target": "F_cup",
+      "K": 1,
+      "seed": 2,
+      "scratch": 3.8677592277526855,
+      "transfer": 3.966618299484253,
+      "zeroshot": 5.260064125061035,
+      "n_eval": 1854
+    },
+    {
+      "target": "F_cup",
+      "K": 2,
+      "seed": 2,
+      "scratch": 2.4332616329193115,
+      "transfer": 2.51560378074646,
+      "zeroshot": 3.474003314971924,
+      "n_eval": 1592
+    },
+    {
+      "target": "F_cup",
+      "K": 4,
+      "seed": 2,
+      "scratch": 1.0809667110443115,
+      "transfer": 1.39922034740448,
+      "zeroshot": 2.410956621170044,
+      "n_eval": 1042
+    },
+    {
+      "target": "G_bin",
+      "K": 1,
+      "seed": 0,
+      "scratch": 0.5599613785743713,
+      "transfer": 0.5629360675811768,
+      "zeroshot": 2.2141823768615723,
+      "n_eval": 1169
+    },
+    {
+      "target": "G_bin",
+      "K": 2,
+      "seed": 0,
+      "scratch": 0.4848901331424713,
+      "transfer": 0.4874269366264343,
+      "zeroshot": 2.2378928661346436,
+      "n_eval": 1009
+    },
+    {
+      "target": "G_bin",
+      "K": 4,
+      "seed": 0,
+      "scratch": 0.5616593360900879,
+      "transfer": 0.488441526889801,
+      "zeroshot": 2.1574015617370605,
+      "n_eval": 663
+    },
+    {
+      "target": "G_bin",
+      "K": 1,
+      "seed": 1,
+      "scratch": 0.8436028361320496,
+      "transfer": 1.1071544885635376,
+      "zeroshot": 3.206028461456299,
+      "n_eval": 1182
+    },
+    {
+      "target": "G_bin",
+      "K": 2,
+      "seed": 1,
+      "scratch": 0.4984809160232544,
+      "transfer": 0.7548736333847046,
+      "zeroshot": 3.1951284408569336,
+      "n_eval": 1026
+    },
+    {
+      "target": "G_bin",
+      "K": 4,
+      "seed": 1,
+      "scratch": 0.4593486785888672,
+      "transfer": 0.6381029486656189,
+      "zeroshot": 3.328425407409668,
+      "n_eval": 699
+    },
+    {
+      "target": "G_bin",
+      "K": 1,
+      "seed": 2,
+      "scratch": 0.65328049659729,
+      "transfer": 0.9477452039718628,
+      "zeroshot": 1.9731441736221313,
+      "n_eval": 1150
+    },
+    {
+      "target": "G_bin",
+      "K": 2,
+      "seed": 2,
+      "scratch": 0.5211185216903687,
+      "transfer": 0.7586964964866638,
+      "zeroshot": 1.976989507675171,
+      "n_eval": 997
+    },
+    {
+      "target": "G_bin",
+      "K": 4,
+      "seed": 2,
+      "scratch": 0.3060949742794037,
+      "transfer": 0.3510960340499878,
+      "zeroshot": 1.947092056274414,
+      "n_eval": 644
+    },
+    {
+      "target": "H_penmug",
+      "K": 1,
+      "seed": 0,
+      "scratch": 0.7347374558448792,
+      "transfer": 0.8094429969787598,
+      "zeroshot": 6.755926132202148,
+      "n_eval": 645
+    },
+    {
+      "target": "H_penmug",
+      "K": 2,
+      "seed": 0,
+      "scratch": 0.4745626449584961,
+      "transfer": 0.6923482418060303,
+      "zeroshot": 6.951737403869629,
+      "n_eval": 553
+    },
+    {
+      "target": "H_penmug",
+      "K": 4,
+      "seed": 0,
+      "scratch": 0.45643481612205505,
+      "transfer": 0.47492724657058716,
+      "zeroshot": 6.777251720428467,
+      "n_eval": 367
+    },
+    {
+      "target": "H_penmug",
+      "K": 1,
+      "seed": 1,
+      "scratch": 4.951555252075195,
+      "transfer": 4.773975849151611,
+      "zeroshot": 8.142640113830566,
+      "n_eval": 658
+    },
+    {
+      "target": "H_penmug",
+      "K": 2,
+      "seed": 1,
+      "scratch": 1.0364322662353516,
+      "transfer": 1.3205479383468628,
+      "zeroshot": 4.8920578956604,
+      "n_eval": 571
+    },
+    {
+      "target": "H_penmug",
+      "K": 4,
+      "seed": 1,
+      "scratch": 0.38374295830726624,
+      "transfer": 0.4616619646549225,
+      "zeroshot": 3.350389242172241,
+      "n_eval": 374
+    },
+    {
+      "target": "H_penmug",
+      "K": 1,
+      "seed": 2,
+      "scratch": 0.6543996930122375,
+      "transfer": 0.8496730327606201,
+      "zeroshot": 6.445847988128662,
+      "n_eval": 645
+    },
+    {
+      "target": "H_penmug",
+      "K": 2,
+      "seed": 2,
+      "scratch": 0.6254766583442688,
+      "transfer": 0.8059409856796265,
+      "zeroshot": 6.489760875701904,
+      "n_eval": 561
+    },
+    {
+      "target": "H_penmug",
+      "K": 4,
+      "seed": 2,
+      "scratch": 0.670787513256073,
+      "transfer": 0.6941708922386169,
+      "zeroshot": 6.160701274871826,
+      "n_eval": 373
+    }
+  ],
+  "summary": {
+    "1": {
+      "scratch": 1.3916491158306599,
+      "transfer": 1.6500016823410988,
+      "zeroshot": 4.091613148649533,
+      "gain": -0.2583525665104389,
+      "wins": 3,
+      "n": 24
+    },
+    "2": {
+      "scratch": 0.7611081783349315,
+      "transfer": 0.9092966380218664,
+      "zeroshot": 3.6494190990924835,
+      "gain": -0.14818845968693495,
+      "wins": 4,
+      "n": 24
+    },
+    "4": {
+      "scratch": 0.5010134711240729,
+      "transfer": 0.5858454934010903,
+      "zeroshot": 3.377557878692945,
+      "gain": -0.08483202227701736,
+      "wins": 2,
+      "n": 24
+    }
+  }
+}
