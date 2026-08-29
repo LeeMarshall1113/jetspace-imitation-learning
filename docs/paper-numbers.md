@@ -131,9 +131,12 @@ Source: `cache/cortexbench_pen-v0.json`, `cache/cortexbench_relocate-v0.json`.
 - **VC-1 loading verified** (`scripts/verify_vc1.py`): 0/150 and 0/294
   tensors at init, decoder keys correctly discarded, preprocessing matches
   shipped config, cosine vs same-seed random ViT +0.004/−0.031.
-- **E11** (no shared axes/probe/code): V-JEPA 0.251 vs DINOv2 0.284 with
-  disjoint seed ranges, 9/9 pairings — a *positive* separation. VC-1 2.024
-  vs random 0.906.
+- **E11** (no shared axes/probe/code): V-JEPA 0.251 vs DINOv2 0.284, which
+  **do not separate** — paired per-cell diff −0.033, 95% CI [−0.069, +0.006],
+  16/24 cells, sign test p = 0.15. (An audit pass briefly claimed they did,
+  from "9/9 seed pairings"; that crossed 3 seed means with 3 seed means,
+  manufacturing 9 comparisons from 3 observations. Withdrawn.) The usable
+  corroboration from E11 is VC-1 at 2.024 against random features at 0.906.
 - **E9** (with its documented filter): learnable folds only (both scratch
   arms < 1.0; 53/72 qualify): transfer beats scratch 1/53 (p = 1.2e-14);
   V-JEPA scratch beats random CNN 39/53 (p = 8.0e-4). Unrestricted: 3/72
@@ -151,7 +154,9 @@ Source: `cache/cortexbench_pen-v0.json`, `cache/cortexbench_relocate-v0.json`.
    encoders/7 cells, **false at final scale**: −19.9 [−47.2, −4.3].
 2. ~~pickplace mean |ρ| 0.733 / 0.536~~ — interim scales; final is 0.048.
 3. ~~"1/53" bare~~ — only with the learnable-fold filter stated.
-4. ~~E11 "not separable"~~ — the write-up understated a positive result.
+4. ~~E11 "V-JEPA separates from DINOv2"~~ — asserted during the audit from an
+   invalid 9-of-9 seed-pairing statistic; the paired interval spans zero and
+   the original "not separable" stands.
 5. ~~lowres task difference p = 0.045~~ — multiplicity.
 6. ~~"random ranked 3rd of 9 on push probe"~~ — small-sample artifact,
    7th/15 at scale.

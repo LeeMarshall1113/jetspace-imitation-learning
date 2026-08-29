@@ -167,17 +167,14 @@ This reconciles with E6's negative rather than contradicting it: pretraining
 buys nothing from single-view data, and what it buys is the **ability to exploit
 multi-view supervision**, which simulation provides for free.
 
-**That claim needed a wider comparison.** E11
+**That claim did not survive a wider comparison.** E11
 ([`docs/e11-results.md`](docs/e11-results.md)) ran nine frozen encoders at
-matched pooling. V-JEPA 2 leads at **0.251** against DINOv2's **0.284**, and a
-re-derivation from the cached artifacts on 2026-08-29
-(`scripts/verify_prior_results.py`) shows the two **do separate**: the per-seed
-ranges are disjoint, [0.245, 0.255] against [0.266, 0.302], and V-JEPA wins
-9 of 9 pairings. An earlier version of this section said "does not separate";
-that understated a positive result and is corrected here. The margin is small
-in absolute terms — an 87M image encoder from 2023 comes within 0.033 of a 326M
-video encoder from 2025 — so the honest reading is that video pretraining buys
-a real but modest amount of viewpoint generalization, not a step change.
+matched pooling. V-JEPA 2 leads at 0.251 against DINOv2's 0.284, but the two
+**do not separate**: the paired per-cell comparison (3 seeds × 8 held-out
+poses) gives a mean difference of −0.033 with a 95% bootstrap CI of
+[−0.069, +0.006], V-JEPA ahead in 16 of 24 cells, sign test p = 0.15. An 87M
+image encoder from 2023 matches a 326M video encoder from 2025, so *"video
+pretraining specifically buys viewpoint generalization"* is **not supported**.
 
 What E11 found instead is sharper. Probing the same frozen features
 **in-distribution** ranks them almost oppositely to the held-out ranking

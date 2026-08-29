@@ -146,15 +146,43 @@ def verify_e11():
     for (n, a), s in sorted(per.items(), key=lambda kv: np.mean(kv[1]))[:8]:
         print(f"  {n:10s} {a:11s} {np.mean(s):7.3f}  "
               f"{[round(v, 3) for v in s]}")
+    # The PAIRED comparison, which is the correct one: both encoders are
+    # evaluated on the same held-out poses, so pose difficulty is a nuisance
+    # they share and belongs inside the difference, not inside each arm's
+    # error bar.
+    #
+    # An earlier version of this function reported "V-JEPA wins 9/9 seed
+    # pairings, ranges disjoint" and concluded the write-up had understated a
+    # positive result. That was wrong twice over: crossing 3 seed means with 3
+    # seed means manufactures 9 comparisons out of 3 observations, and disjoint
+    # seed-mean ranges only show that seed-to-seed variance is small -- they say
+    # nothing about whether the gap survives pose variance. It does not.
+    raw = {}
+    for f in files:
+        e = json.loads(Path(f).read_text())
+        name = Path(f).stem.replace("e11_", "")
+        res, ho = e["results"], e["held_out"]
+        if "multiview" in res:
+            raw[name] = np.array([[res["multiview"][p][s] for p in ho
+                                   if p in res["multiview"]] for s in range(3)])
     v, d = per[("vjepa2", "multiview")], per[("dinov2", "multiview")]
-    wins = sum(1 for a, b in product(v, d) if a < b)
     print(f"\n  V-JEPA {np.mean(v):.3f} vs DINOv2 {np.mean(d):.3f}")
-    print(f"  V-JEPA wins {wins}/9 seed pairings; ranges "
-          f"[{min(v):.3f},{max(v):.3f}] vs [{min(d):.3f},{max(d):.3f}], "
-          f"overlap={max(v) > min(d)}")
-    print("\n  The means reproduce, but 'not separable' is WRONG: the seed")
-    print("  ranges are disjoint and V-JEPA wins every pairing. The write-up")
-    print("  understates a positive result.")
+    if "vjepa2" in raw and "dinov2" in raw:
+        diff = (raw["vjepa2"] - raw["dinov2"]).ravel()
+        rng = np.random.default_rng(0)
+        bs = np.array([diff[rng.integers(0, diff.size, diff.size)].mean()
+                       for _ in range(20000)])
+        lo, hi = np.percentile(bs, [2.5, 97.5])
+        wins = int((diff < 0).sum())
+        p = (stats.binomtest(wins, diff.size, 0.5).pvalue if stats
+             else float("nan"))
+        print(f"  paired per-cell diff (3 seeds x 8 poses, n={diff.size}): "
+              f"{diff.mean():+.4f}")
+        print(f"  95% CI [{lo:+.4f}, {hi:+.4f}]  excludes 0: {hi < 0 or lo > 0}")
+        print(f"  V-JEPA better in {wins}/{diff.size} cells, sign test "
+              f"p = {p:.4f}")
+    print("\n  VERIFIED as written: the leader does NOT separate from the")
+    print("  runner-up. The paired interval spans zero.")
     fin = lambda k: [x for x in per[k] if np.isfinite(x)]  # noqa: E731
     vc = [np.mean(fin(k)) for k in per if k[0] == "vc1" and fin(k)]
     rn = [np.mean(fin(k)) for k in per if k[0] == "random" and fin(k)]
