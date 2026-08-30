@@ -110,10 +110,14 @@ the encoder ranking with its paired bootstrap intervals, the CortexBench
 control, and the corroborating experiments. **128 checks; it exits non-zero if
 any of them disagrees.**
 
-It also asserts that six **retracted** claims stay false. Interim findings at 9
-and 15 encoders moved at final scale and one headline had to be withdrawn
-outright; those are listed in `paper-numbers.md` §7, and the script fails if a
-future edit resurrects one.
+It also asserts that six **retracted** claims stay false; they are listed in
+[`paper-numbers.md`](docs/paper-numbers.md) §7, and the script fails if a future
+edit resurrects one. Re-running the current analysis at the old encoder counts
+shows those retractions came from **defects that were found and fixed**, not
+from small samples: at an identical nine encoders the corrected code gives push
+0.489 where the original run gave 0.317, and pickplace 0.217 where it gave
+0.733. Sample size only sharpens the magnitudes and never moves a verdict
+(§6a).
 
 The same script runs in CI on every push
 ([`.github/workflows/verify-numbers.yml`](.github/workflows/verify-numbers.yml)),

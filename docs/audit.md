@@ -88,10 +88,21 @@ because they show the failure mode:
   manufacture "9 of 9 pairings" from 3 observations. The paired test spans zero
   and the original write-up was correct. Withdrawn.
 
-**The pattern is a single one: overclaiming from small samples.** It occurred
-three times, including once inside the audit itself. The mitigation now
-enforced is that no claim appears without an interval, and the verification
-harness fails if a withdrawn claim returns.
+**The pattern is not what it first looked like.** The obvious reading was
+overclaiming from small samples, and that is how it was described while the work
+was in progress. Re-running the current analysis at the old encoder counts
+(§4, `*_recomputed.json`) shows otherwise: at an identical nine encoders the
+corrected code gives push 0.489 against the original 0.317, and pickplace 0.217
+against 0.733 — a 3.4x overstatement at matched n. The verdicts are stable
+under sample size; what moved them was fixing the evaluation leak, the parity
+confound and the metric.
+
+So the retractions are attributable to **defects, caught by the controls**,
+rather than to sampling noise. That is a better account and a less flattering
+one: sampling noise is nobody's fault, and these were bugs. The E11 withdrawal
+inside the audit itself is the exception that genuinely was a statistical error.
+Two mitigations are now enforced: no claim appears without an interval, and the
+verification harness fails if a withdrawn claim returns.
 
 ## 4. What this audit does *not* establish
 
