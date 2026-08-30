@@ -148,6 +148,39 @@ Source: `cache/cortexbench_pen-v0.json`, `cache/cortexbench_relocate-v0.json`.
 - **R2** verified exactly: ρ = −0.516, CI [−0.737, −0.133], ref success
   0.467.
 
+## 6a. Scale versus correction — which one changed the answer
+
+Source: `cache/e12_*_n9_recomputed.json` and `*_n15_recomputed.json`, produced
+by the CURRENT analysis at reduced encoder counts
+(`python scripts/e12_analyze.py <task> n9`). The historical n9/n15 files in
+`cache/` predate the evaluation-leak fix, the parity guard and the switch to
+relative degradation, so they cannot separate these two effects. These can.
+
+| task | n | current code | verdict | historical |
+|---|---|---|---|---|
+| push | 9 | 0.489 | FAILS | 0.317 (HOLDS) |
+| push | 15 | 0.482 | FAILS | — |
+| push | 22 | 0.407 | FAILS | — |
+| pickplace | 9 | 0.217 | HOLDS | 0.733 |
+| pickplace | 15 | 0.162 | HOLDS | 0.536 |
+| pickplace | 22 | 0.048 | HOLDS | — |
+
+**The verdict is stable under sample size.** push fails at every n; pickplace
+holds at every n. What flipped push from HOLDS to FAILS was correcting the
+analysis, not adding encoders — at an identical nine encoders the value moves
+0.317 to 0.489 and the verdict changes with it.
+
+**The historical values were substantially wrong at matched n**, not merely
+noisy: push 0.317 against 0.489, and pickplace 0.733 against 0.217, a 3.4x
+overstatement. Sample size then only sharpens the magnitude (push 0.489 to
+0.407, pickplace 0.217 to 0.048) and never moves a verdict.
+
+Write this, not "interim estimates moved with scale" — that framing is the
+weaker and partly wrong version. The corrections changed the answer; scale only
+refined it. It also means the retractions in section 7 are attributable to
+defects that were found and fixed, which is a better account of them than
+sampling noise.
+
 ## 7. Retracted — must not appear in the paper
 
 1. ~~"VC-1 cannot be separated from random features"~~ — true at 15
