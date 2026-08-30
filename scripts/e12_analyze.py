@@ -225,7 +225,26 @@ SUBSETS = {
 
 def main() -> int:
     global ENCODERS
-    task = sys.argv[1] if len(sys.argv) > 1 else "push"
+    # No implicit task. A bare invocation used to default to "push" and
+    # overwrite cache/e12_push.json -- the canonical file the paper is built
+    # on. That fired for real: a shell loop word-split its argument wrongly,
+    # one iteration arrived with no arguments, and the canonical result was
+    # silently regenerated. It happened to reproduce identical content, so
+    # nothing was lost, but a convenience default that can clobber a committed
+    # result is not a convenience.
+    if len(sys.argv) < 2:
+        print(__doc__.strip().splitlines()[0])
+        print("\nusage: e12_analyze.py <task> [subset]")
+        print(f"  task    one of: push, pickplace")
+        print(f"  subset  one of: {', '.join(sorted(SUBSETS))}, or 'all' "
+              f"(default)")
+        print("\nRefusing to guess a task: a bare run would overwrite a "
+              "canonical result file.")
+        return 2
+    task = sys.argv[1]
+    if task not in ("push", "pickplace"):
+        print(f"unknown task {task!r}; expected 'push' or 'pickplace'")
+        return 2
     # Optional second argument: a subset name from SUBSETS, or "all".
     subset = sys.argv[2] if len(sys.argv) > 2 else "all"
     suffix = ""
