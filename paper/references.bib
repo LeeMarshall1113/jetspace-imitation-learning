@@ -27,12 +27,14 @@
 %    liu2023libero, oxe2024, octo2024, khazatsky2024droid, radford2021clip,
 %    he2022mae, levine2016end (volume/number/pages), majumdar2023cortexbench
 %
-%  ONE UNVERIFIED CLAIM, not a citation error but a characterisation risk:
-%  the Related Work draft credits xie2024factorworld for "camera position is
-%  the hardest factor". Its abstract says only that an ordering was
-%  determined. Two secondary sources place camera position among the hardest,
-%  but no verbatim ranking was obtainable. Open the paper body before writing
-%  that credit -- mischaracterising a cited finding is worse than a wrong year.
+%  RESOLVED: xie2024factorworld does state that camera position is the
+%  hardest factor. Figure 1 caption: "New camera positions are the hardest to
+%  generalize to while new backgrounds are the easiest." Safe to credit.
+%
+%  What that raises instead is a DISCLOSURE, not a citation issue: camera
+%  position is the field-standard hardest nuisance, viewpoint was one of the
+%  four axes we registered, and it is not in the final axis set. Section 6
+%  should say so where it discloses the axis-set deviation.
 %
 %  A 9-page paper cites 40-60; 200 reads as padding.
 % =====================================================================
@@ -144,12 +146,15 @@
   booktitle={IEEE International Conference on Robotics and Automation (ICRA)},
   year={2024},
   note={VERIFIED 2026-08-29 against arXiv:2307.03659 (submitted 2023-07-07);
-        ICRA 2024 corroborated by a second source. 19 tasks, 11 factors. The
-        abstract states only that they "determine an ordering of factors based
-        on generalization difficulty"; two secondary sources place camera
-        position among the hardest, but I could NOT obtain that ranking
-        verbatim -- open the paper body before crediting it for
-        "viewpoint dominates"}}
+        ICRA 2024 corroborated by a second source. 19 tasks, 11 factors. RANKING CONFIRMED
+        2026-08-29 from the paper body: Figure 1 caption reads "New camera
+        positions are the hardest to generalize to while new backgrounds are
+        the easiest", and the results state "new backgrounds, distractors, and
+        lighting are easier factors to generalize to, while new table textures
+        and camera positions are harder". Safe to credit for "camera position
+        is the hardest factor". NOTE FOR SECTION 6: this is the field-standard
+        hardest factor, and viewpoint is the axis we registered and then
+        dropped -- disclose that alongside the axis-set deviation}}
 
 @inproceedings{pumacay2024colosseum,
   title={{THE COLOSSEUM}: A Benchmark for Evaluating Generalization for
