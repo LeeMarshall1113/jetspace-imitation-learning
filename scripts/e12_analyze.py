@@ -205,8 +205,45 @@ def cell(prefix: str, axis: str, task: str, levels: list[str]):
             "rel": held / max(ref_mse, 1e-9), "n_levels": len(mses)}
 
 
+#: Named encoder subsets, so the scale-sensitivity comparison can be
+#: regenerated from THIS code rather than cited from historical artifacts.
+#:
+#: The 9- and 15-encoder JSONs in cache/ were produced during the run, by code
+#: that predates the parity guard, the relative-degradation metric and the
+#: |rho| fix -- so they conflate "the estimate moved because n grew" with "the
+#: estimate moved because the analysis was corrected". Re-running the current
+#: analysis on these subsets separates the two, and is reproducible from a
+#: commit. Use these for any claim about how estimates changed with scale.
+SUBSETS = {
+    "n9": ["vjepa2", "dinov3", "siglip2", "aimv2", "dinov2", "clip",
+           "vit-in1k", "vc1", "random"],
+    "n15": ["vjepa2", "dinov3", "siglip2", "aimv2", "dinov2", "clip",
+            "vit-in1k", "vc1", "random", "dinov2-large", "dinov3-large",
+            "siglip1", "vit-large", "clip-large", "vc1-large"],
+}
+
+
 def main() -> int:
+    global ENCODERS
     task = sys.argv[1] if len(sys.argv) > 1 else "push"
+    # Optional second argument: a subset name from SUBSETS, or "all".
+    subset = sys.argv[2] if len(sys.argv) > 2 else "all"
+    suffix = ""
+    if subset != "all":
+        if subset not in SUBSETS:
+            print(f"unknown subset {subset!r}; choose from "
+                  f"{sorted(SUBSETS)} or 'all'")
+            return 2
+        keep = set(SUBSETS[subset])
+        ENCODERS = [(n, p) for n, p in ENCODERS if n in keep]
+        missing = keep - {n for n, _ in ENCODERS}
+        if missing:
+            print(f"subset {subset} names encoders not in ENCODERS: "
+                  f"{sorted(missing)}")
+            return 2
+        suffix = f"_{subset}_recomputed"
+        print(f"SUBSET {subset}: {len(ENCODERS)} encoders, current analysis "
+              f"code\n")
     levels_for = {
         "lighting": ["lighting_0p3", "lighting_0p45", "lighting_0p55",
                      "lighting_0p62"],
@@ -374,9 +411,11 @@ def main() -> int:
                        "evaluable": len(vals) >= 3}
 
     Path("cache").mkdir(exist_ok=True)
-    Path(f"cache/e12_{task}.json").write_text(json.dumps(out, indent=2,
-                                                         default=float))
-    print(f"\nwrote cache/e12_{task}.json")
+    # suffix is empty on a full run, so the canonical file is untouched; a
+    # subset run writes beside it and can never overwrite the final result.
+    Path(f"cache/e12_{task}{suffix}.json").write_text(
+        json.dumps(out, indent=2, default=float))
+    print(f"\nwrote cache/e12_{task}{suffix}.json")
     return 0
 
 

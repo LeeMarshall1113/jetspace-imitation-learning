@@ -243,31 +243,69 @@ directional. Asymmetry is **proportional** to the magnitude measured (22–32%
 across families), not an absolute floor. Differences below ~30% of the gaps
 compared are not claimable.
 
-### There is no robust encoder, only encoders robust to particular nuisances
+### Most nuisance axes cannot rank encoders at all
 
-Nine frozen encoders crossed with four nuisance axes
-([`docs/e12-results.md`](docs/e12-results.md)). Probe R² is measured **once** at
-a shared reference; everything else is a different ranking of the same nine.
+22 frozen encoders crossed with 8 nuisance axes on 2 tasks — 1,452
+encoder–condition arms ([`docs/paper-numbers.md`](docs/paper-numbers.md) is the
+canonical record; [`docs/audit.md`](docs/audit.md) is the verification).
 
-| encoder | probe R² | lighting | texture | clutter | viewpoint |
-|---|---|---|---|---|---|
-| **clip** | **0.834** (1st) | **1st** | 5th | **1st** | 8th |
-| siglip2 | 0.677 | 3rd | **1st** | 2nd | 3rd |
-| random | 0.710 | 9th | 9th | 3rd | 7th |
-| **vjepa2** | **0.519** (9th) | 6th | 3rd | 5th | **1st** |
+Every axis carries an **untrained CNN as a control**. Where that control fails
+to land in the worst third, the axis cannot separate learned features from
+random ones, and any ranking computed on it is noise:
 
-Spearman between probe rank and robustness rank runs from **−0.317 to +0.467**
-with no consistent sign — mean |ρ| = 0.317 across the valid axes, so the
-registered prediction holds.
+| axis | push (n=22) | pickplace (n=20) | status |
+|---|---|---|---|
+| lighting | 22/22 | 20/20 | discriminates |
+| texture | 21/22 | 20/20 | discriminates |
+| exposure | 22/22 | 20/20 | discriminates |
+| clutter | 10/22 | 10/20 | **excluded** |
+| noise | 13/22 | 13/20 | **excluded** |
+| defocus | 1/22 | 8/20 | **excluded** |
+| compress | 1/22 | 4/20 | **excluded** |
+| lowres | 1/22 | 4/20 | **excluded** |
 
-> **Probe accuracy does not tell you which encoder survives a nuisance.** The
-> best-probing encoder is 1st on two axes and 5th and 8th on the others; the
-> worst-probing one is the reverse.
+> **Five of eight axes cannot rank encoders — the same five on both tasks.** On
+> three push axes the untrained control ranks *first of 22*. This is a count,
+> not a correlation, so no sample-size caveat applies to it.
 
-**Clutter was excluded by its own control**: frozen random features rank 3rd of
-9 there, so the axis ranks noise rather than encoders. Reporting distractor
-robustness on a task this insensitive would report nothing.
+A second defect is algebraic. Probe R² and reference MSE share a numerator and
+a denominator across encoders, so one is an exact monotone transform of the
+other — **ρ = −1.000 on all 16 cells**. Ranking robustness by *absolute*
+held-out error therefore partly re-measures baseline fit, and switching to
+relative degradation reverses the sign on every valid push axis.
 
+On the six cells that survive both checks, ranked by relative degradation
+(1.00 = no loss under shift), with paired bootstrap intervals:
+
+| encoder | mean | 95% CI | P(top 3) |
+|---|---|---|---|
+| **vjepa2** | 1.069 | [0.978, 1.186] | 0.84 |
+| **aimv2** | 1.093 | [0.962, 1.248] | 0.79 |
+| **dinov3** | 1.120 | [1.015, 1.227] | 0.70 |
+| … | | | |
+| vc1 | 2.564 | [1.343, 4.019] | 0.00 |
+| vc1-large | 2.899 | [1.495, 4.940] | 0.00 |
+| *random (control)* | 22.517 | [6.044, 51.249] | 0.00 |
+
+> **A top group — V-JEPA 2, AIMv2, DINOv3 — is internally inseparable, and each
+> member beats VC-1 with an interval excluding zero.** VC-1, the
+> robotics-specific encoder, ranks 14th of 20. It does clearly beat untrained
+> features (−19.9, CI [−47.2, −4.3]); an earlier 15-encoder analysis could not
+> separate the two, and that claim was withdrawn.
+
+The same control run on **CortexBench's own Adroit demonstrations passes** —
+the untrained arm ranks 11/12 and 12/12. The failure is specific to axes built
+by *corrupting a reference condition*, not to nuisance evaluation in general.
+VC-1 nonetheless ranks below a plain ImageNet ViT there too, a third
+independent corroboration.
+
+**The registered E12a prediction is not supported as stated.** push gives mean
+|ρ| = 0.407 against a ≤ 0.4 bound (fails by 0.007, the third time this
+threshold landed inside its own margin); pickplace gives 0.048 and holds. The
+split between them is *not* statistically real — the paired task difference
+spans zero on seven of eight axes. The threshold was anchored to a prior effect
+size and never powered against the design, which is disclosed rather than
+explained away.
 ### Latent gap predicts task success, at half the strength it predicts internals
 
 The only result here measured in **task success** rather than action-prediction
@@ -724,7 +762,9 @@ repository does not have.
 | [`docs/novelty-upgrade.md`](docs/novelty-upgrade.md) | The sim-to-real latent-gap measurements, and a confound to settle first |
 | [`docs/paper.md`](docs/paper.md) | Paper plan: candidate claims, required experiments, open decisions |
 | [`docs/a1-results.md`](docs/a1-results.md) | Simulator alignment, falsified by its own primary falsifier |
-| [`docs/e12-results.md`](docs/e12-results.md) | Nine encoders x four nuisance axes; probe accuracy does not predict robustness |
+| [`docs/paper-numbers.md`](docs/paper-numbers.md) | **Canonical numbers.** 22 encoders x 8 axes x 2 tasks, with the retracted claims listed |
+| [`docs/audit.md`](docs/audit.md) | What was re-derived, the ten defects found, and what the audit cannot establish |
+| [`docs/e12-results.md`](docs/e12-results.md) | **Superseded** 9-encoder interim run; kept as the record of how estimates moved with scale |
 | [`docs/r2-results.md`](docs/r2-results.md) | Latent gap vs task success — the one behavioural measurement |
 | [`docs/e11-results.md`](docs/e11-results.md) | Nine frozen encoders; why in-distribution quality does not predict viewpoint robustness |
 | [`docs/e2-results.md`](docs/e2-results.md) | The distribution-shift ladder in one space; session drift; the sim ruler withdrawn |

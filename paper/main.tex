@@ -463,6 +463,42 @@ one extra arm and one division); the corrected ranking; the CortexBench
 scoping; the recommendation --- run the control whenever the axes are
 corruptions.}
 
+% =========================================================================
+\section*{Tooling disclosure}
+\TODO{Adapt to the venue's wording, but keep the SCOPE exact. Accurate
+statement: an AI coding assistant (Claude) was used to write and revise
+analysis, plotting and verification SOFTWARE in this repository, and to run
+experiments. It did not write the manuscript text, and it did not select the
+research question, the hypotheses or the claims. All prose is the author's.
+
+Two things worth adding because they are true and unusual: the same tooling
+produced the verification harness that re-derives every reported number
+(scripts/verify\_paper\_numbers.py, 128 checks, run in CI), and the errors it
+introduced during analysis --- an evaluation leak, a level-parity confound, an
+unimplemented control and a mis-scoped fallback --- were each caught by the
+registered invalidation conditions and are recorded in docs/ledger.md rather
+than removed. VENUE POLICIES, checked 2026-08-30 -- do not assume the
+writing/code distinction gets you an exemption:
+
+  TMLR (first choice): "LLMs may be used as general-purpose assistive tools.
+  Whichever tools are used, authors are fully responsible for content on which
+  they are listed as (co-)authors." NO disclosure is mandated and no
+  writing-versus-code distinction is drawn. Disclose anyway -- it costs a
+  paragraph and pre-empts the question.
+
+  ICLR 2026 (strictest): ANY use of an LLM must be disclosed, in the paper AND
+  the submission form, and the policy explicitly names "generating experiment
+  code, and analyzing results" as covered. Extensive undisclosed use is a DESK
+  REJECT. The writing/code distinction does NOT exempt this work here.
+
+  NeurIPS 2026: policy varies by track; the general guidance is to disclose in
+  the acknowledgements. The Position track requires substantially human-written
+  text with AI limited to copy-editing.
+
+  Every policy makes the AUTHOR responsible for LLM output, and none permits an
+  LLM as an author. Re-check the venue page at submission -- these changed
+  twice in the last year.}
+
 \bibliographystyle{plainnat}
 \bibliography{references}
 

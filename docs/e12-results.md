@@ -1,5 +1,24 @@
 # E12 — probe accuracy does not tell you which encoder survives a nuisance
 
+> **SUPERSEDED — this document records the 9-encoder interim run.**
+>
+> Its headline verdict, *E12a mean |rho| = 0.317, HOLDS*, does **not** survive
+> the full experiment. At 22 encoders across 8 axes and 2 tasks the answer is
+> push **0.407 (FAILS)** and pickplace **0.048 (HOLDS)**, and the split between
+> them is not statistically real. The clutter control here reads *random 3rd of
+> 9*; at final scale it is 10/22 and 10/20. Several other figures below moved
+> or were withdrawn.
+>
+> **Do not cite anything in this file.** The canonical record is
+> [`paper-numbers.md`](paper-numbers.md); the verification is
+> [`audit.md`](audit.md); the withdrawn claims are listed in
+> `paper-numbers.md` section 7.
+>
+> Kept unedited, rather than deleted, because the interim numbers are the
+> evidence for how much estimates moved with scale -- which is itself a result.
+
+
+
 Pre-registered in [`prereg-e12.md`](prereg-e12.md), committed before collection
 began. Nine frozen encoders crossed with three nuisance axes, plus viewpoint
 from [E11](e11-results.md) as a fourth measured in parallel.
