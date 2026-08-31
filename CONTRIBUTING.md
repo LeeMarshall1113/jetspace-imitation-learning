@@ -93,20 +93,33 @@ DOCKER_UID=1000 DOCKER_GID=1000 docker compose -f docker/compose.yaml \
   --profile wsl2 run --rm -T dev-wsl python -m pytest tests/ -q
 # 7 passed in 0.48s
 
-# If you cannot run Docker either, these need nothing but a Python install:
+# If you cannot run Docker either, these need only Python and numpy:
 python -m compileall -q scripts/ src/    # everything still parses
 python scripts/<your_script>.py          # a bad invocation should fail cleanly
 
-# And for library code, import it and call it once:
-python -c "from jetspace.data.episode import EpisodeDataset; EpisodeDataset('data/episodes/e12_push__ref')"
+# And if you touched library code, exercise it once. This builds its own
+# episode, so it needs no data:
+python - <<'PY'
+import sys, tempfile; sys.path.insert(0, "src")
+import numpy as np
+from jetspace.data.episode import EpisodeBuffer, EpisodeWriter, EpisodeDataset
+b = EpisodeBuffer()
+b.add(pixels={"front": np.zeros((4, 4, 3), np.uint8)},
+      proprio=np.zeros(12, np.float32), action=np.zeros(6),
+      action_executed=np.ones(6), reward=0.0, success=True)
+d = tempfile.mkdtemp()
+EpisodeWriter(d, task="smoke", fps=25, action_dim=6,
+              cameras=("front",), image_size=4).write(b)
+print(sorted(EpisodeDataset(d)[0]))
+PY
+# ['action', 'action_executed', 'meta', 'pixels_front', 'proprio', 'reward', 'success']
 ```
 
-That last line is the one that matters, and it is not a formality. Two defects
+That last one is the one that matters, and it is not a formality. Two defects
 proposed against this repository were a signature that could not be called the
 way it was meant to be, and a default argument that raised before the function
-body ran. Neither is visible by reading, both are visible on the first call,
-and neither would have been caught by a test suite that does not touch the new
-argument. One line in a REPL finds them.
+body ran. Neither is visible by reading, both surface on the first call, and
+neither would be caught by a test suite that does not touch the new argument.
 
 "I ran the tests, I could not run the encoder because I have no AMD GPU" is a
 complete and welcome answer. "This should work" is not, and will be sent back.
