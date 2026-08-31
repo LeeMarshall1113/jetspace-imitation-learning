@@ -70,6 +70,51 @@ numbers they produced. The reason is in ledger L7: `--pca-dim 128` lived only in
 shell history, a later run omitted it, and two incomparable runs looked
 comparable for a week.
 
+## Run your change before you propose it
+
+**Paste the output.** Not a description of what it should do — the actual
+terminal output, or the test that passed. This applies to a one-line fix as
+much as to a new module.
+
+It is a low bar on purpose. It is below tests, below style, below docs. What it
+catches is the class of error that no amount of reading finds and that one
+execution finds instantly: a signature that cannot be called the way it is
+meant to be, a default argument that raises before the function body runs, a
+key name that does not exist in the file. Reviewing code that has never run
+means the reviewer is the test suite, and that does not scale past one person.
+
+If you cannot run the full pipeline — no GPU, no episode data, no ROCm — say so
+and run what you can:
+
+```bash
+# The suite needs no GPU and no episode data -- it builds synthetic episodes.
+# It does need the container, which is where pytest lives:
+DOCKER_UID=1000 DOCKER_GID=1000 docker compose -f docker/compose.yaml \
+  --profile wsl2 run --rm -T dev-wsl python -m pytest tests/ -q
+# 7 passed in 0.48s
+
+# If you cannot run Docker either, these need nothing but a Python install:
+python -m compileall -q scripts/ src/    # everything still parses
+python scripts/<your_script>.py          # a bad invocation should fail cleanly
+
+# And for library code, import it and call it once:
+python -c "from jetspace.data.episode import EpisodeDataset; EpisodeDataset('data/episodes/e12_push__ref')"
+```
+
+That last line is the one that matters, and it is not a formality. Two defects
+proposed against this repository were a signature that could not be called the
+way it was meant to be, and a default argument that raised before the function
+body ran. Neither is visible by reading, both are visible on the first call,
+and neither would have been caught by a test suite that does not touch the new
+argument. One line in a REPL finds them.
+
+"I ran the tests, I could not run the encoder because I have no AMD GPU" is a
+complete and welcome answer. "This should work" is not, and will be sent back.
+
+If a change is genuinely unrunnable in your environment, open it as an issue
+describing the approach rather than as a patch, and say what you would need to
+test it. That is a useful contribution and it is honest about its own state.
+
 ## Scope
 
 Work that fits: measurement validity, diagnostics, replication, refutation,
