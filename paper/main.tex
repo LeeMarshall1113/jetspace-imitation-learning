@@ -17,22 +17,37 @@
 % Figures: python scripts/make_figures.py --out paper/figures
 %          (regenerate first -- current files predate the 22-encoder run)
 %
-% Swap \documentclass for the venue style when you pick one:
-%   TMLR   https://github.com/JmlrOrg/tmlr-style-file  (\usepackage{tmlr})
-%   CoRL   corl.sty from the CoRL site
-%   NeurIPS \usepackage[preprint]{neurips_2026}
-% Article + geometry below is venue-neutral so this compiles anywhere.
+% VENUE: TMLR.  tmlr.sty, tmlr.bst and fancyhdr.sty are committed next to
+% this file, from github.com/JmlrOrg/tmlr-style-file, so the build needs no
+% download and cannot drift if that repository changes.
+%
+%   \usepackage{tmlr}            SUBMISSION -- author hidden. Use this one.
+%   \usepackage[preprint]{tmlr}  arXiv -- de-anonymised, no TMLR branding.
+%   \usepackage[accepted]{tmlr}  camera-ready -- fill in \month \year \openreview.
+%
+% TMLR REJECTS NON-ANONYMOUS SUBMISSIONS WITHOUT REVIEW. The bare option hides
+% the author block for you. What it cannot hide is prose, so before submitting
+% check that nothing added later names the author, the repository or the
+% institution -- `bash build.sh --check` greps for the obvious cases.
 % =========================================================================
 \documentclass[10pt]{article}
-\usepackage[margin=1in]{geometry}
+\usepackage{tmlr}          % see the option table above; bare = anonymous
+% tmlr.sty already loads natbib, fancyhdr, eso-pic, fontenc[T1] and lmodern,
+% and sets the page geometry itself. Do not add geometry or natbib back here:
+% a second \usepackage{natbib} carrying options raises "Option clash for
+% package natbib" and the build stops.
 \usepackage[utf8]{inputenc}
 \usepackage{booktabs}
 \usepackage{graphicx}
 \usepackage{amsmath,amssymb}
 \usepackage{microtype}
 \usepackage[hidelinks]{hyperref}
-\usepackage[round]{natbib}
 \usepackage{xcolor}
+
+% Camera-ready only; inert until \usepackage[accepted]{tmlr}.
+\def\month{MM}
+\def\year{YYYY}
+\def\openreview{\url{https://openreview.net/forum?id=XXXX}}
 
 % Marks an unwritten decision. Delete the definition before submitting and
 % the build will fail loudly on anything left behind -- which is the point.
@@ -45,7 +60,10 @@
 (a) ``Most Nuisance Axes Cannot Rank Encoders: Validity Controls for Frozen
 Visual Representations in Robot Learning''; (b) ``What Frozen-Encoder
 Robustness Benchmarks Actually Measure''. Pick one, delete the other.}}
-\author{Lee Marshall\\ Independent Researcher\\ \texttt{leemarshall1113@gmail.com}}
+% Hidden automatically under \usepackage{tmlr}; revealed by [preprint] and
+% [accepted]. Written out in full so that those two produce the right block.
+\author{\name Lee Marshall \email leemarshall1113@gmail.com \\
+      \addr Independent Researcher}
 \date{}
 
 \begin{document}
@@ -499,7 +517,7 @@ writing/code distinction gets you an exemption:
   LLM as an author. Re-check the venue page at submission -- these changed
   twice in the last year.}
 
-\bibliographystyle{plainnat}
+\bibliographystyle{tmlr}
 \bibliography{references}
 
 % =========================================================================
