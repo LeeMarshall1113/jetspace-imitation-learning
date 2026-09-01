@@ -1,252 +1,538 @@
-% =====================================================================
-%  Scaffold. Every \TODO is a decision only you can make; the structure,
-%  figures and tables are wired and will refresh from the data.
+% =========================================================================
+% JetSpace paper 1 -- scaffold generated from docs/paper-numbers.md (a61a421).
 %
-%  Build:  cd paper && bash build.sh
-%  Figures: python scripts/make_figures.py --out paper/figures
+% RULES FOR WRITING IN THIS FILE
+%   1. Every number below was copied from docs/paper-numbers.md. If a number
+%      here disagrees with that file, THAT FILE WINS -- fix it here.
+%   2. Six retracted claims (paper-numbers.md S7) must not appear anywhere:
+%      "VC-1 not separable from random", pickplace 0.733/0.536, bare "1/53",
+%      E11 "not separable", the lowres p=0.045 task difference, and
+%      "random ranked 3rd of 9 on probe".
+%   3. Sign convention: rho is between the probe-R^2 ranking and the
+%      relative-degradation ranking, POSITIVE = better probes degrade MORE.
+%   4. \TODO{...} marks prose to write; build.sh counts them and refuses to
+%      call the paper done while any remain.
 %
-%  Swap \documentclass for the venue style when you pick one:
-%    TMLR   https://github.com/JmlrOrg/tmlr-style-file  (\usepackage{tmlr})
-%    CoRL   corl.sty from the CoRL site
-%    NeurIPS \usepackage[preprint]{neurips_2026}
-%  Article + geometry below is venue-neutral so this compiles anywhere.
-% =====================================================================
+% Build:   cd paper && bash build.sh
+% Figures: python scripts/make_figures.py --out paper/figures
+%          (regenerate first -- current files predate the 22-encoder run)
+%
+% VENUE: TMLR.  tmlr.sty, tmlr.bst and fancyhdr.sty are committed next to
+% this file, from github.com/JmlrOrg/tmlr-style-file, so the build needs no
+% download and cannot drift if that repository changes.
+%
+%   \usepackage{tmlr}            SUBMISSION -- author hidden. Use this one.
+%   \usepackage[preprint]{tmlr}  arXiv -- de-anonymised, no TMLR branding.
+%   \usepackage[accepted]{tmlr}  camera-ready -- fill in \month \year \openreview.
+%
+% TMLR REJECTS NON-ANONYMOUS SUBMISSIONS WITHOUT REVIEW. The bare option hides
+% the author block for you. What it cannot hide is prose, so before submitting
+% check that nothing added later names the author, the repository or the
+% institution -- `bash build.sh --check` greps for the obvious cases.
+% =========================================================================
 \documentclass[10pt]{article}
-\usepackage[margin=1in]{geometry}
+\usepackage{tmlr}          % see the option table above; bare = anonymous
+% tmlr.sty already loads natbib, fancyhdr, eso-pic, fontenc[T1] and lmodern,
+% and sets the page geometry itself. Do not add geometry or natbib back here:
+% a second \usepackage{natbib} carrying options raises "Option clash for
+% package natbib" and the build stops.
 \usepackage[utf8]{inputenc}
 \usepackage{booktabs}
 \usepackage{graphicx}
 \usepackage{amsmath,amssymb}
 \usepackage{microtype}
 \usepackage[hidelinks]{hyperref}
-\usepackage[numbers,sort&compress]{natbib}
 \usepackage{xcolor}
+
+% Camera-ready only; inert until \usepackage[accepted]{tmlr}.
+\def\month{MM}
+\def\year{YYYY}
+\def\openreview{\url{https://openreview.net/forum?id=XXXX}}
 
 % Marks an unwritten decision. Delete the definition before submitting and
 % the build will fail loudly on anything left behind -- which is the point.
 \newcommand{\TODO}[1]{\textcolor{red}{\textbf{[TODO: #1]}}}
+% Semantic macros so a late rename is one edit, not fifty.
+\newcommand{\reldeg}{relative degradation}
+\newcommand{\rrho}{\rho}
 
-\title{\TODO{title. State the finding, not the topic. Something in the shape of
-``Probe accuracy does not predict which frozen encoder survives a nuisance''}}
-
-\author{Lee Marshall\\ Independent Researcher\\ \texttt{\TODO{email}}}
+\title{\TODO{Title. Name the finding, not the topic. Two candidate shapes:
+(a) ``Most Nuisance Axes Cannot Rank Encoders: Validity Controls for Frozen
+Visual Representations in Robot Learning''; (b) ``What Frozen-Encoder
+Robustness Benchmarks Actually Measure''. Pick one, delete the other.}}
+% Hidden automatically under \usepackage{tmlr}; revealed by [preprint] and
+% [accepted]. Written out in full so that those two produce the right block.
+\author{\name Lee Marshall \email leemarshall1113@gmail.com \\
+      \addr Independent Researcher}
 \date{}
 
 \begin{document}
 \maketitle
 
-% ---------------------------------------------------------------------
+% =========================================================================
 \begin{abstract}
-\TODO{Write this LAST. Four sentences, in this order:
-(1) the practice --- frozen encoders are selected by linear probes and
-distribution shift is evaluated by latent distance;
-(2) neither has been validated against behaviour;
-(3) what you measured --- 15 encoders, 8 nuisance axes, 2 tasks;
-(4) the number --- probe accuracy is uncorrelated with robustness,
-mean $|\rho| = 0.32$, and the best-probing encoder ranks first on two axes and
-near-last on two others.
-Resist adding a fifth sentence.}
+\TODO{Write LAST. Five sentences, in this order, numbers already final:
+(1)~Frozen visual encoders for robot manipulation are selected by linear-probe
+accuracy and evaluated for robustness by held-out error under nuisance shift;
+neither practice has been validated against a control. (2)~Across 22 frozen
+encoders, 8 nuisance axes and 2 simulated manipulation tasks (1{,}452
+encoder--condition arms), five of eight axes fail a discriminability control
+--- an untrained CNN is not in the worst third, identically on both tasks ---
+and absolute held-out error is an exact monotone transform of probe accuracy
+($\rrho = -1.000$ on all 16 cells), so the standard metric partly re-measures
+the probe it is meant to validate. (3)~On the axes that survive, a top group
+(V-JEPA~2, AIMv2, DINOv3) significantly outperforms VC-1, the purpose-built
+robotics encoder (paired bootstrap, all CIs excluding zero), and VC-1 also
+ranks below a plain ImageNet ViT under the same protocol on CortexBench's own
+demonstrations. (4)~The same control run on CortexBench \emph{passes},
+locating the failure specifically in axes built by corrupting a reference
+condition. (5)~Experiments were pre-registered; all deviations, failed
+predictions and retracted interim findings are reported.}
 \end{abstract}
 
-% ---------------------------------------------------------------------
+% =========================================================================
 \section{Introduction}
 \label{sec:intro}
 
-\TODO{Four paragraphs, roughly one page.}
+\TODO{Four paragraphs, one page total. Numbers below are final; write prose
+around them.}
 
-\TODO{P1 --- the practice. Frozen visual encoders are standard in robot
-imitation learning, and two conventions have hardened around them: encoders are
-compared by how well a linear or ridge probe recovers actions or state from
-their features, and distribution shift is quantified by a distance between
-latent sets. Cite \citep{nair2022r3m,radosavovic2023mvp,majumdar2023cortexbench}.}
+\TODO{P1 --- the practice. Frozen encoders are standard for manipulation
+\citep{nair2022r3m,radosavovic2022mvp,majumdar2023cortexbench}. Two
+conventions: select by probe accuracy, evaluate robustness as held-out error
+under nuisance shift. Both are measurements about measurements, and neither is
+routinely checked against a control.}
 
-\TODO{P2 --- the gap. Both conventions are proxies for a question about
-behaviour, and neither has been checked against behaviour. Say plainly that
-this paper checks them.}
+\TODO{P2 --- the two defects, stated as this paper's method contribution.
+(i)~Discriminability: an axis on which an untrained CNN is competitive cannot
+rank encoders; five of our eight axes fail this, identically on two tasks
+(Table~\ref{tab:e12d}). (ii)~Entanglement: with a shared held-out set,
+probe $R^2 = 1 - \mathrm{ss}_{\mathrm{res}}/\mathrm{ss}_{\mathrm{tot}}$ and
+reference MSE $= \mathrm{ss}_{\mathrm{res}}/N$ are monotone transforms
+(Section~\ref{sec:identity}), so ranking robustness by absolute error partly
+re-ranks by probe accuracy. Fixing the metric flips the sign of the
+probe--robustness relationship on every valid push axis
+(Table~\ref{tab:signflip}).}
 
-\TODO{P3 --- what makes the check possible. Matched arms: identical episodes,
-timesteps, pooling and head across every encoder, with only the frozen
-backbone differing, and nuisances applied to shared trajectories so only the
-rendering changes.}
+\TODO{P3 --- the result the surviving instrument produces
+(Table~\ref{tab:ranking}): a top group --- V-JEPA~2, AIMv2, DINOv3,
+internally inseparable --- each significantly ahead of VC-1 (14/20).
+Corroborated on CortexBench's own Adroit demonstrations, where VC-1 sits
+below vit-in1k (Table~\ref{tab:cortexbench}). Do NOT overclaim: VC-1 does
+beat random features ($-19.9$, CI $[-47.2, -4.3]$).}
 
-\paragraph{Contributions.}
-\begin{enumerate}
-  \item \TODO{Probe accuracy does not predict robustness. Across 15 encoders
-        and 8 nuisance axes, Spearman between the two rankings runs from
-        $-0.32$ to $+0.47$ with no consistent sign.}
-  \item \TODO{Latent distance predicts behaviour at roughly half the strength
-        with which it predicts world-model internals ($\rho = -0.52$ against
-        task success, $-0.85$ to $-0.92$ against world-model degradation).}
-  \item \TODO{Session drift --- one laboratory, one camera, different days ---
-        is $4.5\times$ its own noise floor, and is the unmeasured reference
-        against which every cross-domain number is implicitly read.}
-\end{enumerate}
+\TODO{P4 --- the scoping twist that makes this constructive rather than
+purely negative: CortexBench passes the control our axes fail. The failure
+mode is specific to nuisance-corruption axes. Contribution list:
+(1)~two validity controls, cheap and portable; (2)~the identity and the
+deconfounded metric; (3)~a controlled 22-encoder ranking with uncertainty;
+(4)~pre-registered, all deviations disclosed.}
 
-% ---------------------------------------------------------------------
+% =========================================================================
 \section{Related work}
 \label{sec:related}
 
-\TODO{1.5 pages, four paragraphs. Do NOT recite; each paragraph should end by
-saying what remains open.}
+\TODO{1.5 pages. Each paragraph must end with what THIS paper adds to that
+line, not a recitation.}
 
-\paragraph{Frozen visual representations for control.}
-\TODO{\citep{shah2021rrl,parisi2022unsurprising,nair2022r3m,radosavovic2023mvp,
-majumdar2023cortexbench}. All report probe-style or downstream-success numbers.
-None separates in-distribution feature quality from robustness.}
+\TODO{P1 --- frozen encoders for control:
+\citep{shah2021rrl,parisi2022unsurprising,nair2022r3m,radosavovic2022mvp,
+majumdar2023cortexbench}. These rank encoders; none carries an
+untrained-features control per axis.}
 
-\paragraph{Does pretraining help?}
-\TODO{This is contested and you are adjudicating part of it.
-\citet{hansen2023pretraining} find learning-from-scratch competitive;
-\citet{dasari2023unbiased} find pretraining data matters less than assumed;
-\citet{zhang2024ineffectiveness} find no benefit in model-based RL and
-\citet{cambridge2025generalize} rebut on the robustness axis specifically.
-Say which side your data lands on and why it is not a tiebreak but a
-reframing.}
+\TODO{P2 --- the contested evaluation literature:
+\citep{dasari2023unbiased,schneider2024ineffectiveness,hansen2023pretraining,
+burns2024what}. You are adjudicating part of this dispute with a control
+rather than another ranking.}
 
-\paragraph{Benchmarks for generalisation.}
-\TODO{\citet{xie2024factorworld} ranks nuisance factors by success drop and
-finds camera position hardest; \citet{pumacay2024colosseum} builds 14 axes;
-\citet{liu2023libero} separates transfer types. Credit Factor World explicitly
-for the ``viewpoint dominates'' finding --- it is theirs, in different units.}
+\TODO{P3 --- nuisance/robustness benchmarks:
+\citep{xie2024factorworld,pumacay2024colosseum,liu2023libero}. FactorWorld
+ranks factors by success drop; none asks whether a factor can rank
+\emph{encoders} at all. That check is this paper's discriminability control.}
 
-\paragraph{What predicts robustness.}
-\TODO{\citet{burns2024what} is the closest work: it asks what makes a
-representation robust and finds emergent segmentation predicts it better than
-robot-domain pretraining. Your contribution is the negative counterpart --- what
-does \emph{not} predict it, and that the field's default selection criterion is
-among those things.}
+\TODO{P4 --- reality-check genre and untrained features:
+\citep{musgrave2020realitycheck} (same genre: fair-evaluation collapse of a
+decade of claimed gains), \citep{ulyanov2018dip,rahimi2007random} (untrained
+and random features are serious baselines, which is exactly why they work as
+a control).}
 
-% ---------------------------------------------------------------------
+% =========================================================================
 \section{Setup}
 \label{sec:setup}
 
-\subsection{Encoders}
-\TODO{Table of 15: name, year, objective, parameters. Note that capacity
-variants are included to test whether findings survive scaling.}
+\subsection{Tasks, data, encoders}
+\TODO{Two scripted manipulation tasks (push, pick-and-place), MuJoCo
+\citep{todorov2012mujoco}, 10 episodes per condition, episode seeds shared
+across conditions so only rendering differs. One paragraph; details in
+Appendix~\ref{app:tasks}.}
+
+\begin{table}[t]
+\centering\small
+\caption{\TODO{Caption: one sentence noting capacity variants and the
+untrained control are deliberate arms, not baselines of convenience.} The 22
+frozen encoders.}
+\label{tab:encoders}
+\begin{tabular}{llll}
+\toprule
+Encoder & Objective family & Variant & Params \\
+\midrule
+V-JEPA 2 \citep{vjepa2_2025} & video JEPA & ViT-L & 326M \\
+I-JEPA \citep{assran2023ijepa} & image JEPA & ViT-H & \TODO{n} \\
+DINOv2 / -large \citep{oquab2023dinov2} & self-distillation & ViT-B/L & \TODO{n} \\
+DINOv3 / -large \citep{dinov3_2025} & self-distillation & ViT-B/L & \TODO{n} \\
+CLIP / -large \citep{radford2021clip} & contrastive & ViT-B/L & \TODO{n} \\
+SigLIP / SigLIP2 \citep{zhai2023siglip,tschannen2025siglip2} & contrastive & ViT-B & \TODO{n} \\
+AIMv2 \citep{fini2024aimv2} & autoregressive & ViT-L & \TODO{n} \\
+ViT-IN1k / -large \citep{dosovitskiy2021vit} & supervised & ViT-B/L & \TODO{n} \\
+MAE \citep{he2022mae} & masked image & ViT-B & \TODO{n} \\
+BEiT \citep{bao2022beit} & masked image & ViT-B & \TODO{n} \\
+VC-1 / -large \citep{majumdar2023cortexbench} & MAE on Ego4D+ & ViT-B/L & 86M/303M \\
+ConvNeXt / -large \citep{liu2022convnext} & supervised & CNN & \TODO{n} \\
+ResNet-50 \citep{he2016resnet} & supervised & CNN & 24M \\
+Swin \citep{liu2021swin} & supervised & hierarchical ViT & \TODO{n} \\
+random & untrained control & CNN & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \subsection{Nuisance axes}
-\TODO{Eight axes in two families. Rendered: viewpoint, lighting, texture.
-Image-space: sensor noise, defocus, compression, exposure, resolution.
-State plainly that image-space axes are the same \emph{kind} of perturbation a
-deployed policy meets, not physical simulations of one --- a box blur is not a
-defocus.}
+\TODO{Eight axes, four levels each. Rendered in simulation: lighting,
+texture, clutter. Applied in image space at encode time: noise, defocus,
+compression, exposure, low-resolution --- identical corrupted pixels for
+every encoder (seeded per frame). One paragraph; levels in
+Appendix~\ref{app:tasks}.}
 
-\subsection{Two measurements}
-For each (encoder, axis) pair we measure a \emph{probe} and a
-\emph{robustness}. The probe is a ridge map $W$ from frozen features
-$z \in \mathbb{R}^{d}$ to actions $a \in \mathbb{R}^{6}$, fitted at a reference
-condition and scored on held-out episodes:
-\begin{equation}
-  W = \arg\min_{W} \; \lVert Z_{\mathrm{tr}} W - A_{\mathrm{tr}} \rVert_F^2
-      + \lambda \lVert W \rVert_F^2 ,
-  \qquad
-  R^2 = 1 - \frac{\lVert A_{\mathrm{te}} - Z_{\mathrm{te}} W \rVert^2}
-                 {\lVert A_{\mathrm{te}} - \bar{A}_{\mathrm{te}} \rVert^2} .
-\end{equation}
-Robustness applies the same $W$ at displaced levels of one axis and reports
-normalised mean squared error, where $1.0$ is the error of predicting the mean
-action. \TODO{One sentence on why the same $W$: robustness is a property of the
-features under shift, not of a head retrained to compensate.}
+\subsection{Probe and robustness protocol}
+\label{sec:protocol}
+\TODO{The paragraph reviewers will inspect. Ridge from frozen features
+($4{\times}4$ pooled) to demonstrated actions, split BY EPISODE, 8 train /
+2 held-out. The same fitted map is evaluated at displaced conditions, on the
+SAME held-out episodes --- episode seeds are shared across conditions, so
+evaluating on all ten would score 80\% of the displaced set on fitted
+trajectories. Disclose that this leak was caught when clutter appeared to
+make the task \emph{easier} by $-69.6\%$. Robustness $=$ \reldeg{} $=$
+held-out MSE at displacement $\div$ the same encoder's reference MSE.}
 
-\subsection{Matched arms}
-\TODO{The protocol paragraph, and the one reviewers will look for. Identical
-episodes, timesteps, $4{\times}4$ pooling and head; episode seeds shared across
-conditions so only rendering differs; image-space corruption seeded per frame so
-every encoder sees identical pixels. Every claim depends on this and it is
-asserted in code, not assumed.}
+\subsection{The identity, and the primary metric}
+\label{sec:identity}
+With every encoder scored against the same held-out actions,
+$\mathrm{probe}\ R^2 = 1 - \mathrm{ss}_{\mathrm{res}}/\mathrm{ss}_{\mathrm{tot}}$
+and $\mathrm{ref\ MSE} = \mathrm{ss}_{\mathrm{res}}/N$ share
+$\mathrm{ss}_{\mathrm{tot}}$ and $N$ across encoders, so one is an exact
+decreasing function of the other: measured $\rrho = -1.000$ on all 16
+axis--task cells. \TODO{Two more sentences: absolute held-out error therefore
+partly re-measures baseline fit; \reldeg{} removes the shared factor.
+Table~\ref{tab:signflip} shows the consequence.}
 
-% ---------------------------------------------------------------------
+\begin{table}[t]
+\centering\small
+\caption{\TODO{Caption: the metric choice reverses the conclusion. Positive
+$\rrho$: better probes degrade more.} Push, $n{=}22$.}
+\label{tab:signflip}
+\begin{tabular}{lrr}
+\toprule
+Axis & $\rrho$ (\reldeg{}, primary) & $\rrho$ (absolute, secondary) \\
+\midrule
+lighting & $+0.442$ & $-0.485$ \\
+texture  & $+0.458$ & $-0.040$ \\
+exposure & $+0.322$ & $-0.746$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Invalidation conditions}
+\label{sec:controls}
+\TODO{The method contribution; give it space. I1 reference floor (ref MSE
+$\ge 0.9$ cannot be compared); I2 axis strength (mean degradation $<10\%$
+ranks nothing); I3 discriminability (untrained CNN not in the worst third
+$\Rightarrow$ the axis is excluded); I4 level parity (every encoder at all
+four levels or excluded from that axis). Exclusions are reported with
+reasons, never silently dropped. Note that I1 fires in the final data: MAE
+(ref 0.978) and ResNet-50 (1.654) cannot fit pickplace's reference condition,
+so pickplace comparisons run over 20 encoders.}
+
+% =========================================================================
 \section{Results}
 \label{sec:results}
 
-\subsection{Probe accuracy does not predict robustness}
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=\linewidth]{figures/fig1_probe_vs_robustness_push.pdf}
-  \caption{\TODO{Caption should state the finding, not describe the axes.
-  ``Probe accuracy at a shared reference condition (x) against held-out
-  robustness (y). The relationship is absent and its sign varies by axis.''
-  Note the red line at $1.0$ = no better than predicting the mean action.}}
-  \label{fig:probe_vs_robustness}
-\end{figure}
+\subsection{Five of eight axes cannot rank encoders}
+\label{sec:discriminability}
 
-\input{figures/table_e12_push.tex}
+\begin{table}[t]
+\centering\small
+\caption{\TODO{Caption states the finding: the same five axes fail on both
+tasks; a count, not a correlation.} Rank of the untrained control by absolute
+held-out error (as registered); every verdict is identical under \reldeg{}.}
+\label{tab:e12d}
+\begin{tabular}{lccl}
+\toprule
+Axis & push ($n{=}22$) & pickplace ($n{=}20$) & Status \\
+\midrule
+lighting & 22/22 & 20/20 & discriminates \\
+texture  & 21/22 & 20/20 & discriminates \\
+exposure & 22/22 & 20/20 & discriminates \\
+clutter  & 10/22 & 10/20 & excluded \\
+noise    & 13/22 & 13/20 & excluded \\
+defocus  &  1/22 &  8/20 & excluded \\
+compress &  1/22 &  4/20 & excluded \\
+lowres   &  1/22 &  4/20 & excluded \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-\TODO{Lead with the CLIP row --- best probe of all 15, first on lighting and
-clutter, near-last on texture and viewpoint. That single row is the argument.}
+\TODO{Two paragraphs. (1) The count and its cross-task agreement; on three
+push axes the untrained control ranks FIRST of 22 by absolute error (5th,
+1st, 2nd under \reldeg{} --- name the metric whenever quoting a rank).
+(2) Internal consistency: among excluded axes, push/clutter ($\rrho = +0.522$,
+CI $[+0.118, +0.804]$) and push/compress ($+0.448$, $[+0.013, +0.775]$) have
+CIs excluding zero --- the apparent probe--robustness relationship is
+strongest precisely where the axis is degenerate, which is what the control
+exists to catch.}
 
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=0.8\linewidth]{figures/fig2_rank_heatmap_push.pdf}
-  \caption{\TODO{Rank per axis, rows ordered by probe accuracy. A flat row
-  would mean probe accuracy transfers; none is flat.}}
-  \label{fig:rank_heatmap}
-\end{figure}
+\subsection{It is untrained-ness, not convolution}
+\label{sec:mechanism}
+\TODO{The confound and its closure. At 15 encoders, 14 were ViTs and the only
+non-ViT was the control, so ``random features survive blur'' and
+``convolutions survive blur'' made identical predictions. Adding ConvNeXt,
+ConvNeXt-L, ResNet-50 and Swin: on push/lowres the untrained CNN ranks 2nd
+(\reldeg{} 2.33) while trained CNNs rank 10th (6.06), 18th (17.69) and 22nd
+(ResNet-50, 579.9). Mechanism paragraph: ResNet-50's feature std collapses
+$0.210 \to 0.121$ ($-42\%$) from reference to the strongest downsampling
+while the untrained CNN's moves $0.265 \to 0.260$ ($-2\%$); a linear head
+fitted at reference scale then extrapolates catastrophically, at an
+unremarkable reference MSE of 0.407 --- not a denominator artifact.}
 
-\subsection{An axis that ranks nothing}
-\TODO{Clutter. Frozen random features rank 3rd of 9, so the axis does not
-discriminate and is excluded by a control registered in advance. Report it ---
-a benchmark reporting distractor robustness on a task this insensitive reports
-noise.}
+\subsection{Encoder ranking on the valid cells}
+\label{sec:ranking}
 
-\subsection{Latent distance against behaviour}
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=0.55\linewidth]{figures/fig3_gap_vs_success.pdf}
-  \caption{\TODO{$\rho = -0.52$ against task success, against $-0.85$ to
-  $-0.92$ for world-model degradation on the same poses. The registered
-  threshold was $-0.6$ and was missed; the interval excludes zero, so the
-  relationship is real and weaker than assumed.}}
-  \label{fig:gap_vs_success}
-\end{figure}
+\begin{table}[t]
+\centering\small
+\caption{\TODO{Caption: mean \reldeg{} over the six valid axis--task cells
+(three per task); paired bootstrap over cells, 20{,}000 resamples. A CI on a
+mean is not a CI on a rank; ranking claims use P(top~3).} $1.00 =$ no loss
+under shift.}
+\label{tab:ranking}
+\begin{tabular}{rlrrr}
+\toprule
+\# & Encoder & Mean & 95\% CI & P(top 3) \\
+\midrule
+1 & V-JEPA 2 & 1.069 & [0.978, 1.186] & 0.84 \\
+2 & AIMv2 & 1.093 & [0.962, 1.248] & 0.79 \\
+3 & DINOv3 & 1.120 & [1.015, 1.227] & 0.70 \\
+4 & ConvNeXt-L & 1.239 & [1.102, 1.400] & 0.08 \\
+5 & CLIP-L & 1.311 & [0.856, 1.865] & 0.19 \\
+6 & SigLIP2 & 1.323 & [0.954, 1.922] & 0.23 \\
+7 & DINOv3-L & 1.503 & [0.988, 2.378] & 0.11 \\
+8 & ConvNeXt & 1.601 & [1.192, 2.119] & 0.00 \\
+9 & Swin & 1.744 & [0.971, 2.548] & 0.04 \\
+10 & DINOv2-L & 1.767 & [1.164, 2.576] & 0.00 \\
+11 & ViT-IN1k & 1.852 & [1.120, 2.743] & 0.02 \\
+12 & SigLIP & 1.978 & [1.272, 2.708] & 0.00 \\
+13 & CLIP & 2.252 & [1.406, 3.649] & 0.00 \\
+14 & VC-1 & 2.564 & [1.343, 4.019] & 0.00 \\
+15 & DINOv2 & 2.647 & [1.184, 4.633] & 0.00 \\
+16 & I-JEPA & 2.662 & [1.734, 3.726] & 0.00 \\
+17 & ViT-L & 2.841 & [1.242, 4.523] & 0.00 \\
+18 & VC-1-L & 2.899 & [1.495, 4.940] & 0.00 \\
+19 & BEiT & 3.391 & [1.118, 6.838] & 0.00 \\
+20 & random & 22.517 & [6.044, 51.249] & 0.00 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-\subsection{The floor nobody measures}
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=0.8\linewidth]{figures/fig4_shift_ladder.pdf}
-  \caption{\TODO{Session drift at $4.5\times$ the estimator's own noise floor,
-  and a domain-randomised simulator sitting closer to a real laboratory than
-  two real laboratories sit to each other.}}
-  \label{fig:ladder}
-\end{figure}
+\begin{table}[t]
+\centering\small
+\caption{\TODO{Caption: head-to-head differences, paired over the shared
+cells. State plainly which claims the data refuses.}}
+\label{tab:headtohead}
+\begin{tabular}{lrrl}
+\toprule
+Comparison & Diff & 95\% CI & Verdict \\
+\midrule
+V-JEPA 2 $<$ VC-1 & $-1.496$ & $[-2.916, -0.323]$ & distinguishable \\
+AIMv2 $<$ VC-1 & $-1.471$ & $[-2.779, -0.346]$ & distinguishable \\
+AIMv2 $<$ VC-1-L & $-1.810$ & $[-3.811, -0.518]$ & distinguishable \\
+VC-1 $<$ random & $-19.914$ & $[-47.206, -4.348]$ & distinguishable \\
+V-JEPA 2 vs AIMv2 & $+0.025$ & $[-0.119, +0.219]$ & not distinguishable \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-% ---------------------------------------------------------------------
+\TODO{Two paragraphs. (1) The claim shape: a top GROUP, internally
+inseparable, each member significantly ahead of VC-1. (2) Scale honesty: at
+15 encoders the VC-1-vs-random interval spanned zero; at 22 it does not ---
+interim findings moved with scale, which is the argument for reporting
+intervals, and the 9-/15-encoder snapshot JSONs are committed alongside the
+final ones.}
+
+\subsection{The field's benchmark passes the control}
+\label{sec:cortexbench}
+
+\begin{table}[t]
+\centering\small
+\caption{\TODO{Caption: probe $R^2$ on CortexBench Adroit demonstrations
+\citep{majumdar2023cortexbench}, 25 episodes, frozen features, same protocol.
+The control passes on both tasks.}}
+\label{tab:cortexbench}
+\begin{tabular}{lrr}
+\toprule
+Encoder & pen-v0 & relocate-v0 \\
+\midrule
+SigLIP2 & $+0.730$ & $+0.619$ \\
+CLIP-L & $+0.714$ & $+0.720$ \\
+AIMv2 & $+0.703$ & $+0.696$ \\
+DINOv2-L & $+0.687$ & $+0.700$ \\
+DINOv2 & $+0.674$ & $+0.697$ \\
+ViT-IN1k & $+0.623$ & $+0.632$ \\
+CLIP & $+0.612$ & $+0.601$ \\
+VC-1-L & $+0.599$ & $+0.521$ \\
+VC-1 & $+0.491$ & $+0.325$ \\
+ConvNeXt & $+0.448$ & $+0.670$ \\
+random & $+0.436$ & $-1.028$ \\
+ResNet-50 & $-2.004$ & $-0.018$ \\
+\midrule
+random rank & 11/12 & 12/12 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\TODO{Three paragraphs. (1) The scoping result: CortexBench discriminates
+(pen marginally --- random $+0.436$ vs ConvNeXt $+0.448$; say so),
+our corruption axes frequently do not; the failure is specific to corrupting
+a reference condition. (2) VC-1 below ViT-IN1k on its own benchmark's data
+--- the third independent corroboration (our axes, E11 viewpoints,
+CortexBench). (3) SCOPE, near-verbatim from paper-numbers.md S5:
+CortexBench's headline metric is BC rollout success; this is the frozen-probe
+analogue on its demonstrations and does not contradict published rollout
+numbers.}
+
+\subsection{Does probe accuracy predict robustness?}
+\label{sec:e12a}
+\TODO{The original hypothesis, honestly bounded. push: better probes degrade
+MORE on lighting ($+0.442$, $[+0.064, +0.692]$) and texture ($+0.458$,
+$[+0.074, +0.722]$); exposure does not exclude zero. pickplace shows nothing
+(mean $|\rrho| = 0.048$, no CI excluding zero, $n{=}20$). The registered
+verdict split (push FAILS at 0.407 against the 0.4 bound; pickplace HOLDS) is
+not statistically real: the paired task difference spans zero on 7 of 8 axes
+and the eighth is 1-of-8 multiplicity, pre-registered as exploratory. push
+has missed the bound by ${\approx}0.007$ at three scales;
+Section~\ref{sec:prereg} explains why that threshold could never be earned
+and why the intervals are what this paper reports.}
+
+% =========================================================================
+\section{Corroborating experiments}
+\label{sec:corroboration}
+\TODO{One page, three short subsections, each an experiment sharing no
+machinery with the main sweep. (a) Viewpoints (E11): V-JEPA 0.251 vs DINOv2
+0.284 with disjoint seed ranges (9/9 pairings) --- and VC-1 at 2.024 vs
+random features at 0.906. (b) Cross-task transfer (E9), with its documented
+learnable-fold filter (both scratch arms $<1.0$; 53/72 qualify): transfer
+beats scratch on 1/53 ($p{=}1.2{\times}10^{-14}$); V-JEPA scratch beats a
+random CNN on 39/53 ($p{=}8.0{\times}10^{-4}$). Unrestricted: 3/72
+($p{=}2.6{\times}10^{-17}$) and 55/72 ($p{=}8.1{\times}10^{-6}$) --- stronger;
+quote the filter in the same breath or use the 72-fold numbers. (c) Latent
+gap vs task success (R2): $\rrho = -0.516$, CI $[-0.737, -0.133]$, reference
+success 46.7\%.}
+
+% =========================================================================
+\section{Pre-registration and deviations}
+\label{sec:prereg}
+\TODO{Short and factual; this section is cheap credibility. Registered before
+the runs (docs/prereg-e12.md at commit 9ed0225; stage 3 in
+docs/prereg-e12-stage3.md before its data was analysed). Disclose:
+(1) the axis set changed --- viewpoint dropped, five image axes added, so the
+registered ``three of four axes'' clause was applied to a different set. Say
+plainly that viewpoint is the factor \citet{xie2024factorworld} finds HARDEST
+to generalise over (``New camera positions are the hardest to generalize to''),
+so the axis we dropped is the field-standard worst case. Give the reason it
+was dropped and note that E11 measures viewpoint separately (Section~\ref{sec:corroboration}), which is the partial mitigation;
+(2) the 0.4 threshold was anchored to a prior effect size ($|\rrho|=0.317$
+plus slack) and never powered --- at the registered nine encoders a Spearman
+CI is ${\approx}\pm0.6$, hence three knife-edge verdicts; (3) one criterion
+was briefly softened after being seen to fail and was reverted; (4) the
+registered CV-precision prediction partially failed (interval width
+$1.10 \to 0.87$, still spanning zero). Interim findings that did not survive
+the final scale are listed and retracted (paper-numbers.md S7) rather than
+deleted.}
+
+% =========================================================================
 \section{Limitations}
 \label{sec:limitations}
-
-\TODO{Write this section EARLY and honestly; it is the cheapest credibility in
-the paper and reviewers punish omission far harder than admission.}
-
 \begin{itemize}
-  \item \TODO{Action MSE is not task success. \citet{criticalmse2026} argues it
-        is a weak proxy. One leg is measured behaviourally ($\rho = -0.52$) and
-        that is the stated size of the slack.}
-  \item \TODO{No real robot. Every comparable claim in this literature was
-        validated on hardware \citep{radosavovic2023mvp,burns2024what}.}
-  \item \TODO{Two tasks; simulated nuisances; three seeds.}
-  \item \TODO{Image-space axes are not physical simulations of their named
-        phenomena.}
-  \item \TODO{V-JEPA 2 sees two frames jointly; image encoders are averaged
-        over pairs. Part of any video-encoder advantage is video-over-image.}
+  \item \TODO{Action MSE is not task success; no rollout-level validation
+  \citep{criticalmse2026}. ``Prefer V-JEPA 2/AIMv2 over VC-1'' from a frozen
+  probe in simulation is exactly the claim that needs a rollout, then a
+  robot.}
+  \item \TODO{Sim-only, two tasks, one embodiment; 10 episodes per condition,
+  so each cell rests on two held-out episodes.}
+  \item \TODO{MAE and ResNet-50 fail pickplace's reference floor, so the two
+  tasks compare slightly different encoder sets (22 vs 20).}
+  \item \TODO{Image-space axes are corruptions, not physical simulations of
+  their named phenomena.}
+  \item \TODO{V-JEPA 2 sees two frames per latent; image encoders are
+  frame-averaged --- a temporal-rate confound affecting one arm.}
 \end{itemize}
 
-% ---------------------------------------------------------------------
+% =========================================================================
 \section{Conclusion}
-\TODO{Three sentences. What was measured, what it means for practice, and the
-one thing that would change it (hardware).}
+\label{sec:conclusion}
+\TODO{Four sentences: the two controls and what they cost (almost nothing ---
+one extra arm and one division); the corrected ranking; the CortexBench
+scoping; the recommendation --- run the control whenever the axes are
+corruptions.}
 
-\bibliographystyle{plainnat}
+% =========================================================================
+\section*{Tooling disclosure}
+\TODO{Adapt to the venue's wording, but keep the SCOPE exact. Accurate
+statement: an AI coding assistant (Claude) was used to write and revise
+analysis, plotting and verification SOFTWARE in this repository, and to run
+experiments. It did not write the manuscript text, and it did not select the
+research question, the hypotheses or the claims. All prose is the author's.
+
+Two things worth adding because they are true and unusual: the same tooling
+produced the verification harness that re-derives every reported number
+(scripts/verify\_paper\_numbers.py, 128 checks, run in CI), and the errors it
+introduced during analysis --- an evaluation leak, a level-parity confound, an
+unimplemented control and a mis-scoped fallback --- were each caught by the
+registered invalidation conditions and are recorded in docs/ledger.md rather
+than removed. VENUE POLICIES, checked 2026-08-30 -- do not assume the
+writing/code distinction gets you an exemption:
+
+  TMLR (first choice): "LLMs may be used as general-purpose assistive tools.
+  Whichever tools are used, authors are fully responsible for content on which
+  they are listed as (co-)authors." NO disclosure is mandated and no
+  writing-versus-code distinction is drawn. Disclose anyway -- it costs a
+  paragraph and pre-empts the question.
+
+  ICLR 2026 (strictest): ANY use of an LLM must be disclosed, in the paper AND
+  the submission form, and the policy explicitly names "generating experiment
+  code, and analyzing results" as covered. Extensive undisclosed use is a DESK
+  REJECT. The writing/code distinction does NOT exempt this work here.
+
+  NeurIPS 2026: policy varies by track; the general guidance is to disclose in
+  the acknowledgements. The Position track requires substantially human-written
+  text with AI limited to copy-editing.
+
+  Every policy makes the AUTHOR responsible for LLM output, and none permits an
+  LLM as an author. Re-check the venue page at submission -- these changed
+  twice in the last year.}
+
+\bibliographystyle{tmlr}
 \bibliography{references}
 
+% =========================================================================
 \appendix
-\section{Pre-registrations}
-\TODO{The registrations were committed before each experiment ran, with
-falsifiers named in advance, and several predictions failed. Point at the
-repository. Do not oversell this --- one paragraph. Reviewers in this field are
-largely indifferent to registration and framing it as a headline contribution
-reads as substituting method for evidence.}
-
-\section{Full results}
-\TODO{Per-axis tables for both tasks, and the axes excluded by their controls.}
+\section{Task and rendering details}\label{app:tasks}
+\TODO{Env parameters and axis levels (lighting 0.3/0.45/0.55/0.62 vs ref
+0.7; texture 0.06/0.10/0.16/0.24; clutter 1--4; noise 4/10/20/35; defocus
+1/2/4/7; compress 4/8/14/22; exposure 0.65/0.80/1.25/1.55; lowres 2/3/5/8).}
+\section{Full per-axis tables}\label{app:tables}
+\TODO{All 16 cells, both metrics, with exclusion reasons; regenerate via
+scripts/make\_figures.py against the FINAL JSONs --- the current figure files
+predate the 22-encoder run.}
+\section{Reproducibility}\label{app:repro}
+\TODO{Commit hashes (results a61a421, registration 9ed0225), hardware (one
+consumer AMD GPU via ROCm/WSL2), total encoding time, and the committed
+result JSONs under cache/.}
 
 \end{document}

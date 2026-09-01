@@ -71,6 +71,29 @@ ALIASES = {
     "vit-large": "google/vit-large-patch16-224",
     "clip-large": "openai/clip-vit-large-patch14",
     "aimv2-base": "apple/aimv2-base-patch14-224",
+
+    # Expansion to 22. Chosen to buy specific tests, not sample size.
+    #
+    # Three real CNNs, because fourteen of the first fifteen encoders are ViTs
+    # and the only non-ViT was the untrained control. "Random features survive
+    # blur" and "convolutions survive blur" made identical predictions and
+    # nothing separated them; these do.
+    "convnext": "facebook/convnext-base-224",
+    "convnext-large": "facebook/convnext-large-224",
+    "resnet50": "microsoft/resnet-50",
+    # I-JEPA: the image JEPA against V-JEPA 2's video JEPA. The nearest thing
+    # to a controlled test of whether the video objective is doing the work.
+    "ijepa": "facebook/ijepa_vith14_1k",
+    # Masked image modelling, absent from the first fifteen entirely, and the
+    # objective family VC-1 is built on.
+    "mae": "facebook/vit-mae-base",
+    "beit": "microsoft/beit-base-patch16-224",
+    # Hierarchical windowed attention: architecturally BETWEEN a plain ViT and
+    # a CNN, so the architecture test gets a middle point rather than a binary.
+    # (Depth-Anything was the first choice here for its geometric supervision,
+    # but AutoModel cannot load a depth-estimation config, and its backbone is
+    # DINOv2 -- already an arm in this sweep -- so it bought little.)
+    "swin": "microsoft/swin-base-patch4-window7-224",
 }
 
 
@@ -160,6 +183,17 @@ def encode(frames: np.ndarray, proc, model, device: str, grid: int,
         inputs = proc(images=list(chunk), return_tensors="pt")
         inputs = {k: v.to(device) for k, v in dict(inputs).items()}
         out = model(**inputs).last_hidden_state          # (B, prefix + P, D)
+        # Convolutional backbones (ConvNeXt, ResNet) return a feature MAP,
+        # (B, C, H, W), not a token sequence. Flatten the spatial dims into
+        # tokens so the same square-grid logic and the same pooling apply.
+        #
+        # Worth having: fourteen of the fifteen encoders in this sweep are
+        # ViTs and the only non-ViT is the untrained CNN control. When that
+        # control ranks 1/15 on defocus, compress and lowres, "random features
+        # are robust" and "convolutions are robust" predict the same result,
+        # and nothing in the sweep separates them. Real CNNs do.
+        if out.dim() == 4:
+            out = out.flatten(2).transpose(1, 2)          # (B, H*W, C)
         n_tok = out.shape[1]
         # Backbones differ in what they put BEFORE the patch grid: SigLIP has
         # nothing, CLIP and DINOv2 have a CLS token, and DINOv3 has CLS plus

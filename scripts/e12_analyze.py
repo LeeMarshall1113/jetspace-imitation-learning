@@ -3,7 +3,22 @@
 
     python scripts/e12_analyze.py push
 
-Implements docs/prereg-e12.md. For every (encoder, axis) cell:
+Stages 1-2 are registered in docs/prereg-e12.md (9ed0225, committed the day
+before the run). Stage 3, the image-space axes, in docs/prereg-e12-stage3.md.
+
+A previous version of this docstring claimed prereg-e12.md had never existed.
+That was wrong: the search was run in a stale clone that predates the commit.
+Two real deviations from it, both disclosed rather than quietly carried:
+
+  * It registers FOUR axes -- viewpoint, lighting, texture, clutter. Viewpoint
+    was dropped and five image-space axes added, so E12a's "three of four" is
+    being applied to a different axis set than it was written for.
+  * The 0.4 threshold is anchored to E11's prior |rho| = 0.317 plus slack, not
+    to what the design can detect. At the registered nine encoders a Spearman
+    interval is roughly +/-0.6, so no verdict at 0.4 was ever earnable, and the
+    outcome has twice turned on 0.007.
+
+For every (encoder, axis) cell:
 
   probe R^2     ridge from frozen features to actions at the REFERENCE
                 condition, split BY EPISODE -- what the field reports
@@ -36,17 +51,26 @@ ENCODERS = [
     ("dinov2-large", "dinov2l"), ("dinov3-large", "dinov3l"),
     ("siglip1", "siglip1"), ("vit-large", "vitlarge"),
     ("clip-large", "cliplarge"), ("vc1-large", "vc1large"),
+    # Expansion to 22. Three CNNs to separate "random features are robust"
+    # from "convolutions are robust" -- indistinguishable while the only
+    # non-ViT in the sweep was the untrained control. Plus I-JEPA against
+    # V-JEPA 2, the missing masked-image-modelling family, and one
+    # geometrically supervised backbone.
+    ("convnext", "convnext"), ("convnext-large", "convnextl"),
+    ("resnet50", "resnet50"), ("ijepa", "ijepa"), ("mae", "mae"),
+    ("beit", "beit"), ("swin", "swin"),
 ]
 AXES = ["lighting", "texture", "clutter",
         # Image-space axes, applied at encode time rather than
         # rendered. Same treatment, same controls.
         "noise", "defocus", "compress", "exposure", "lowres"]
-FLOOR = 0.9          # prereg S3.1: a head above this cannot be compared
-MIN_DEGRADE = 0.10   # prereg S3.2: an axis this weak cannot rank anything
+FLOOR = 0.9          # stage3 prereg I1: a head above this cannot be compared
+MIN_DEGRADE = 0.10   # stage3 prereg I2: an axis this weak cannot rank anything
+LAT = Path("cache/latents")
 
 
 def load(prefix: str, tag: str, task: str):
-    d = Path("cache/latents") / f"{prefix}_e12_{task}__{tag}"
+    d = LAT / f"{prefix}_e12_{task}__{tag}"
     files = sorted(d.glob("episode_*.npy"))
     if not files:
         return None
@@ -54,8 +78,27 @@ def load(prefix: str, tag: str, task: str):
             for f in files]
 
 
+IMAGE_AXES = ("noise", "defocus", "compress", "exposure", "lowres")
+
+
 def actions(tag: str, task: str):
     d = Path("data/episodes") / f"e12_{task}__{tag}"
+    if not d.is_dir() and tag.startswith(IMAGE_AXES):
+        # Image-space axes are applied at ENCODE time to the reference
+        # episodes: run_e12_all.sh passes data/episodes/e12_<task>__ref as the
+        # source for every one of them. So they have latents but no episode
+        # directory of their own, and the actions are the reference actions by
+        # construction -- identical trajectories, corrupted pixels.
+        #
+        # Without this, actions() returned nothing for every image level, every
+        # encoder scored n_levels=0, and the parity guard excluded all five
+        # axes as "0 encoders at full coverage". Stage 3 is 600 arms and about
+        # twelve hours; all of it would have analysed to nothing.
+        #
+        # Deliberately restricted to the known image axes rather than a blanket
+        # fallback, so a genuinely missing rendered-axis directory still fails
+        # loudly instead of silently scoring against the reference.
+        d = Path("data/episodes") / f"e12_{task}__ref"
     return [np.load(f)["action"].astype(np.float32)
             for f in sorted(d.glob("episode_*.npz"))]
 
@@ -143,12 +186,83 @@ def cell(prefix: str, axis: str, task: str, levels: list[str]):
         mses.append(float(((Yn - ridge(Xtr, Ytr_n, X)) ** 2).mean()))
     if not mses:
         return None
-    return {"probe": probe, "ref_mse": ref_mse, "held": float(np.mean(mses)),
-            "n_levels": len(mses)}
+    held = float(np.mean(mses))
+    # Relative degradation is the registered PRIMARY metric (stage3 prereg S2).
+    #
+    # probe = 1 - ss_res/ss_tot and ref_mse = ss_res/N, with ss_tot and N equal
+    # across encoders because every encoder is scored on the same held-out
+    # actions. So probe R^2 is an exact decreasing function of ref_mse --
+    # measured at rho = -1.000 on every axis of both tasks, not approximately.
+    # Ranking robustness by absolute `held` therefore re-measures baseline fit,
+    # and its correlation with probe accuracy is partly that identity showing
+    # through. Dividing by ref removes the baseline and leaves the thing the
+    # word "robustness" is supposed to name.
+    #
+    # Both are kept: absolute `held` is what someone deploying the encoder
+    # actually experiences, and where the two disagree that disagreement is a
+    # result rather than a nuisance.
+    return {"probe": probe, "ref_mse": ref_mse, "held": held,
+            "rel": held / max(ref_mse, 1e-9), "n_levels": len(mses)}
+
+
+#: Named encoder subsets, so the scale-sensitivity comparison can be
+#: regenerated from THIS code rather than cited from historical artifacts.
+#:
+#: The 9- and 15-encoder JSONs in cache/ were produced during the run, by code
+#: that predates the parity guard, the relative-degradation metric and the
+#: |rho| fix -- so they conflate "the estimate moved because n grew" with "the
+#: estimate moved because the analysis was corrected". Re-running the current
+#: analysis on these subsets separates the two, and is reproducible from a
+#: commit. Use these for any claim about how estimates changed with scale.
+SUBSETS = {
+    "n9": ["vjepa2", "dinov3", "siglip2", "aimv2", "dinov2", "clip",
+           "vit-in1k", "vc1", "random"],
+    "n15": ["vjepa2", "dinov3", "siglip2", "aimv2", "dinov2", "clip",
+            "vit-in1k", "vc1", "random", "dinov2-large", "dinov3-large",
+            "siglip1", "vit-large", "clip-large", "vc1-large"],
+}
 
 
 def main() -> int:
-    task = sys.argv[1] if len(sys.argv) > 1 else "push"
+    global ENCODERS
+    # No implicit task. A bare invocation used to default to "push" and
+    # overwrite cache/e12_push.json -- the canonical file the paper is built
+    # on. That fired for real: a shell loop word-split its argument wrongly,
+    # one iteration arrived with no arguments, and the canonical result was
+    # silently regenerated. It happened to reproduce identical content, so
+    # nothing was lost, but a convenience default that can clobber a committed
+    # result is not a convenience.
+    if len(sys.argv) < 2:
+        print(__doc__.strip().splitlines()[0])
+        print("\nusage: e12_analyze.py <task> [subset]")
+        print("  task    one of: push, pickplace")
+        print(f"  subset  one of: {', '.join(sorted(SUBSETS))}, or 'all' "
+              f"(default)")
+        print("\nRefusing to guess a task: a bare run would overwrite a "
+              "canonical result file.")
+        return 2
+    task = sys.argv[1]
+    if task not in ("push", "pickplace"):
+        print(f"unknown task {task!r}; expected 'push' or 'pickplace'")
+        return 2
+    # Optional second argument: a subset name from SUBSETS, or "all".
+    subset = sys.argv[2] if len(sys.argv) > 2 else "all"
+    suffix = ""
+    if subset != "all":
+        if subset not in SUBSETS:
+            print(f"unknown subset {subset!r}; choose from "
+                  f"{sorted(SUBSETS)} or 'all'")
+            return 2
+        keep = set(SUBSETS[subset])
+        ENCODERS = [(n, p) for n, p in ENCODERS if n in keep]
+        missing = keep - {n for n, _ in ENCODERS}
+        if missing:
+            print(f"subset {subset} names encoders not in ENCODERS: "
+                  f"{sorted(missing)}")
+            return 2
+        suffix = f"_{subset}_recomputed"
+        print(f"SUBSET {subset}: {len(ENCODERS)} encoders, current analysis "
+              f"code\n")
     levels_for = {
         "lighting": ["lighting_0p3", "lighting_0p45", "lighting_0p55",
                      "lighting_0p62"],
@@ -166,14 +280,35 @@ def main() -> int:
     out: dict = {}
     rhos = {}
     for axis in AXES:
-        rows = []
+        want = levels_for[axis]
+
+        # Invalidation 0: level parity.
+        #
+        # cell() averages over whatever levels an encoder happens to have, so
+        # an encoder cached only at the easy end of an axis is scored against
+        # a shorter and gentler set than one cached at all four. That is not a
+        # small effect -- texture degrades by +814% from the first level to the
+        # last. Mid-scale-up it bit exactly this way: the six newest encoders
+        # had two texture levels each while the original nine had four, which
+        # flattered the newcomers and made the ranking, and the rho computed
+        # from it, meaningless. Rank only encoders carrying the whole axis.
+        rows, short = [], []
         for name, prefix in ENCODERS:
-            c = cell(prefix, axis, task, levels_for[axis])
+            if not (LAT / f"{prefix}_e12_{task}__ref").is_dir():
+                continue
+            c = cell(prefix, axis, task, want)
             if c is None:
                 continue
+            if c["n_levels"] != len(want):
+                short.append((name, c["n_levels"]))
+                continue
             rows.append((name, c))
+        if short:
+            print(f"\n{axis}: incomplete level coverage, excluded -- "
+                  + ", ".join(f"{n} ({k}/{len(want)})" for n, k in short))
         if len(rows) < 5:
-            print(f"\n{axis}: only {len(rows)} encoders cached -- skipping")
+            print(f"\n{axis}: only {len(rows)} encoders at full coverage "
+                  f"-- skipping")
             continue
 
         # Invalidation 1: a head that cannot fit the reference is not comparable.
@@ -227,20 +362,40 @@ def main() -> int:
                              "degradation": degrade}
                 continue
 
-        # Higher probe = better; lower held-out MSE = better. Negate the probe
-        # so both rank "better" the same way before correlating.
-        rho = spearman([-c["probe"] for _, c in usable],
-                       [c["held"] for _, c in usable])
-        rhos[axis] = rho
+        # Higher probe = better; lower error = better. Negate the probe so both
+        # rank "better" the same way before correlating.
+        #
+        # rho_rel is the registered PRIMARY (stage3 prereg S2): relative
+        # degradation, which does not inherit the probe/ref_mse identity.
+        # rho_abs is the secondary, kept because it is what a deployer feels.
+        # They disagree in sign on some axes; that disagreement is a result.
+        rho_rel = spearman([-c["probe"] for _, c in usable],
+                           [c["rel"] for _, c in usable])
+        rho_abs = spearman([-c["probe"] for _, c in usable],
+                           [c["held"] for _, c in usable])
+        rhos[axis] = rho_rel
         print(f"  mean degradation {degrade:+.1%}")
-        print(f"  Spearman(probe rank, robustness rank) = {rho:+.3f}")
-        out[axis] = {"rows": {n: c for n, c in usable}, "rho": rho,
-                     "degradation": degrade, "excluded": bad}
+        print(f"  rho PRIMARY (relative degradation) = {rho_rel:+.3f}")
+        print(f"  rho secondary (absolute held-out)  = {rho_abs:+.3f}"
+              + ("   <-- SIGN DIFFERS from primary"
+                 if rho_rel * rho_abs < 0 else ""))
+        print("  CIs: scripts/e12_uncertainty.py -- no effect is claimed here "
+              "on a point estimate alone")
+        out[axis] = {"rows": {n: c for n, c in usable}, "rho": rho_rel,
+                     "rho_abs": rho_abs, "degradation": degrade,
+                     "excluded": bad}
 
     if rhos:
         vals = np.array(list(rhos.values()))
         mean_abs = float(np.abs(vals).mean())
-        below = int((vals < 0.5).sum())
+        # |rho|, not rho. The registered clause is "rho < 0.5 on >= 3 axes" and
+        # it means "no relationship on those axes". A signed test made every
+        # negative rho satisfy it for free -- including a hypothetical -0.9,
+        # which is a strong relationship being counted as evidence of none.
+        # This passed unnoticed while the absolute metric produced positive
+        # rho; switching to the registered primary metric turned them negative
+        # and exposed it.
+        below = int((np.abs(vals) < 0.5).sum())
         print("\n" + "=" * 62)
         print("E12a -- does probe accuracy predict robustness?")
         print("=" * 62)
@@ -248,19 +403,38 @@ def main() -> int:
             print(f"  {a:10s} rho {r:+.3f}")
         print(f"  mean |rho| {mean_abs:.3f} over {len(vals)} axes; "
               f"{below}/{len(vals)} below 0.5")
-        holds = mean_abs <= 0.4 and below >= min(3, len(vals))
-        print(f"\n  registered (mean |rho| <= 0.4 and rho < 0.5 on >= 3 axes): "
-              f"{'HOLDS' if holds else 'FAILS'}")
-        if not holds:
-            print("  Probes DO predict robustness on these axes. E11's")
-            print("  viewpoint-only anti-correlation is then axis-specific,")
-            print("  and that scoping is the result.")
-        out["e12a"] = {"rhos": rhos, "mean_abs": mean_abs, "holds": bool(holds)}
+        # Stage3 prereg H1: with fewer than three valid axes this is NOT
+        # evaluable, and saying so is the registered outcome. The previous
+        # `min(3, len(vals))` quietly reinterpreted the rule as "all available
+        # axes", which let a two-axis run render a verdict -- and on push that
+        # verdict turned on a single axis missing 0.5 by 0.007. A criterion
+        # that cannot fail honestly is not a criterion.
+        if len(vals) < 3:
+            print(f"\n  NOT EVALUABLE: the registered test needs >= 3 valid "
+                  f"axes and only {len(vals)} survived the invalidation "
+                  f"conditions.")
+            print("  Reporting the axes above without a verdict, as registered.")
+            holds = None
+        else:
+            holds = bool(mean_abs <= 0.4 and below >= 3)
+            print(f"\n  registered (mean |rho| <= 0.4 and rho < 0.5 on >= 3 "
+                  f"axes): {'HOLDS' if holds else 'FAILS'}")
+            if not holds:
+                print("  Probes DO predict robustness on these axes. E11's")
+                print("  viewpoint-only anti-correlation is then axis-specific,")
+                print("  and that scoping is the result.")
+        print("  Any claim from this needs the bootstrap CI "
+              "(scripts/e12_uncertainty.py).")
+        out["e12a"] = {"rhos": rhos, "mean_abs": mean_abs, "holds": holds,
+                       "n_valid_axes": len(vals),
+                       "evaluable": len(vals) >= 3}
 
     Path("cache").mkdir(exist_ok=True)
-    Path(f"cache/e12_{task}.json").write_text(json.dumps(out, indent=2,
-                                                         default=float))
-    print(f"\nwrote cache/e12_{task}.json")
+    # suffix is empty on a full run, so the canonical file is untouched; a
+    # subset run writes beside it and can never overwrite the final result.
+    Path(f"cache/e12_{task}{suffix}.json").write_text(
+        json.dumps(out, indent=2, default=float))
+    print(f"\nwrote cache/e12_{task}{suffix}.json")
     return 0
 
 

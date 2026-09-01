@@ -30,8 +30,10 @@ abstract: >-
   calibrated against task success rather than against world-model internals,
   and session-to-session drift within a single laboratory is quantified as the
   reference floor under cross-domain comparisons. Predictions were
-  pre-registered with named falsifiers before each experiment ran, and the
-  failures are recorded alongside the results.
+  pre-registered with named falsifiers before each experiment ran, the
+  registrations live in docs/ alongside their invalidation conditions, and
+  every deviation from them is disclosed. The failures are recorded alongside
+  the results.
 keywords:
   - robot learning
   - imitation learning
