@@ -176,7 +176,7 @@ class EpisodeDataset:
 
     def __init__(self, root: str | Path, options: set[str] | None = None) -> None:
 
-        self.root = LOCAL_ROOT / Path(root)
+        self.root = Path(root)
         info_path = self.root / INFO_FILE
 
         if not info_path.exists():
