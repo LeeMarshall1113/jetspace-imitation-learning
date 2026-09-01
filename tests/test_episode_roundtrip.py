@@ -28,7 +28,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from jetspace.data.episode import (  # noqa: E402
+from jetspace.data.episode import (
     EpisodeBuffer,
     EpisodeDataset,
     EpisodeWriter,
@@ -75,12 +75,32 @@ def test_roundtrip_preserves_values(tmp_path: Path):
     writer = make_writer(tmp_path)
     writer.write(buf, metadata={"policy": "test", "seed": 7})
 
-    ds = EpisodeDataset(tmp_path)
+    ds = EpisodeDataset(tmp_path, options={"action", "pixels_front"})
     assert len(ds) == 1
+
     ep = ds[0]
     assert ep["action"].shape == (5, 6)
     np.testing.assert_allclose(ep["action"][:, 0], np.arange(5, dtype=np.float64))
     assert ep[f"pixels_{CAM}"].shape == (5, 4, 4, 3)
+
+def test_selective_load(tmp_path: Path):
+    buf = fill(EpisodeBuffer(), 5)
+    writer = make_writer(tmp_path)
+    writer.write(buf, metadata={"policy": "test", "seed": 7})
+
+    ds = EpisodeDataset(tmp_path, options={'action', 'proprio', 'pixels_front'})
+
+    getitem_vals = []
+    ep = ds[0]
+
+    for i in range(len(ds[0])):
+        print(ds.records)
+        getitem_vals.append(ep.keys())
+
+    assert len(getitem_vals) != 0
+
+    with pytest.raises(ValueError):
+        ep = EpisodeDataset(tmp_path)
 
 
 def test_action_and_executed_stay_distinct(tmp_path: Path):
@@ -91,9 +111,10 @@ def test_action_and_executed_stay_distinct(tmp_path: Path):
     writer = make_writer(tmp_path)
     writer.write(buf)
 
-    ep = EpisodeDataset(tmp_path)[0]
-    assert not np.allclose(ep["action"], ep["action_executed"])
-    np.testing.assert_allclose(ep["action_executed"] - ep["action"], 0.25)
+    ep = EpisodeDataset(tmp_path, options={"action", "action_executed"})
+
+    assert not np.allclose(ep[0]["action"], ep[0]["action_executed"])
+    np.testing.assert_allclose(ep[0]["action_executed"] - ep[0]["action"], 0.25)
 
 
 def test_actions_are_float64(tmp_path: Path):
@@ -101,9 +122,11 @@ def test_actions_are_float64(tmp_path: Path):
     buf = fill(EpisodeBuffer(), 3)
     writer = make_writer(tmp_path)
     writer.write(buf)
-    ep = EpisodeDataset(tmp_path)[0]
-    assert ep["action"].dtype == np.float64
-    assert ep["action_executed"].dtype == np.float64
+
+    ep = EpisodeDataset(tmp_path, options={"action", "action_executed"})
+
+    assert ep[0]["action"].dtype == np.float64
+    assert ep[0]["action_executed"].dtype == np.float64
 
 
 def test_refuses_to_write_an_empty_episode(tmp_path: Path):

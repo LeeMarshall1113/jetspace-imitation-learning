@@ -21,16 +21,18 @@ explicitly later rather than inherited by accident.
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 import numpy as np
 
 INFO_FILE = "info.json"
+LOCAL_ROOT = Path(__file__).parent.parent
 INDEX_FILE = "episodes.jsonl"
 EPISODE_GLOB = "episode_*.npz"
-
+DATASET_OPTIONS = {'pixels_front', 'proprio', 'action', 'action_executed', 'reward', 'success'}
 
 @dataclass
 class Episode:
@@ -87,7 +89,6 @@ class EpisodeBuffer:
 
         self.episode.reward.append(float(reward))
         self.episode.success.append(bool(success))
-
 
 class EpisodeWriter:
     """Writes episodes into a dataset directory, appending to any existing set.
@@ -173,18 +174,27 @@ class EpisodeWriter:
 class EpisodeDataset:
     """Reads a dataset written by `EpisodeWriter`."""
 
-    def __init__(self, root: str | Path) -> None:
-        self.root = Path(root)
+    def __init__(self, root: str | Path, options: set[str] | None = None) -> None:
+
+        self.root = LOCAL_ROOT / Path(root)
         info_path = self.root / INFO_FILE
+
         if not info_path.exists():
             raise FileNotFoundError(f"No {INFO_FILE} in {self.root}")
+
         self.info = json.loads(info_path.read_text())
         index_path = self.root / INDEX_FILE
+
         self.records = (
             [json.loads(line) for line in index_path.read_text().splitlines() if line.strip()]
             if index_path.exists()
             else []
         )
+
+        if not isinstance(options, set) or not options.issubset(DATASET_OPTIONS):
+            raise ValueError(f"{options} not recognized from {DATASET_OPTIONS}")
+
+        self.opt: set[str] = options
 
     def __len__(self) -> int:
         return len(self.records)
@@ -194,9 +204,13 @@ class EpisodeDataset:
             yield self[i]
 
     def __getitem__(self, i: int) -> dict[str, Any]:
+
         record = self.records[i]
+
         with np.load(self.root / record["file"]) as data:
-            episode = {k: data[k] for k in data.files}
+
+            episode = {k: data[k] for k in data.files if k in self.opt}
+
         episode["meta"] = record
         return episode
 
