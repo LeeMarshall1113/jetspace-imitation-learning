@@ -235,7 +235,7 @@ def main() -> int:
     if len(sys.argv) < 2:
         print(__doc__.strip().splitlines()[0])
         print("\nusage: e12_analyze.py <task> [subset]")
-        print(f"  task    one of: push, pickplace")
+        print("  task    one of: push, pickplace")
         print(f"  subset  one of: {', '.join(sorted(SUBSETS))}, or 'all' "
               f"(default)")
         print("\nRefusing to guess a task: a bare run would overwrite a "

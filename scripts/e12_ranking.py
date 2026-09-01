@@ -104,10 +104,10 @@ def main() -> int:
         if a not in ix or b not in ix:
             continue
         d = boot[:, ix[a]] - boot[:, ix[b]]
-        l, h = np.percentile(d, [2.5, 97.5])
-        sure = "DISTINGUISHABLE" if h < 0 or l > 0 else "not distinguishable"
+        lo, hi = np.percentile(d, [2.5, 97.5])
+        sure = "DISTINGUISHABLE" if hi < 0 or lo > 0 else "not distinguishable"
         print(f"  {a:11s} vs {b:11s} diff {d.mean():+8.3f} "
-              f"[{l:+.3f}, {h:+.3f}]  {sure}")
+              f"[{lo:+.3f}, {hi:+.3f}]  {sure}")
 
     print("\nA CI on a mean is not a CI on a rank, and seven cells is a small")
     print("universe to resample. Quote P(top3)/P(bot3) for ranking claims and")

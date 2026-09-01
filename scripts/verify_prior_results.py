@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import glob
 import json
-from itertools import product
 from pathlib import Path
 
 import numpy as np
