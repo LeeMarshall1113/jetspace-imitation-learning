@@ -182,6 +182,9 @@ class EpisodeDataset:
         if not info_path.exists():
             raise FileNotFoundError(f"No {INFO_FILE} in {self.root}")
 
+        if not isinstance(options, set) or not options.issubset(DATASET_OPTIONS):
+            raise ValueError(f"{options} not recognized from {DATASET_OPTIONS}")
+
         self.info = json.loads(info_path.read_text())
         index_path = self.root / INDEX_FILE
 
@@ -190,9 +193,6 @@ class EpisodeDataset:
             if index_path.exists()
             else []
         )
-
-        if not isinstance(options, set) or not options.issubset(DATASET_OPTIONS):
-            raise ValueError(f"{options} not recognized from {DATASET_OPTIONS}")
 
         self.opt: set[str] = options
 
