@@ -29,10 +29,17 @@ from typing import Any
 import numpy as np
 
 INFO_FILE = "info.json"
-LOCAL_ROOT = Path(__file__).parent.parent
 INDEX_FILE = "episodes.jsonl"
 EPISODE_GLOB = "episode_*.npz"
-DATASET_OPTIONS = {'pixels_front', 'proprio', 'action', 'action_executed', 'reward', 'success'}
+
+# Every field an episode carries EXCEPT the pixel arrays, whose names depend on
+# the dataset: `write` stores them as f"pixels_{cam}" for whatever cameras the
+# writer was given, and fetch_lerobot.py derives that name from the source
+# dataset. So the valid key set is per-dataset and is built in EpisodeDataset
+# from info.json -- a hardcoded {"pixels_front", ...} would reject a legitimate
+# options={"pixels_wrist"} and, worse, silently drop those frames.
+EPISODE_FIELDS = {"proprio", "action", "action_executed", "reward", "success"}
+
 
 @dataclass
 class Episode:
@@ -175,17 +182,31 @@ class EpisodeDataset:
     """Reads a dataset written by `EpisodeWriter`."""
 
     def __init__(self, root: str | Path, options: set[str] | None = None) -> None:
+        """`options` selects which arrays to decompress; None loads all of them.
 
+        Passing a subset skips `data[k]` for everything outside it, which is
+        where the decompression cost lives -- worth it for a caller that reads
+        actions out of a dataset whose bulk is pixels.
+        """
         self.root = Path(root)
         info_path = self.root / INFO_FILE
 
         if not info_path.exists():
             raise FileNotFoundError(f"No {INFO_FILE} in {self.root}")
 
-        if not isinstance(options, set) or not options.issubset(DATASET_OPTIONS):
-            raise ValueError(f"{options} not recognized from {DATASET_OPTIONS}")
-
         self.info = json.loads(info_path.read_text())
+
+        # Validated here rather than in __getitem__ so a typo fails at
+        # construction, where the caller can still see what it passed. info.json
+        # is a few hundred bytes; nothing has been decompressed yet.
+        if options is not None:
+            valid = EPISODE_FIELDS | {f"pixels_{c}" for c in self.info.get("cameras", ())}
+            unknown = set(options) - valid
+            if unknown:
+                raise ValueError(
+                    f"unknown keys {sorted(unknown)}; this dataset has {sorted(valid)}"
+                )
+
         index_path = self.root / INDEX_FILE
 
         self.records = (
@@ -194,7 +215,7 @@ class EpisodeDataset:
             else []
         )
 
-        self.opt: set[str] = options
+        self.options = set(options) if options is not None else None
 
     def __len__(self) -> int:
         return len(self.records)
@@ -204,13 +225,14 @@ class EpisodeDataset:
             yield self[i]
 
     def __getitem__(self, i: int) -> dict[str, Any]:
-
         record = self.records[i]
-
         with np.load(self.root / record["file"]) as data:
-
-            episode = {k: data[k] for k in data.files if k in self.opt}
-
+            # The filter runs before `data[k]`, which is the point: an excluded
+            # key is never decompressed.
+            keys = data.files if self.options is None else [
+                k for k in data.files if k in self.options
+            ]
+            episode = {k: data[k] for k in keys}
         episode["meta"] = record
         return episode
 

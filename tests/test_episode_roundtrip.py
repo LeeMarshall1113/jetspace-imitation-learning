@@ -28,8 +28,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-# noqa: E402
-from jetspace.data.episode import (
+from jetspace.data.episode import (  # noqa: E402
     EpisodeBuffer,
     EpisodeDataset,
     EpisodeWriter,
@@ -76,7 +75,9 @@ def test_roundtrip_preserves_values(tmp_path: Path):
     writer = make_writer(tmp_path)
     writer.write(buf, metadata={"policy": "test", "seed": 7})
 
-    ds = EpisodeDataset(tmp_path, options={"action", "pixels_front"})
+    # No options: every existing caller in scripts/ constructs it this way, so
+    # this is the path that must keep working.
+    ds = EpisodeDataset(tmp_path)
     assert len(ds) == 1
 
     ep = ds[0]
@@ -84,24 +85,46 @@ def test_roundtrip_preserves_values(tmp_path: Path):
     np.testing.assert_allclose(ep["action"][:, 0], np.arange(5, dtype=np.float64))
     assert ep[f"pixels_{CAM}"].shape == (5, 4, 4, 3)
 
-def test_selective_load(tmp_path: Path):
-    buf = fill(EpisodeBuffer(), 5)
+
+def test_no_options_loads_every_field(tmp_path: Path):
+    """The default must stay all-fields. PR #11 shipped a `None` default whose
+    guard rejected `None`, so every one of the 19 call sites raised."""
     writer = make_writer(tmp_path)
-    writer.write(buf, metadata={"policy": "test", "seed": 7})
+    writer.write(fill(EpisodeBuffer(), 3))
 
-    ds = EpisodeDataset(tmp_path, options={'action', 'proprio', 'pixels_front'})
+    ep = EpisodeDataset(tmp_path)[0]
+    assert set(ep) == {"action", "action_executed", f"pixels_{CAM}",
+                       "proprio", "reward", "success", "meta"}
 
-    getitem_vals = []
-    ep = ds[0]
 
-    for i in range(len(ds[0])):
-        print(ds.records)
-        getitem_vals.append(ep.keys())
+def test_selective_load_returns_only_what_was_asked_for(tmp_path: Path):
+    writer = make_writer(tmp_path)
+    writer.write(fill(EpisodeBuffer(), 5))
 
-    assert len(getitem_vals) != 0
+    ds = EpisodeDataset(tmp_path, options={"action", "proprio"})
+    # `meta` comes from the index record, not the npz, so it is always present.
+    assert set(ds[0]) == {"action", "proprio", "meta"}
+    assert ds[0]["action"].shape == (5, 6)
 
-    with pytest.raises(ValueError):
-        ep = EpisodeDataset(tmp_path)
+
+def test_unknown_option_is_rejected_at_construction(tmp_path: Path):
+    writer = make_writer(tmp_path)
+    writer.write(fill(EpisodeBuffer(), 3))
+
+    with pytest.raises(ValueError, match="unknown keys"):
+        EpisodeDataset(tmp_path, options={"action", "not_a_field"})
+
+
+def test_pixel_key_is_validated_per_dataset(tmp_path: Path):
+    """Camera names are per-dataset -- `write` stores f"pixels_{cam}". A
+    hardcoded valid-key set would reject a real camera on someone's data."""
+    writer = make_writer(tmp_path)
+    writer.write(fill(EpisodeBuffer(), 3))
+
+    # This dataset's camera is CAM, so its key is fine and another is not.
+    EpisodeDataset(tmp_path, options={f"pixels_{CAM}"})
+    with pytest.raises(ValueError, match="unknown keys"):
+        EpisodeDataset(tmp_path, options={"pixels_nonexistent"})
 
 
 def test_action_and_executed_stay_distinct(tmp_path: Path):
@@ -112,10 +135,9 @@ def test_action_and_executed_stay_distinct(tmp_path: Path):
     writer = make_writer(tmp_path)
     writer.write(buf)
 
-    ep = EpisodeDataset(tmp_path, options={"action", "action_executed"})
-
-    assert not np.allclose(ep[0]["action"], ep[0]["action_executed"])
-    np.testing.assert_allclose(ep[0]["action_executed"] - ep[0]["action"], 0.25)
+    ep = EpisodeDataset(tmp_path)[0]
+    assert not np.allclose(ep["action"], ep["action_executed"])
+    np.testing.assert_allclose(ep["action_executed"] - ep["action"], 0.25)
 
 
 def test_actions_are_float64(tmp_path: Path):
@@ -124,10 +146,9 @@ def test_actions_are_float64(tmp_path: Path):
     writer = make_writer(tmp_path)
     writer.write(buf)
 
-    ep = EpisodeDataset(tmp_path, options={"action", "action_executed"})
-
-    assert ep[0]["action"].dtype == np.float64
-    assert ep[0]["action_executed"].dtype == np.float64
+    ep = EpisodeDataset(tmp_path)[0]
+    assert ep["action"].dtype == np.float64
+    assert ep["action_executed"].dtype == np.float64
 
 
 def test_refuses_to_write_an_empty_episode(tmp_path: Path):
