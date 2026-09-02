@@ -91,7 +91,7 @@ and run what you can:
 # It does need the container, which is where pytest lives:
 DOCKER_UID=1000 DOCKER_GID=1000 docker compose -f docker/compose.yaml \
   --profile wsl2 run --rm -T dev-wsl python -m pytest tests/ -q
-# 7 passed in 0.48s
+# 11 passed in 0.65s
 
 # If you cannot run Docker either, these need only Python and numpy:
 python -m compileall -q scripts/ src/    # everything still parses

@@ -150,9 +150,17 @@ def verify_e12(r: Report):
 # --------------------------------------------------------------------------
 # S4: the ranking and the head-to-head comparisons.
 # --------------------------------------------------------------------------
+# All twenty rows of the ranking table in paper/main.tex, not only the
+# headline ones: the other fourteen existed nowhere except the scaffold
+# until the pre-writing audit regenerated them (scripts/e12_ranking.py,
+# seed 0) and found them matching. Now they cannot drift unnoticed.
 RANK_MEAN = {"vjepa2": 1.069, "aimv2": 1.093, "dinov3": 1.120,
-             "convnext-large": 1.239, "clip-large": 1.311,
-             "vc1": 2.564, "vc1-large": 2.899, "random": 22.517}
+             "convnext-large": 1.239, "clip-large": 1.311, "siglip2": 1.323,
+             "dinov3-large": 1.503, "convnext": 1.601, "swin": 1.744,
+             "dinov2-large": 1.767, "vit-in1k": 1.852, "siglip1": 1.978,
+             "clip": 2.252, "vc1": 2.564, "dinov2": 2.647, "ijepa": 2.662,
+             "vit-large": 2.841, "vc1-large": 2.899, "beit": 3.391,
+             "random": 22.517}
 HEAD2HEAD = {                       # (a, b): (diff, lo, hi, distinguishable)
     ("vjepa2", "vc1"): (-1.496, -2.916, -0.323, True),
     ("aimv2", "vc1"): (-1.471, -2.779, -0.346, True),

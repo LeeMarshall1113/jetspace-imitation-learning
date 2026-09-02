@@ -215,6 +215,14 @@ held-out MSE at displacement $\div$ the same encoder's reference MSE.}
 
 \subsection{The identity, and the primary metric}
 \label{sec:identity}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.8\linewidth]{figures/fig_signflip.pdf}
+\caption{\TODO{The metric choice reverses the sign of rho on every axis; absolute held-out error tracks the reference fit, relative degradation does not.}}
+\label{fig:signflip}
+\end{figure}
+
 With every encoder scored against the same held-out actions,
 $\mathrm{probe}\ R^2 = 1 - \mathrm{ss}_{\mathrm{res}}/\mathrm{ss}_{\mathrm{tot}}$
 and $\mathrm{ref\ MSE} = \mathrm{ss}_{\mathrm{res}}/N$ share
@@ -257,6 +265,14 @@ so pickplace comparisons run over 20 encoders.}
 
 \subsection{Five of eight axes cannot rank encoders}
 \label{sec:discriminability}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=1.0\linewidth]{figures/fig_discriminability.pdf}
+\caption{\TODO{Where the untrained CNN ranks on each axis, both tasks. Worst third = passes. The same five axes fail on both.}}
+\label{fig:discriminability}
+\end{figure}
+
 
 \begin{table}[t]
 \centering\small
@@ -304,6 +320,14 @@ unremarkable reference MSE of 0.407 --- not a denominator artifact.}
 
 \subsection{Encoder ranking on the valid cells}
 \label{sec:ranking}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.9\linewidth]{figures/fig_ranking.pdf}
+\caption{\TODO{Forest plot: mean relative degradation per encoder over the six valid cells, paired-bootstrap CIs. Top group is internally inseparable.}}
+\label{fig:ranking}
+\end{figure}
+
 
 \begin{table}[t]
 \centering\small
@@ -368,6 +392,14 @@ final ones.}
 \subsection{The field's benchmark passes the control}
 \label{sec:cortexbench}
 
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.8\linewidth]{figures/fig_cortexbench.pdf}
+\caption{\TODO{CortexBench discriminability: the untrained control ranks in the worst third on 11/12 and 12/12, so the control is not vacuous.}}
+\label{fig:cortexbench}
+\end{figure}
+
+
 \begin{table}[t]
 \centering\small
 \caption{\TODO{Caption: probe $R^2$ on CortexBench Adroit demonstrations
@@ -408,6 +440,22 @@ numbers.}
 
 \subsection{Does probe accuracy predict robustness?}
 \label{sec:e12a}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.85\linewidth]{figures/fig_probe_vs_robust_push.pdf}
+\caption{\TODO{push: probe R^2 vs relative degradation per valid axis, with rho. Positive = better probes degrade more.}}
+\label{fig:probe_vs_robust_push}
+\end{figure}
+
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.85\linewidth]{figures/fig_probe_vs_robust_pickplace.pdf}
+\caption{\TODO{pickplace: same layout.}}
+\label{fig:probe_vs_robust_pickplace}
+\end{figure}
+
 \TODO{The original hypothesis, honestly bounded. push: better probes degrade
 MORE on lighting ($+0.442$, $[+0.064, +0.692]$) and texture ($+0.458$,
 $[+0.074, +0.722]$); exposure does not exclude zero. pickplace shows nothing
@@ -422,10 +470,29 @@ and why the intervals are what this paper reports.}
 % =========================================================================
 \section{Corroborating experiments}
 \label{sec:corroboration}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.8\linewidth]{figures/fig_shift_ladder.pdf}
+\caption{\TODO{E2 shift ladder.}}
+\label{fig:shift_ladder}
+\end{figure}
+
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.8\linewidth]{figures/fig_r2_gap_success.pdf}
+\caption{\TODO{R2: latent gap vs task success, rho = -0.516, CI [-0.737, -0.133].}}
+\label{fig:r2_gap_success}
+\end{figure}
+
 \TODO{One page, three short subsections, each an experiment sharing no
 machinery with the main sweep. (a) Viewpoints (E11): V-JEPA 0.251 vs DINOv2
-0.284 with disjoint seed ranges (9/9 pairings) --- and VC-1 at 2.024 vs
-random features at 0.906. (b) Cross-task transfer (E9), with its documented
+0.284 do NOT separate --- paired per-cell diff $-0.033$, CI $[-0.069, +0.006]$,
+16/24 cells, sign test $p{=}0.15$. Do not write ``9/9 seed pairings''; that
+crossed three means with three means and was withdrawn (paper-numbers.md
+S7). The usable E11 corroboration is VC-1 at 2.024 vs random features at
+0.906. (b) Cross-task transfer (E9), with its documented
 learnable-fold filter (both scratch arms $<1.0$; 53/72 qualify): transfer
 beats scratch on 1/53 ($p{=}1.2{\times}10^{-14}$); V-JEPA scratch beats a
 random CNN on 39/53 ($p{=}8.0{\times}10^{-4}$). Unrestricted: 3/72
@@ -471,6 +538,13 @@ deleted.}
   their named phenomena.}
   \item \TODO{V-JEPA 2 sees two frames per latent; image encoders are
   frame-averaged --- a temporal-rate confound affecting one arm.}
+  \item \TODO{Five of eight axes are excluded by the control, so each task's
+  mean $|\rrho|$ rests on THREE valid axes (lighting, texture, exposure). The
+  verdict is a statement about those three; say so, and say the excluded
+  five are the finding, not missing data.}
+  \item \TODO{Ridge $\lambda{=}10$ is fixed, not cross-validated, and one
+  train/held-out split per cell. Both are pre-registered choices; neither is
+  tuned, which is the point, but a reader will ask.}
 \end{itemize}
 
 % =========================================================================
@@ -527,9 +601,9 @@ writing/code distinction gets you an exemption:
 0.7; texture 0.06/0.10/0.16/0.24; clutter 1--4; noise 4/10/20/35; defocus
 1/2/4/7; compress 4/8/14/22; exposure 0.65/0.80/1.25/1.55; lowres 2/3/5/8).}
 \section{Full per-axis tables}\label{app:tables}
-\TODO{All 16 cells, both metrics, with exclusion reasons; regenerate via
-scripts/make\_figures.py against the FINAL JSONs --- the current figure files
-predate the 22-encoder run.}
+\TODO{All 16 cells, both metrics, with exclusion reasons. The per-task
+summaries are generated: figures/table\_e12\_push.tex and
+table\_e12\_pickplace.tex, from the final JSONs via scripts/make\_figures.py.}
 \section{Reproducibility}\label{app:repro}
 \TODO{Commit hashes (results a61a421, registration 9ed0225), hardware (one
 consumer AMD GPU via ROCm/WSL2), total encoding time, and the committed

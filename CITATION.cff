@@ -25,7 +25,7 @@ abstract: >-
   selected by how well a linear probe recovers actions from their features, and
   distribution shift is conventionally evaluated as a distance between latent
   sets. Neither convention has been validated against behaviour. This
-  repository measures both: fifteen frozen encoders are compared across
+  repository measures both: twenty-two frozen encoders are compared across
   multiple nuisance axes under a matched protocol, latent distance is
   calibrated against task success rather than against world-model internals,
   and session-to-session drift within a single laboratory is quantified as the
